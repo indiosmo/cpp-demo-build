@@ -50,8 +50,12 @@ already_installed_or_mark() {
   fi
 
   if [[ -e "$success_artifact" ]]; then
-    printf '%s\n' "$install_name already installed; marking complete."
-    mark_install_complete "$target_dir"
+    if [[ -w "$target_dir" ]]; then
+      printf '%s\n' "$install_name already installed; marking complete."
+      mark_install_complete "$target_dir"
+    else
+      printf '%s\n' "$install_name already installed; install directory is not writable, so leaving marker absent."
+    fi
     return 0
   fi
 

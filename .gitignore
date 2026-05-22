@@ -3,4 +3,6 @@ build/
 compile_commands.json
 .cache/
 CMakeUserPresets.json
-.claude/
+.claude/*
+!.claude/skills/
+!.claude/skills/**

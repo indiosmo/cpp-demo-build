@@ -6,7 +6,7 @@
 set -euo pipefail
 shopt -s inherit_errexit
 
-readonly SETPATH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SETPATH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck source=versions.sh
 source "$SETPATH_DIR/versions.sh"
@@ -28,3 +28,5 @@ export CPATH="$LIBBACKTRACE_ROOT/include:${CPATH:-}"
 export LIBRARY_PATH="$LIBBACKTRACE_ROOT/lib:${LIBRARY_PATH:-}"
 
 export KRAKEN_PATHS_SET=1
+
+unset SETPATH_DIR

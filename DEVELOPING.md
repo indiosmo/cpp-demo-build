@@ -28,6 +28,14 @@ The local C++ toolchain installs under `$WORKSPACE_ROOT` (default:
 If `uv` or `prek` are missing, the script offers to install them. The hook
 configuration lives in `.pre-commit-config.yaml`.
 
+`./setup.sh` runs `apt` by default so a clean machine gets the OS package set
+before the local toolchain is checked or built. On a machine where the system
+packages are already present and `apt update` is slow or blocked, run:
+
+```bash
+./setup.sh --skip-system-packages
+```
+
 `uv` is shared by developer scripts such as `scripts/render_performance_charts.py`;
 run `./scripts/install_uv.sh` directly when you only need that toolchain.
 
