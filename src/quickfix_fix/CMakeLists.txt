@@ -3,6 +3,7 @@ project(quickfix_fix VERSION 0.1.0
   LANGUAGES CXX)
 
 add_library(quickfix_fix STATIC
+  src/codec.cpp
   src/session.cpp
 )
 add_library(quickfix_fix::quickfix_fix ALIAS quickfix_fix)

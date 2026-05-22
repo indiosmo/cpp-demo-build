@@ -74,6 +74,12 @@ edit spans many topics.
   references, call hierarchy, and include resolution when available.
 - For any `#include`, go-to-definition on the include line is usually faster
   than grepping for the file by name.
+- Reserve angle-bracket includes (`#include <...>`) for the C and C++ standard
+  library and POSIX/system headers (`<cstdint>`, `<string>`, `<pthread.h>`).
+  Use quoted includes (`#include "..."`) for everything else, including project
+  headers and third-party libraries such as Boost, Catch2, spdlog, asio,
+  nlohmann/json, QuickFIX, and OnixS. Group quoted project headers, quoted
+  third-party headers, and angle-bracket standard headers in separate blocks.
 - Vendor or third-party headers should resolve through clangd first. If they
   do not, check the current vendored tree under `vendor/` and the
   target tree under `vendor/` after the layout reframe.

@@ -8,6 +8,6 @@ engine, such as request correlation and `ExecID` allocation.
 
 - FIX-shaped requests for new, replace, and cancel order flow.
 - FIX-shaped lifecycle events for execution reports and cancel rejects.
-- Conversion helpers from normalized `mor` messages.
+- Conversion helpers between normalized `mor` messages and FIX-shaped
+  records.
 - A small lifecycle-state scaffold for request correlation.
-

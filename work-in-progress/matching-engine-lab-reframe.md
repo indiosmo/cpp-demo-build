@@ -49,6 +49,10 @@ Decision matrix:
   normalized order routing, canonical FIX rendering, venue specs, concrete FIX
   engine stubs, and glue layers that bind those pieces without collapsing the
   boundaries.
+- Phase 7 turns the order-routing codec scaffold into a working local FIX
+  client/server loop, using the Abacus `aor` / `aorfix` /
+  `aorfix_onixs_fix` layering as the reference shape and a package-free
+  QuickFIX-compatible boundary for this portfolio repo.
 
 ## Phase Handoffs
 
@@ -244,6 +248,69 @@ Durable docs updated:
 Verification completed:
 
 - `./build.sh debug` passed with 93/93 tests.
+
+### Phase 7 Handoff
+
+Status: completed for the local FIX loop.
+
+Phase 7 made the order-routing FIX stack usable end to end without collapsing
+the module boundaries created in phase 6:
+
+- `mor` remains the normalized order-routing domain and keeps compatibility
+  conversions to and from `order_entry`;
+- `morfix` owns canonical FIX-shaped requests/events plus bidirectional
+  conversions to and from `mor`;
+- `ospec::b3` owns the first working B3 order-entry tag and value slice with
+  bidirectional value normalization;
+- `quickfix_fix` owns the local QuickFIX-compatible message, text codec, and
+  in-memory initiator/acceptor session bridge;
+- `morfix_quickfix` owns B3 initiator and acceptor codecs that map
+  `morfix` messages to and from `quickfix_fix::message`;
+- tests prove that a `morfix` request can travel through initiator encode,
+  local FIX delivery, acceptor decode, server response encode, and initiator
+  event decode.
+
+Decision matrix for the phase-7 implementation path:
+
+| Option | Complexity | Blast radius | Reversibility | Testability | Result |
+|---|---:|---:|---:|---:|---|
+| Add real QuickFIX now | High | High | Medium | Medium | Too much dependency and runtime surface before the codec contract is stable. |
+| Build a local QuickFIX-compatible bridge | Medium | Medium | High | High | Chosen: exercises real client/server flow with deterministic unit tests. |
+| Keep JSON-only runtime and just document FIX | Low | Low | High | Low | Does not satisfy the phase goal of a working FIX client/server path. |
+
+Completed implementation:
+
+- added `quickfix_fix` error scaffolding, a text message codec, and an
+  in-memory `session_pair` shape;
+- added reverse `morfix` conversions back to `mor`;
+- expanded `ospec::b3` with order-entry response tags and parse helpers;
+- replaced `morfix_quickfix` scaffold failures with B3 request/event
+  encode/decode logic for new/replace/cancel requests, execution reports, and
+  cancel rejects;
+- added `quickfix_fix` unit tests for message field replacement, text
+  encode/decode, and in-memory session delivery;
+- replaced the old `morfix_quickfix` scaffold-failure tests with request,
+  response, error-path, and full initiator/acceptor loop tests;
+- updated README, INDEX, ADR, engine spec, and lab guideline docs for the
+  working local FIX loop.
+
+Follow-ups:
+
+- decide whether the FetchContent `quickfix` dependency should remain as a
+  parked later-integration dependency or be deferred until a real package-backed
+  session layer is implemented;
+- broaden B3 field coverage beyond the first order-entry request/response
+  slice;
+- add a narrow runtime or example-level client/server harness if the portfolio
+  demo should expose FIX beside the JSON UDP app.
+
+Verification completed:
+
+- focused codec/session test pass:
+  `ctest --test-dir _build/debug -R "^(quickfix_fix|morfix|ospec|morfix_quickfix)/" --output-on-failure`
+  passed with 20/20 tests;
+- `./build.sh debug` passed with 104/104 tests;
+- `git diff --check` passed.
 
 ## Phase 2: Legacy Harness Removal
 
@@ -482,6 +549,86 @@ cover only the messages already emitted by the engine.
   scaffold lands so durable docs describe the modular codec architecture.
 - Add an ADR for the order-routing and market-data codec layering decision.
 
+## Phase 7: Working FIX Client/Server Loop
+
+Phase 7 turns the phase-6 scaffold into a deterministic local FIX
+client/server path. The goal is not to replace the active JSON UDP demo yet;
+the goal is to prove the order-routing codec stack can carry real messages
+through the Abacus-shaped layers.
+
+### Scope
+
+The first working loop should cover the order-entry business messages already
+present in the lab:
+
+- client requests:
+  - `new_order_single`;
+  - `replace_request` / FIX `OrderCancelReplaceRequest`;
+  - `cancel_request` / FIX `OrderCancelRequest`;
+- server events:
+  - `execution_report`;
+  - `order_cancel_reject`.
+
+`flush_request` remains lab-local and should not be encoded as a FIX business
+message.
+
+### Module Responsibilities
+
+`mor`:
+
+- keep the normalized request/event vocabulary stable;
+- keep conversions to and from `order_entry`;
+- add tests for any new event fields needed by the FIX path.
+
+`morfix`:
+
+- keep canonical FIX-shaped structs independent of a FIX engine package;
+- add reverse conversions from `morfix` requests/events back to `mor`;
+- keep request-correlation and `ExecID` helpers small until runtime session
+  behavior needs more state.
+
+`ospec::b3`:
+
+- add B3 tag constants for the fields carried by the phase-7 request and
+  response messages;
+- provide bidirectional normalization for `side`, `ord_type`,
+  `time_in_force`, `exec_type`, `ord_status`, and reject reasons;
+- keep the first slice anchored to `b3-entrypoint-messages-8.4.2.xml`.
+
+`quickfix_fix`:
+
+- provide a package-free `message` abstraction with `MsgType` and ordered
+  fields;
+- provide a text codec for FIX-style `tag=value` payloads so tests can inspect
+  real wire-shaped records;
+- provide an in-memory initiator/acceptor session pair for deterministic tests.
+
+`morfix_quickfix`:
+
+- implement B3 initiator request encoding and event decoding;
+- implement B3 acceptor request decoding and event encoding;
+- keep unsupported message types as structured `lab::result` failures;
+- add a full local loop test that proves initiator and acceptor codecs compose
+  over the `quickfix_fix` session boundary.
+
+### Runtime Integration
+
+Phase 7 should stop at a local FIX loop unless the codec/session layer is
+already green. A later phase can decide whether to expose a CLI FIX client,
+wire FIX into `server`, or keep FIX as a library-level demonstrator beside the
+JSON UDP app.
+
+### Documentation Updates
+
+After the working path is verified:
+
+- update module READMEs for `mor`, `morfix`, `ospec`, `quickfix_fix`, and
+  `morfix_quickfix`;
+- update `INDEX.md` for added headers, sources, and tests;
+- update `README.md` only if the user-facing demo workflow changes;
+- update `docs/lab-guidelines/design.md` and `testing.md` with the local
+  phase-7 codec/session testing pattern.
+
 ## Test Plan
 
 - After phase 1:
@@ -533,6 +680,19 @@ cover only the messages already emitted by the engine.
   - `mmd` and `mmd_json` tests proving current market-data events still encode
     to the phase 5 JSONL shape through the new boundary
   - focused build: `./build.sh debug`
+- After phase 7:
+  - `quickfix_fix` tests for message field replacement, FIX text
+    encode/decode, malformed payloads, and in-memory session delivery
+  - `morfix` reverse-conversion tests for requests and events
+  - `ospec::b3` bidirectional normalization tests for the order-entry value
+    set
+  - `morfix_quickfix` tests for request encoding, request decoding, event
+    encoding, event decoding, unsupported message handling, and missing
+    required fields
+  - local loop test: initiator request -> FIX message -> acceptor request,
+    then acceptor event -> FIX message -> initiator event
+  - focused build for the touched codec targets
+  - `./build.sh debug`
 
 ## Assumptions
 

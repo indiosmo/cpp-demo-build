@@ -3,8 +3,9 @@
 
 #include "lab/assert.hpp"
 
+#include "boost/algorithm/string/split.hpp"
+
 #include <array>
-#include <boost/algorithm/string/split.hpp>
 #include <cstddef>
 #include <string_view>
 #include <vector>

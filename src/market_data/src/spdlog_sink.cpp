@@ -1,8 +1,9 @@
 #include "market_data/spdlog_sink.hpp"
 
+#include "spdlog/logger.h"
+#include "spdlog/sinks/stdout_sinks.h"
+
 #include <memory>
-#include <spdlog/logger.h>
-#include <spdlog/sinks/stdout_sinks.h>
 #include <utility>
 
 namespace market_data {

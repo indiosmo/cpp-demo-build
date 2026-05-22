@@ -73,8 +73,10 @@ names:
 
 - `mor` owns normalized order-routing messages and compatibility conversions
   from `order_entry`.
-- `morfix`, `ospec`, `quickfix_fix`, and `morfix_quickfix` own the FIX/B3
-  order-routing layers.
+- `morfix`, `ospec`, `quickfix_fix`, and `morfix_quickfix` own the local
+  FIX/B3 order-routing layers. The first working loop uses a package-free
+  `quickfix_fix` message/session boundary while keeping B3 tag and value
+  rules in `ospec`.
 - `mmd` owns normalized market-data events and compatibility conversions from
   `market_data`.
 - `mmd_json`, `mmdfix`, and `mmd_transport` own market-data encoding and

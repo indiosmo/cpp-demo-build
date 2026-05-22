@@ -9,21 +9,6 @@
 
 namespace morfix_quickfix::errors {
 
-struct not_implemented
-{
-  std::string operation;
-
-  std::error_code error_code() const
-  {
-    return morfix_quickfix::error_code::not_implemented;
-  }
-
-  std::string what() const
-  {
-    return fmt::format("{} is not implemented", operation);
-  }
-};
-
 struct unsupported_message
 {
   std::string message_type;

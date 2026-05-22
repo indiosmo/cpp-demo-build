@@ -23,6 +23,27 @@ public:
   virtual lab::result<void> send(const message& message) = 0;
 };
 
+class memory_session final : public session
+{
+public:
+  void connect(memory_session& peer);
+
+  lab::result<void> send(const message& message) override;
+  void receive(const message& message);
+  void receive_reject(std::string_view reason);
+
+private:
+  memory_session* peer_{};
+};
+
+struct session_pair
+{
+  session_pair();
+
+  memory_session initiator;
+  memory_session acceptor;
+};
+
 } // namespace quickfix_fix
 
 #endif /* QUICKFIX_FIX_SESSION_HPP */

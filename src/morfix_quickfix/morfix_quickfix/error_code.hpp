@@ -9,15 +9,12 @@ namespace morfix_quickfix {
 
 enum class error_code : std::int32_t
 {
-  not_implemented = 206001,
   unsupported_message = 206002,
 };
 
 constexpr const char* to_string(error_code ec)
 {
   switch (ec) {
-    case error_code::not_implemented:
-      return "not implemented";
     case error_code::unsupported_message:
       return "unsupported message";
   }

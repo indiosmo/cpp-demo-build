@@ -21,6 +21,33 @@ TEST_CASE("ospec b3 - normalizes order-routing values", "[ospec][codec]")
   CHECK(ospec::b3::normalize(mor::types::ord_status::filled) == '2');
 }
 
+TEST_CASE("ospec b3 - parses order-routing values", "[ospec][codec]")
+{
+  auto side = ospec::b3::parse_side('1');
+  REQUIRE(side);
+  CHECK(side.value() == mor::types::side::buy);
+
+  auto ord_type = ospec::b3::parse_ord_type('2');
+  REQUIRE(ord_type);
+  CHECK(ord_type.value() == mor::types::ord_type::limit);
+
+  auto time_in_force = ospec::b3::parse_time_in_force('3');
+  REQUIRE(time_in_force);
+  CHECK(time_in_force.value() == mor::types::time_in_force::ioc);
+
+  auto exec_type = ospec::b3::parse_exec_type('F');
+  REQUIRE(exec_type);
+  CHECK(exec_type.value() == mor::types::exec_type::trade);
+
+  auto ord_status = ospec::b3::parse_ord_status('4');
+  REQUIRE(ord_status);
+  CHECK(ord_status.value() == mor::types::ord_status::canceled);
+
+  auto reject_reason = ospec::b3::parse_reject_reason(6);
+  REQUIRE(reject_reason);
+  CHECK(reject_reason.value() == mor::types::reject_reason::duplicate_order);
+}
+
 TEST_CASE("ospec b3 - normalizes market-data values", "[ospec][codec]")
 {
   CHECK(ospec::b3::normalize(mmd::types::side::buy) == '0');
@@ -30,4 +57,3 @@ TEST_CASE("ospec b3 - normalizes market-data values", "[ospec][codec]")
   CHECK(ospec::b3::normalize(mmd::types::update_action::delete_order) == '2');
   CHECK(ospec::b3::normalize(mmd::types::trade_condition::regular) == '0');
 }
-

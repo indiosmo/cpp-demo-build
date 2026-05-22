@@ -22,6 +22,7 @@ loading (see [`DEVELOPING.md`](DEVELOPING.md)).
 | `nlohmann_json::nlohmann_json` | [nlohmann/json](https://github.com/nlohmann/json) | `v3.12.0` | `lab::json`: JSON parsing and formatting for the UDP command and market-data protocols. |
 | `spdlog::spdlog` | [gabime/spdlog](https://github.com/gabime/spdlog) | `v1.14.1` | `market_data::spdlog_sink`. Built with `SPDLOG_FMT_EXTERNAL_HO=ON` so it inlines through the same `fmt` headers as the lab vocabulary. |
 | `Catch2::Catch2WithMain` | [catchorg/Catch2](https://github.com/catchorg/Catch2) | `v3.7.1` | Unit tests. `Catch.cmake` is added to `CMAKE_MODULE_PATH` so `catch_discover_tests` is available. |
+| `quickfix` | [quickfix/quickfix](https://github.com/quickfix/quickfix) | `v1.16.0` | FIX protocol engine: session management, message parsing, acceptor/initiator wiring. Built static (`QUICKFIX_SHARED_LIBS=OFF`); examples and tests disabled. Upstream provides no `::` alias, so consumers link `quickfix` directly. |
 
 The libraries-of-types tier wraps each upstream behind a thin
 `lab::vendor::<name>` INTERFACE target so domain code never depends on the

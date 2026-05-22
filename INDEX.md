@@ -14,6 +14,7 @@ Multi-threaded UDP-driven order book matching engine. The `server` binary ingest
 - nlohmann/json (FetchContent, header-only) -- https://github.com/nlohmann/json
 - spdlog (FetchContent) -- https://github.com/gabime/spdlog
 - Catch2 v3 (FetchContent, tests) -- https://github.com/catchorg/Catch2
+- QuickFIX (FetchContent, scaffolded for later integration) -- https://github.com/quickfix/quickfix
 - NamedType (FetchContent, MIT) -- https://github.com/joboccara/NamedType
 - SG14 inplace_function (FetchContent, BSL-1.0) -- https://github.com/WG21-SG14/SG14
 - moodycamel ReaderWriterQueue (FetchContent, BSD-2-Clause) -- https://github.com/cameron314/readerwriterqueue
@@ -138,14 +139,14 @@ Headers:
 
 Base path: `src/morfix/morfix/`
 
-Canonical FIX-shaped order-routing layer. It translates normalized `mor`
-requests and events into FIX-flavoured records and owns lifecycle scaffolding
+Canonical FIX-shaped order-routing layer. It translates between normalized
+`mor` requests/events and FIX-flavoured records, and owns lifecycle scaffolding
 such as request correlation and `ExecID` allocation.
 
 Headers:
 
 - (P) messages.hpp    -- FIX-shaped order-routing requests, execution reports, and cancel rejects using standard tag names as field vocabulary.
-- (P) conversions.hpp -- Conversion helpers from normalized `mor` requests and events into FIX-shaped records.
+- (P) conversions.hpp -- Conversion helpers between normalized `mor` requests/events and FIX-shaped records.
 - (P) session.hpp     -- Lifecycle-state scaffold for `ExecID` allocation and request lookup by `ClOrdID`.
 
 ### ospec
@@ -158,34 +159,38 @@ simplified order-routing and market-data surface.
 
 Headers:
 
-- (P) b3.hpp -- B3 tag constants and value-normalization functions for order routing and market data.
+- (P) b3.hpp -- B3 tag constants plus bidirectional value-normalization functions for order routing and market data.
 
 ### quickfix_fix
 
 Base path: `src/quickfix_fix/quickfix_fix/`
 
-Local QuickFIX-compatible FIX engine boundary. It provides the typed message
-and session interfaces that codec glue depends on through a package-free
-scaffold for this phase.
+Local QuickFIX-compatible FIX engine boundary. It provides the typed message,
+text codec, and in-memory session interfaces that codec glue depends on through
+a package-free implementation for the local FIX loop.
 
 Headers:
 
+- (P) codec.hpp      -- FIX-style `tag=value` text encoder/decoder with SOH and printable delimiter support.
+- (I) error_code.hpp -- `quickfix_fix::error_code` enum for local session and text-codec failures.
+- (I) errors.hpp     -- Structured errors for disconnected sessions and malformed or incomplete FIX text records.
 - (P) message.hpp -- Simple FIX message abstraction with `MsgType`, ordered fields, and tag lookup.
-- (P) session.hpp -- Session interface with outbound `send` and inbound message/reject callbacks.
+- (P) session.hpp -- Session interface with outbound `send`, inbound message/reject callbacks, and an in-memory connected session pair.
 
 ### morfix_quickfix
 
 Base path: `src/morfix_quickfix/morfix_quickfix/`
 
 Glue between `morfix`, `ospec`, and the local QuickFIX-compatible boundary.
-The B3 initiator and acceptor codecs compile and return structured scaffold
-failures until full field mapping lands.
+The B3 initiator and acceptor codecs map the first order-entry request and
+response slice between canonical `morfix` records and local
+`quickfix_fix::message` values.
 
 Headers:
 
-- (P) codecs.hpp     -- Initiator and acceptor codec interfaces plus B3 codec stubs.
-- (I) error_code.hpp -- `morfix_quickfix::error_code` enum for scaffold failures.
-- (I) errors.hpp     -- Structured error payloads for unimplemented and unsupported codec operations.
+- (P) codecs.hpp     -- Initiator and acceptor codec interfaces plus B3 request/event codec implementations.
+- (I) error_code.hpp -- `morfix_quickfix::error_code` enum for unsupported codec operations.
+- (I) errors.hpp     -- Structured error payloads for unsupported codec operations.
 
 ### mmd
 

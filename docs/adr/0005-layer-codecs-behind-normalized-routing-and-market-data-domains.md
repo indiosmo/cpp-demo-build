@@ -71,8 +71,8 @@ The B3 profile starts from the fields already exercised by the lab and uses
 - Good, because the matching engine continues to consume and emit typed values.
 - Good, because JSON, FIX, and future binary codecs have separate ownership.
 - Good, because B3 normalization is testable without a FIX engine runtime.
-- Good, because the QuickFIX-facing boundary compiles as a package-free
-  scaffold.
+- Good, because the QuickFIX-facing boundary supports a package-free local
+  message/session loop.
 - Good, because the current phase 5 JSON workflow remains buildable while
   compatibility adapters carry the new names.
 - Bad, because the repository temporarily contains both current domain names
@@ -86,8 +86,8 @@ The decision is in effect when:
 
 - `mor` and `mmd` compile as normalized compatibility domains.
 - `morfix`, `mmdfix`, and `ospec::b3` compile and have focused unit coverage.
-- `quickfix_fix` and `morfix_quickfix` expose typed interfaces and return
-  structured scaffold failures for unimplemented B3 mappings.
+- `quickfix_fix` and `morfix_quickfix` expose typed interfaces and support a
+  local B3 new/replace/cancel request and execution-report/cancel-reject loop.
 - `mmd_json` preserves the current JSON market-data record shape through the
   normalized market-data boundary.
 - The existing server and client still use the phase 5 JSON path and the full
@@ -97,6 +97,7 @@ The decision is in effect when:
 
 - Move the active order-entry JSON command codec behind `mor`.
 - Move the active market-data JSON publisher behind `mmd_json`.
-- Fill in B3 FIX field mapping in `morfix_quickfix`.
+- Broaden B3 FIX field mapping in `morfix_quickfix` beyond the first
+  order-entry request/response slice.
 - Add response-channel support for order-entry lifecycle events when the client
   becomes interactive.

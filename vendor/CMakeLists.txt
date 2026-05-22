@@ -118,3 +118,21 @@ FetchContent_MakeAvailable(Catch2)
 # can include(Catch).
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" PARENT_SCOPE)
+
+# QuickFIX exposes a single `quickfix` target (upstream provides no namespace
+# alias). Force a static build so engine binaries do not need libquickfix.so
+# on LD_LIBRARY_PATH at runtime. QUICKFIX_LIB_OUTPUT_DIR defaults to
+# ${CMAKE_SOURCE_DIR}/lib, which would land inside this repo's source tree --
+# redirect into the build tree.
+set(QUICKFIX_EXAMPLES    OFF CACHE BOOL "" FORCE)
+set(QUICKFIX_TESTS       OFF CACHE BOOL "" FORCE)
+set(QUICKFIX_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(QUICKFIX_LIB_OUTPUT_DIR "${CMAKE_BINARY_DIR}/quickfix-lib" CACHE PATH "" FORCE)
+FetchContent_Declare(quickfix
+  GIT_REPOSITORY https://github.com/quickfix/quickfix.git
+  GIT_TAG        v1.16.0
+  GIT_SHALLOW    TRUE
+  SYSTEM
+  EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(quickfix)

@@ -113,10 +113,10 @@ statement and the pointers to the ADRs that explain its shape.
 | [`matching_engine`](src/matching_engine/) | The main trading domain. Per-symbol order books and the matching loop. |
 | [`market_data`](src/market_data/) | Outbound domain. Typed messages to JSON records on stdout. |
 | [`mor`](src/mor/) | Normalized order-routing messages and callback interfaces. |
-| [`morfix`](src/morfix/) | Canonical FIX-shaped rendering of `mor` order flow. |
+| [`morfix`](src/morfix/) | Canonical FIX-shaped rendering of `mor` order flow, with reverse conversion back to normalized routing messages. |
 | [`ospec`](src/ospec/) | Venue tag and value normalization; currently B3. |
-| [`quickfix_fix`](src/quickfix_fix/) | Local QuickFIX-compatible message/session boundary. |
-| [`morfix_quickfix`](src/morfix_quickfix/) | Glue between `morfix`, `ospec`, and the FIX boundary. |
+| [`quickfix_fix`](src/quickfix_fix/) | Local QuickFIX-compatible message, text codec, and in-memory session boundary. |
+| [`morfix_quickfix`](src/morfix_quickfix/) | B3 codec glue between `morfix`, `ospec`, and the FIX boundary. |
 | [`mmd`](src/mmd/) | Normalized market-data events. |
 | [`mmd_json`](src/mmd_json/) | JSON rendering for normalized market-data events. |
 | [`mmdfix`](src/mmdfix/) | Canonical FIX-shaped market-data records. |
