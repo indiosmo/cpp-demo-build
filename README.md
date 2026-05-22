@@ -172,3 +172,4 @@ project conventions.
 |-- build.sh           CMake configure + build + ctest wrapper
 `-- run_submission.sh  Docker build + test-harness wrapper
 ```
+# cpp-demo-build
