@@ -19,6 +19,18 @@ The UDP protocol carries one compact JSON object per datagram. Requests use a
 `order_entry` model. The client and server both route through the typed model:
 JSON is a boundary codec, not the matching-engine data structure.
 
+The codec scaffold separates the active JSON workflow from future venue and
+transport work:
+
+- `mor` is the normalized order-routing surface that wraps the current
+  `order_entry` messages during the migration.
+- `morfix`, `ospec`, `quickfix_fix`, and `morfix_quickfix` form the FIX/B3
+  order-routing stack.
+- `mmd` is the normalized market-data surface that wraps the current
+  `market_data` events during the migration.
+- `mmd_json`, `mmdfix`, and `mmd_transport` own market-data encoding and
+  delivery boundaries.
+
 ## Data Structures
 
 ### Per-Symbol Order Book

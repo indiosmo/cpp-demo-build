@@ -25,7 +25,8 @@ are under [`test/`](../../test/).
 Tag convention:
 
 - module first: `[matching_engine]`, `[order_entry]`, `[order_client]`,
-  `[market_data]`, `[lab]`;
+  `[market_data]`, `[mor]`, `[morfix]`, `[ospec]`, `[morfix_quickfix]`,
+  `[mmd_json]`, `[lab]`;
 - then test type or feature: `[unit]`, `[integration]`, `[codec]`,
   `[runtime]`, `[error]`.
 
@@ -88,6 +89,15 @@ contracts. Current anchors:
 
 The `order_client` encoder tests cover outbound order commands. The CLI process
 is kept thin; exercise command shapes through the library and parser tests.
+
+The codec scaffold adds focused compile-and-contract tests:
+
+- `mor` tests cover source/sink wiring and compatibility conversions.
+- `morfix` tests cover FIX-shaped request conversion and lifecycle correlation.
+- `ospec` tests cover B3 tag anchors and value normalization.
+- `morfix_quickfix` tests cover typed scaffold failures through `lab::result`.
+- `mmd_json` tests prove normalized market-data events preserve the current
+  JSON record shape.
 
 ## Performance Support
 

@@ -205,12 +205,10 @@ needs an interactive order-entry response stream.
 
 ### Phase 6 Handoff
 
-Status: planned.
+Status: completed.
 
-Phase 6 should scaffold the fully modular codec architecture. Model the order
-routing side after Abacus `aor`, `aorfix`, `ospec`, `onixs_fix`,
-`onixs_bentry`, `aorfix_onixs_fix`, and `aorfix_onixs_bentry`, but use
-matching-engine-lab names and dependencies:
+Phase 6 scaffolded the fully modular codec architecture. The order-routing
+side now follows the Abacus layering model with matching-engine-lab names:
 
 - `mor` -- normalized Matching Engine Order Routing messages and interfaces;
 - `morfix` -- canonical FIX rendering of `mor`;
@@ -220,18 +218,32 @@ matching-engine-lab names and dependencies:
 - `morfix_quickfix` -- glue layer that binds `morfix`, `ospec`, and the FIX
   engine boundary.
 
-Market data should use the same principle with a smaller surface:
+Market data now has the same principle with a smaller surface:
 
 - `mmd` -- normalized Matching Engine Market Data events;
-- codec modules that render `mmd` to JSON, FIX, or later binary protocols;
-- transport modules that publish encoded records over stdout, WebSocket, FIX,
-  or another delivery channel.
+- `mmd_json` -- JSON rendering of `mmd` events while preserving the phase 5
+  JSONL record shape;
+- `mmdfix` -- FIX-shaped market-data records for the first trade and MBO
+  book-update slice;
+- `mmd_transport` -- encoded-record delivery boundaries.
 
-Use B3 as the reference venue, with a simplified surface based on
-`b3-entrypoint-messages-8.4.2.xml` and
-`b3-market-data-messages-2.2.0.xml`. Those XML files describe the binary
-protocol, but the same business messages and fields should drive the simplified
-FIX and market-data model.
+`ospec::b3` uses `b3-entrypoint-messages-8.4.2.xml` and
+`b3-market-data-messages-2.2.0.xml` as reference anchors for the simplified B3
+surface.
+
+Durable docs updated:
+
+- `README.md` lists the new codec-stack modules.
+- `INDEX.md` maps the new modules and headers.
+- `docs/engine-specs.md` names the active JSON path and the codec scaffold.
+- `docs/lab-guidelines/design.md` and `testing.md` describe the local module
+  responsibilities and test coverage.
+- `docs/adr/0005-layer-codecs-behind-normalized-routing-and-market-data-domains.md`
+  records the layering decision.
+
+Verification completed:
+
+- `./build.sh debug` passed with 93/93 tests.
 
 ## Phase 2: Legacy Harness Removal
 

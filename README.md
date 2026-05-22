@@ -112,6 +112,15 @@ statement and the pointers to the ADRs that explain its shape.
 | [`order_client`](src/order_client/) | Typed client library. Order-entry requests to UDP JSON datagrams. |
 | [`matching_engine`](src/matching_engine/) | The main trading domain. Per-symbol order books and the matching loop. |
 | [`market_data`](src/market_data/) | Outbound domain. Typed messages to JSON records on stdout. |
+| [`mor`](src/mor/) | Normalized order-routing messages and callback interfaces. |
+| [`morfix`](src/morfix/) | Canonical FIX-shaped rendering of `mor` order flow. |
+| [`ospec`](src/ospec/) | Venue tag and value normalization; currently B3. |
+| [`quickfix_fix`](src/quickfix_fix/) | Local QuickFIX-compatible message/session boundary. |
+| [`morfix_quickfix`](src/morfix_quickfix/) | Glue between `morfix`, `ospec`, and the FIX boundary. |
+| [`mmd`](src/mmd/) | Normalized market-data events. |
+| [`mmd_json`](src/mmd_json/) | JSON rendering for normalized market-data events. |
+| [`mmdfix`](src/mmdfix/) | Canonical FIX-shaped market-data records. |
+| [`mmd_transport`](src/mmd_transport/) | Encoded market-data delivery boundaries. |
 | [`server`](src/server/) | Wiring shell. Owns the three event loops and the executable. |
 | [`client`](src/client/) | CLI sender for scenario files or stdin. |
 
@@ -128,6 +137,7 @@ directory). The per-library README points at its examples.
 | How the project thinks about C++ | [`docs/cpp-design-principles.md`](docs/cpp-design-principles.md) |
 | Showcase of applied principles in code | [`docs/showcase.md`](docs/showcase.md) |
 | Architectural decisions with full reasoning | [`docs/adr/`](docs/adr/) |
+| Codec layering decision | [`docs/adr/0005-layer-codecs-behind-normalized-routing-and-market-data-domains.md`](docs/adr/0005-layer-codecs-behind-normalized-routing-and-market-data-domains.md) |
 | A map of the source tree | [`INDEX.md`](INDEX.md) |
 | How the application wires itself together at startup | [`docs/runtime-startup.md`](docs/runtime-startup.md) |
 | The event loop primitive each thread runs | [`docs/event-loop.md`](docs/event-loop.md) |
@@ -175,6 +185,7 @@ project conventions.
 ```
 .
 |-- examples/           Demo scenario inputs and expected market-data output
+|-- b3-*.xml            B3 reference protocol files for codec scaffolds
 |-- src/               Libraries and client/server applications
 |-- test/              Unit tests
 |-- vendor/            CMake FetchContent dependency declarations

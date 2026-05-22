@@ -2,7 +2,7 @@
 
 ## System overview
 
-Multi-threaded UDP-driven order book matching engine. The `server` binary ingests JSON order-entry commands over UDP, matches them against per-symbol books, and publishes the resulting market-data records to stdout. The `client` binary sends typed order-entry commands from files or stdin to the server. The codebase is organised as static libraries for shared vocabulary, order entry, order clients, market data, matching, and runtime wiring, plus Catch2 unit tests.
+Multi-threaded UDP-driven order book matching engine. The `server` binary ingests JSON order-entry commands over UDP, matches them against per-symbol books, and publishes the resulting market-data records to stdout. The `client` binary sends typed order-entry commands from files or stdin to the server. The codebase is organised as static libraries for shared vocabulary, order entry, order clients, market data, matching, runtime wiring, and the scaffolded order-routing / market-data codec stack, plus Catch2 unit tests.
 
 ## Tech stack
 
@@ -22,6 +22,8 @@ Multi-threaded UDP-driven order book matching engine. The `server` binary ingest
 
 ```
 matching-engine-lab/
+|-- b3-entrypoint-messages-8.4.2.xml      B3 entrypoint reference protocol file for codec scaffolds
+|-- b3-market-data-messages-2.2.0.xml     B3 market-data reference protocol file for codec scaffolds
 |-- cmake/                                shared CMake modules (compiler flags, sanitizers)
 |-- docs/                                 ADRs, C++ design principles, engine spec, runtime docs
 |   |-- adr/                              architecture decision records (numbered, dated)
@@ -35,12 +37,20 @@ matching-engine-lab/
 |   |-- client/                          CLI sender; the client executable target
 |   |-- market_data/                      outbound domain: typed events to JSON records to stdout
 |   |-- matching_engine/                  composition domain: per-symbol books and the production matching loop
+|   |-- mmd/                              normalized market-data event domain
+|   |-- mmd_json/                         JSON rendering for normalized market-data events
+|   |-- mmd_transport/                    encoded market-data delivery transport boundaries
+|   |-- mmdfix/                           FIX-shaped market-data records
+|   |-- mor/                              normalized order-routing domain
+|   |-- morfix/                           FIX-shaped order-routing records
+|   |-- morfix_quickfix/                  glue between morfix, ospec, and the FIX engine boundary
 |   |-- order_client/                     typed client API: order-entry requests to UDP JSON datagrams
 |   |-- order_entry/                     inbound domain: UDP JSON bytes to typed order-entry requests
+|   |-- ospec/                            venue tag and value normalization profiles
+|   |-- quickfix_fix/                     local QuickFIX-compatible message/session boundary
 |   `-- server/                           wiring shell + main; the server executable target
 |-- test/                                 module Catch2 tests
-|-- vendor/                               CMake FetchContent dependency declarations
-`-- work-in-progress/                     working notes not yet promoted to docs/
+`-- vendor/                               CMake FetchContent dependency declarations
 ```
 
 ## Modules
@@ -107,6 +117,124 @@ Headers:
 - (P) client.hpp      -- Public typed API: `connect()` plus `send(new_order_single)`, `send(replace_order)`, `send(cancel_order)`, `send(flush)`, and `send(request)`.
 - (I) json_encoder.hpp -- Encodes typed order-entry requests into outbound JSON command records.
 - (I) udp_sender.hpp  -- Boost.Asio UDP sender with configurable endpoint.
+
+### mor
+
+Base path: `src/mor/mor/`
+
+Normalized Matching Engine Order Routing domain. It wraps the current
+`order_entry` request and lifecycle-event vocabulary with target codec-stack
+names, plus callback interfaces for source/sink/pipeline wiring. The matching
+engine runtime still uses the phase 5 JSON path; these conversions keep later
+codec work buildable while that migration proceeds.
+
+Headers:
+
+- (P) messages.hpp    -- Normalized order-routing requests (`new_order_single`, `replace_request`, `cancel_request`, `flush_request`) and events (`execution_report`, `cancel_reject`, `parser_reject`).
+- (P) interfaces.hpp  -- Source, sink, and pipeline-stage callback interfaces with wiring helpers.
+- (P) conversions.hpp -- Compatibility conversions between `order_entry` messages and normalized `mor` messages.
+
+### morfix
+
+Base path: `src/morfix/morfix/`
+
+Canonical FIX-shaped order-routing layer. It translates normalized `mor`
+requests and events into FIX-flavoured records and owns lifecycle scaffolding
+such as request correlation and `ExecID` allocation.
+
+Headers:
+
+- (P) messages.hpp    -- FIX-shaped order-routing requests, execution reports, and cancel rejects using standard tag names as field vocabulary.
+- (P) conversions.hpp -- Conversion helpers from normalized `mor` requests and events into FIX-shaped records.
+- (P) session.hpp     -- Lifecycle-state scaffold for `ExecID` allocation and request lookup by `ClOrdID`.
+
+### ospec
+
+Base path: `src/ospec/ospec/`
+
+Venue specification layer. The first profile is `ospec::b3`, which carries tag
+constants, reference protocol file names, and normalized value mappings for the
+simplified order-routing and market-data surface.
+
+Headers:
+
+- (P) b3.hpp -- B3 tag constants and value-normalization functions for order routing and market data.
+
+### quickfix_fix
+
+Base path: `src/quickfix_fix/quickfix_fix/`
+
+Local QuickFIX-compatible FIX engine boundary. It provides the typed message
+and session interfaces that codec glue depends on through a package-free
+scaffold for this phase.
+
+Headers:
+
+- (P) message.hpp -- Simple FIX message abstraction with `MsgType`, ordered fields, and tag lookup.
+- (P) session.hpp -- Session interface with outbound `send` and inbound message/reject callbacks.
+
+### morfix_quickfix
+
+Base path: `src/morfix_quickfix/morfix_quickfix/`
+
+Glue between `morfix`, `ospec`, and the local QuickFIX-compatible boundary.
+The B3 initiator and acceptor codecs compile and return structured scaffold
+failures until full field mapping lands.
+
+Headers:
+
+- (P) codecs.hpp     -- Initiator and acceptor codec interfaces plus B3 codec stubs.
+- (I) error_code.hpp -- `morfix_quickfix::error_code` enum for scaffold failures.
+- (I) errors.hpp     -- Structured error payloads for unimplemented and unsupported codec operations.
+
+### mmd
+
+Base path: `src/mmd/mmd/`
+
+Normalized Matching Engine Market Data domain. It wraps the current
+`market_data` event vocabulary with target codec-stack names so JSON, FIX,
+binary codecs, and transports can build against one event surface.
+
+Headers:
+
+- (P) messages.hpp    -- Normalized market-data events: security definition/status, execution summary, trade, and MBO book update.
+- (P) conversions.hpp -- Compatibility conversions between current `market_data` messages and normalized `mmd` messages.
+
+### mmd_json
+
+Base path: `src/mmd_json/mmd_json/`
+
+JSON rendering for normalized market-data events. It preserves the phase 5
+JSONL record contract while market-data encoding moves behind the modular
+boundary.
+
+Headers:
+
+- (P) json_encoder.hpp -- Encodes every `mmd::message` alternative to the existing JSON record shape.
+
+### mmdfix
+
+Base path: `src/mmdfix/mmdfix/`
+
+Canonical FIX-shaped market-data layer. The first scaffold covers the active
+trade and MBO book-update events emitted by the matching engine.
+
+Headers:
+
+- (P) messages.hpp    -- FIX-shaped incremental refresh and trade capture records.
+- (P) conversions.hpp -- Conversion helpers from normalized `mmd` trade and MBO book-update events.
+
+### mmd_transport
+
+Base path: `src/mmd_transport/mmd_transport/`
+
+Market-data delivery transport boundaries. Transports consume encoded records,
+so payload formatting stays separate from delivery choices such as stdout,
+WebSocket, or FIX session publication.
+
+Headers:
+
+- (P) sinks.hpp -- Encoded-record sink interface and capture sink for tests and local wiring.
 
 ### market_data
 

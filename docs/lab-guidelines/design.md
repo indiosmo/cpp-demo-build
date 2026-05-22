@@ -68,6 +68,22 @@ and
 During the C++26 pass, keep bounded wire fields on `lab::fixed_string<N>` or a
 standard bounded-string equivalent if one is available and fits.
 
+The modular codec scaffold adds normalized target domains around the current
+names:
+
+- `mor` owns normalized order-routing messages and compatibility conversions
+  from `order_entry`.
+- `morfix`, `ospec`, `quickfix_fix`, and `morfix_quickfix` own the FIX/B3
+  order-routing layers.
+- `mmd` owns normalized market-data events and compatibility conversions from
+  `market_data`.
+- `mmd_json`, `mmdfix`, and `mmd_transport` own market-data encoding and
+  delivery layers.
+
+Keep venue-specific tag values and protocol spellings in `ospec` and codec
+modules. Matching logic should continue to speak in order-entry and
+market-data business values.
+
 ## Error handling
 
 The current project uses `lab::result<T>` internally and consumes it at
@@ -143,5 +159,5 @@ portfolio cleanup first, not a performance rewrite.
 
 `docs/lab-guidelines/` maps generic rules to local symbols. Long-form design
 belongs in ADRs and focused docs such as
-[`docs/engine-specs.md`](../engine-specs.md). Work-in-progress plans may cite
-these guides, but durable docs should not link to `work-in-progress/`.
+[`docs/engine-specs.md`](../engine-specs.md). Temporary planning notes should
+promote stable decisions into durable docs once the implementation lands.

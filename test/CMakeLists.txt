@@ -1,6 +1,11 @@
 include(Catch)
 
 add_subdirectory(lab)
+add_subdirectory(mor)
+add_subdirectory(morfix)
+add_subdirectory(ospec)
+add_subdirectory(morfix_quickfix)
+add_subdirectory(mmd_json)
 add_subdirectory(matching_engine)
 add_subdirectory(market_data)
 add_subdirectory(order_client)
