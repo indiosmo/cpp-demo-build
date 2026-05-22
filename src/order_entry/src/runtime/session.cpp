@@ -109,9 +109,12 @@ lab::result<void> session::setup_receiver(const ef_vi_udp_receiver_config& confi
   return {};
 }
 
-void session::setup_decoder(const json_decoder_config&)
+void session::setup_decoder(const json_decoder_config& config)
 {
-  decoder_ = std::make_unique<json_decoder>();
+  decoder_ = std::make_unique<json_decoder>(
+    order_entry::json_decoder_config{
+      .max_datagram_size = config.max_datagram_size,
+    });
 }
 
 } // namespace order_entry::runtime

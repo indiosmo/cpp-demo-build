@@ -9,7 +9,8 @@ the inbound JSON command protocol, and sends each command as one UDP datagram.
 
 - `order_client::json_encoder` maps typed order-entry requests to JSON command
   records.
-- `order_client::udp_sender` owns the Boost.Asio UDP socket and endpoint.
+- `order_client::udp_sender` owns the Boost.Asio UDP socket, endpoint, and
+  datagram-size guard.
 - `order_client::client` is the public API that combines encoding and sending.
 
 The library is intentionally small: it gives examples and local tools a typed

@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <exception>
 #include <pthread.h>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -40,6 +41,50 @@ struct busy_spin_idle
 
 using event_loop_idle_strategy = std::variant<timed_wait_idle, busy_spin_idle>;
 
+inline void to_json(nlohmann::json& json_object, const timed_wait_idle& strategy)
+{
+  json_object = nlohmann::json::object();
+  json_object["type"] = "timed_wait";
+  json_object["duration_microseconds"] = strategy.duration.count();
+}
+
+inline void from_json(const nlohmann::json& json_object, timed_wait_idle& strategy)
+{
+  std::chrono::microseconds::rep duration_microseconds = 0;
+  lab::json::read_field(json_object, "duration_microseconds", duration_microseconds);
+  strategy.duration = std::chrono::microseconds{duration_microseconds};
+}
+
+inline void to_json(nlohmann::json& json_object, const busy_spin_idle&)
+{
+  json_object = nlohmann::json::object();
+  json_object["type"] = "busy_spin";
+}
+
+inline void from_json(const nlohmann::json&, busy_spin_idle&)
+{
+}
+
+inline void to_json(nlohmann::json& json_object, const event_loop_idle_strategy& strategy)
+{
+  std::visit([&](const auto& selected_strategy) { json_object = selected_strategy; }, strategy);
+}
+
+inline void from_json(const nlohmann::json& json_object, event_loop_idle_strategy& strategy)
+{
+  const auto type = lab::json::read_type(json_object);
+  if (type == "busy_spin") {
+    strategy = busy_spin_idle{};
+    return;
+  }
+  if (type == "timed_wait") {
+    strategy = json_object.get<timed_wait_idle>();
+    return;
+  }
+
+  throw std::runtime_error{"unknown event-loop idle strategy '" + type + "'"};
+}
+
 struct event_loop_config
 {
   std::string thread_name;
@@ -47,6 +92,24 @@ struct event_loop_config
   // Bounded wait is the default; busy_spin_idle is the HFT override.
   event_loop_idle_strategy idle_strategy{timed_wait_idle{}};
 };
+
+BOOST_DESCRIBE_STRUCT(event_loop_config, (), (thread_name, queue_capacity, idle_strategy))
+
+inline void to_json(nlohmann::json& json_object, const event_loop_config& config)
+{
+  lab::json::write_described_object(json_object, config);
+}
+
+inline void from_json(const nlohmann::json& json_object, event_loop_config& config)
+{
+  lab::json::read_field(json_object, "thread_name", config.thread_name);
+  if (json_object.contains("queue_capacity")) {
+    lab::json::read_field(json_object, "queue_capacity", config.queue_capacity);
+  }
+  if (json_object.contains("idle_strategy")) {
+    lab::json::read_field(json_object, "idle_strategy", config.idle_strategy);
+  }
+}
 
 /*
  * Thread-affine task loop. A single consumer thread runs a queue of posted

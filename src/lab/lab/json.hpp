@@ -8,6 +8,8 @@
 #include "lab/fmt.hpp"
 #include "lab/result.hpp"
 #include "lab/strong_type.hpp"
+#include "boost/describe.hpp"
+#include "boost/mp11/algorithm.hpp"
 #include "nlohmann/json.hpp"
 
 #include <chrono>
@@ -152,6 +154,57 @@ void write_field(nlohmann::json& json_object, std::string_view key, const std::o
   }
 }
 
+inline std::string read_type(const nlohmann::json& json_object)
+{
+  std::string type;
+  read_field(json_object, "type", type);
+  return type;
+}
+
+template <typename T>
+bool has_described_field(std::string_view key)
+{
+  bool found = false;
+  boost::mp11::mp_for_each<boost::describe::describe_members<T, boost::describe::mod_public>>(
+    [&](auto member) {
+      if (key == member.name) {
+        found = true;
+      }
+    });
+  return found;
+}
+
+template <typename T>
+void reject_unknown_fields(const nlohmann::json& json_object)
+{
+  if (!json_object.is_object()) {
+    throw std::runtime_error{"expected json object"};
+  }
+
+  for (const auto& [key, value] : json_object.items()) {
+    static_cast<void>(value);
+    if (!has_described_field<T>(key)) {
+      throw std::runtime_error{"unknown json field '" + key + "'"};
+    }
+  }
+}
+
+template <typename T>
+void read_described_object(const nlohmann::json& json_object, T& object)
+{
+  reject_unknown_fields<T>(json_object);
+  boost::mp11::mp_for_each<boost::describe::describe_members<T, boost::describe::mod_public>>(
+    [&](auto member) { read_field(json_object, member.name, object.*member.pointer); });
+}
+
+template <typename T>
+void write_described_object(nlohmann::json& json_object, const T& object)
+{
+  json_object = nlohmann::json::object();
+  boost::mp11::mp_for_each<boost::describe::describe_members<T, boost::describe::mod_public>>(
+    [&](auto member) { write_field(json_object, member.name, object.*member.pointer); });
+}
+
 } // namespace lab::json
 
 namespace lab {
@@ -290,5 +343,18 @@ struct fmt::formatter<nlohmann::json>
     return fmt::format_to(ctx.out(), "{0}", value.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
   }
 };
+
+#define LAB_AUTO_JSON_DESCRIBED(type)                                                \
+  inline void to_json(nlohmann::json& json_object, const type& object)               \
+  {                                                                                  \
+    ::lab::json::write_described_object(json_object, object);                        \
+  }                                                                                  \
+  inline void from_json(const nlohmann::json& json_object, type& object)             \
+  {                                                                                  \
+    ::lab::json::read_described_object(json_object, object);                         \
+  }
+
+#define LAB_AUTO_JSON(type, ...) \
+  BOOST_DESCRIBE_STRUCT(type, (), (__VA_ARGS__)) LAB_AUTO_JSON_DESCRIBED(type)
 
 #endif /* LAB_JSON_HPP */

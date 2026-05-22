@@ -2,12 +2,14 @@
 #define LAB_LOG_HPP
 
 #include "lab/fmt.hpp"
+#include "lab/json.hpp"
 
 #include <cstdio>
 #include <exception>
 #include <fstream>
 #include <mutex>
 #include <source_location>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -106,7 +108,49 @@ struct file_logger_config
   std::string path;
 };
 
+LAB_AUTO_JSON(console_logger_config)
+LAB_AUTO_JSON(null_logger_config)
+LAB_AUTO_JSON(file_logger_config, path)
+
 using logger_config = std::variant<console_logger_config, null_logger_config, file_logger_config>;
+
+inline void to_json(nlohmann::json& json_object, const logger_config& config)
+{
+  std::visit(
+    [&](const auto& selection) {
+      using selection_t = std::decay_t<decltype(selection)>;
+      json_object = selection;
+      if constexpr (std::is_same_v<selection_t, console_logger_config>) {
+        json_object["type"] = "console";
+      } else if constexpr (std::is_same_v<selection_t, null_logger_config>) {
+        json_object["type"] = "null";
+      } else if constexpr (std::is_same_v<selection_t, file_logger_config>) {
+        json_object["type"] = "file";
+      }
+    },
+    config);
+}
+
+inline void from_json(const nlohmann::json& json_object, logger_config& config)
+{
+  const auto type = lab::json::read_type(json_object);
+  if (type == "console") {
+    config = console_logger_config{};
+    return;
+  }
+  if (type == "null") {
+    config = null_logger_config{};
+    return;
+  }
+  if (type == "file") {
+    file_logger_config file;
+    lab::json::read_field(json_object, "path", file.path);
+    config = std::move(file);
+    return;
+  }
+
+  throw std::runtime_error{"unknown logger type '" + type + "'"};
+}
 
 inline void install_logger(const logger_config& config)
 {

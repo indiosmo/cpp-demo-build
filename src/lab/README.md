@@ -28,7 +28,7 @@ records why dependencies use CMake `FetchContent`.
 | `algorithm` | `string_view` trimming and fixed-arity field splitting -- the small set of spellings the codebase reaches for repeatedly. |
 | `charconv` | `from_chars` / `to_chars` returning `lab::result`, with exact and partial match modes and built-in support for `strong_type` wrappers. |
 | `hash` | Reflective `auto_hash` for aggregates via `boost::pfr`, plus the `LAB_STD_HASH` macro that wires it into `std::hash`. |
-| `json` | nlohmann/json adapter for strong types, fixed strings, optionals, field helpers, and `lab::result` parse/read helpers. |
+| `json` | nlohmann/json adapter for strong types, fixed strings, optionals, described aggregate config structs, field helpers, and `lab::result` parse/read helpers. |
 | `concurrent_queue` | Single-producer / single-consumer lock-free queue, used on the two cross-thread edges of the pipeline. Aliased from `moodycamel::ReaderWriterQueue`; the blocking variant (`BlockingReaderWriterQueue`) backs the event-loop task queue. |
 | `event_loop` | Pinned worker thread driving a `concurrent_queue` of work items, with a selectable idle strategy (`timed_wait_idle` or `busy_spin_idle`) and graceful shutdown. The runtime layer composes the three pipeline threads on top of it. |
 | `log` | Small diagnostic logging facade. Defaults to stderr so the stdout sink can own the market-data stream; the destination is pluggable to a file or null logger at startup. |

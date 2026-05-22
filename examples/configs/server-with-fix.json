@@ -8,7 +8,8 @@
       }
     },
     "decoder": {
-      "type": "json"
+      "type": "json",
+      "max_datagram_size": 65535
     }
   },
   "matching_engine": {
@@ -55,6 +56,15 @@
     }
   },
   "fix": {
-    "enabled": false
+    "enabled": false,
+    "session": {
+      "initiator_session_id": "LABCLIENT",
+      "acceptor_session_id": "LABSERVER",
+      "in_memory_delivery": true
+    },
+    "b3": {
+      "venue": "B3",
+      "security_exchange": "BVMF"
+    }
   }
 }

@@ -59,7 +59,7 @@ onto concrete code.
 
 Threading topology, idle strategy per loop, UDP backend, log sink,
 and per-stage tuning are all config fields. The shipped `main`
-builds the config programmatically; the same shape loads from a
-file when a deployment needs that. Same binary, different config: a
-co-located host can busy-spin three cores for the lowest reaction
-latency while a shared host yields to the scheduler.
+loads one typed JSON config file, then hands each runtime component
+its own config slice. Same binary, different config: a co-located
+host can busy-spin three cores for the lowest reaction latency while
+a shared host yields to the scheduler.

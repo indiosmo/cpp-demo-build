@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -76,6 +77,17 @@ void from_json(const nlohmann::json& json_object, jsonl_row& row)
   lab::json::read_field(json_object, "id", row.id);
   lab::json::read_field(json_object, "symbol", row.symbol);
 }
+
+struct described_config
+{
+  std::string venue;
+  LAB_DEFAULTED_FIELD(int, max_connections, 8);
+  std::optional<std::string> log_file;
+
+  bool operator==(const described_config&) const = default;
+};
+
+LAB_AUTO_JSON(described_config, venue, max_connections, log_file)
 
 struct temp_directory
 {
@@ -225,4 +237,27 @@ TEST_CASE("lab json reports invalid jsonl lines", "[lab][json]")
 
   auto result = lab::json::read_jsonl<jsonl_row>(file_path.string());
   CHECK_FALSE(result);
+}
+
+TEST_CASE("lab json auto binding reads described config objects", "[lab][json]")
+{
+  const nlohmann::json serialized{
+    {"venue", "B3"},
+  };
+
+  const auto config = serialized.get<described_config>();
+
+  CHECK(config.venue == "B3");
+  CHECK(config.max_connections == 8);
+  CHECK_FALSE(config.log_file.has_value());
+}
+
+TEST_CASE("lab json auto binding rejects unknown fields", "[lab][json]")
+{
+  const nlohmann::json serialized{
+    {"venue", "B3"},
+    {"unexpected", true},
+  };
+
+  CHECK_THROWS_AS(serialized.get<described_config>(), std::runtime_error);
 }

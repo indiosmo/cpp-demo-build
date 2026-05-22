@@ -107,7 +107,7 @@ Headers:
 - (I) session.hpp                -- Pipeline-stage `session`: synchronous `send(packet)` plus `on_request`/`on_rejected` callbacks.
 - (P) types.hpp                  -- Strong-typed order-entry primitives (`client_id`, `cl_ord_id`, `orig_cl_ord_id`, `security_id`, `symbol`, `price`, `quantity`) plus order lifecycle enums.
 - (P) runtime/session.hpp        -- Threaded composer owning UDP receiver, decoder, and inner session; lifecycle `setup`/`start`/`poll`/`stop`.
-- (P) runtime/session_config.hpp -- Variant-typed config selecting the UDP receiver backend (asio or ef_vi) and the decoder.
+- (P) runtime/session_config.hpp -- Variant-typed config selecting the UDP receiver backend (asio or ef_vi), decoder, and decoder datagram-size guard.
 
 ### order_client
 
@@ -119,7 +119,7 @@ Headers:
 
 - (P) client.hpp      -- Public typed API: `connect()` plus `send(new_order_single)`, `send(replace_order)`, `send(cancel_order)`, `send(flush)`, and `send(request)`.
 - (I) json_encoder.hpp -- Encodes typed order-entry requests into outbound JSON command records.
-- (I) udp_sender.hpp  -- Boost.Asio UDP sender with configurable endpoint.
+- (I) udp_sender.hpp  -- Boost.Asio UDP sender with configurable endpoint and datagram-size guard.
 
 ### mor
 
@@ -259,7 +259,7 @@ Headers:
 - (I) spdlog_sink.hpp              -- Default sink: single-threaded spdlog stdout logger, raw `%v` pattern, `flush_on(info)`.
 - (P) types.hpp                    -- Strong-type market-data vocabulary (`security_id`, `symbol`, `security_exchange`, `price`, `quantity`, `order_id`, `trade_id`) plus side, book-update, status, and trade-condition enums.
 - (P) runtime/publisher.hpp        -- Runtime composer that owns the chosen encoder and sink and constructs the inner `market_data::publisher`.
-- (P) runtime/publisher_config.hpp -- Variant-of-variants config surface (`encoder_config`, `sink_config`); each new backend is a new alternative.
+- (P) runtime/publisher_config.hpp -- Variant-of-variants JSON config surface (`encoder_config`, `sink_config`); each new backend is a new alternative.
 
 ### matching_engine
 
@@ -281,7 +281,7 @@ Headers:
 - (P) order_state.hpp           -- Resting-order payload struct carrying client id, cl_ord_id, instrument identity, order terms, order quantity, and leaves quantity.
 - (I) types.hpp                 -- Composite `order_key{client_id, cl_ord_id}` plus boost/std hash bindings for the identity index.
 - (P) runtime/engine.hpp        -- Composer holding `optional<engine>`; exposes `setup` / `send` / `on_market_data` / `on_order_entry` for the wiring shell.
-- (P) runtime/engine_config.hpp -- Deployment-default mirror of `engine_config` (defaults: chunk 32, expected 1024).
+- (P) runtime/engine_config.hpp -- Deployment-default mirror of `engine_config` using defaulted JSON fields (defaults: chunk 32, expected 1024).
 
 ### server
 

@@ -8,7 +8,8 @@
       }
     },
     "decoder": {
-      "type": "json"
+      "type": "json",
+      "max_datagram_size": 65535
     }
   },
   "matching_engine": {

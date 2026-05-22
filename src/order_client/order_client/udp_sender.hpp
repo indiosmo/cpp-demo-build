@@ -4,23 +4,33 @@
 #include "boost/asio/io_context.hpp"
 #include "boost/asio/ip/udp.hpp"
 
+#include "lab/json.hpp"
 #include "lab/network/types.hpp"
 #include "lab/result.hpp"
 
+#include <cstddef>
 #include <string_view>
 
 namespace order_client {
 
+struct udp_sender_config
+{
+  lab::network::types::endpoint_config endpoint;
+  std::size_t max_datagram_size;
+};
+
+LAB_AUTO_JSON(udp_sender_config, endpoint, max_datagram_size)
+
 class udp_sender
 {
 public:
-  explicit udp_sender(lab::network::types::endpoint_config endpoint);
+  explicit udp_sender(udp_sender_config config);
 
   lab::result<void> connect();
   lab::result<void> send(std::string_view payload);
 
 private:
-  lab::network::types::endpoint_config endpoint_config_;
+  udp_sender_config config_;
   boost::asio::io_context io_context_;
   boost::asio::ip::udp::socket socket_;
   boost::asio::ip::udp::endpoint endpoint_;

@@ -1,6 +1,7 @@
 #ifndef MATCHING_ENGINE_ENGINE_CONFIG_HPP
 #define MATCHING_ENGINE_ENGINE_CONFIG_HPP
 
+#include "lab/json.hpp"
 #include "order_entry/types.hpp"
 
 #include <cstddef>
@@ -23,6 +24,8 @@ struct engine_config
   std::size_t expected_resting_orders;
   std::size_t node_pool_chunk_size;
 };
+
+LAB_AUTO_JSON(engine_config, valid_symbols, expected_resting_orders, node_pool_chunk_size)
 
 } // namespace matching_engine
 

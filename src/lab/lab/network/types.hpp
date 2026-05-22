@@ -1,6 +1,8 @@
 #ifndef LAB_NETWORK_TYPES_HPP
 #define LAB_NETWORK_TYPES_HPP
 
+#include "lab/json.hpp"
+
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -13,6 +15,8 @@ struct endpoint_config
   std::string address;
   std::uint16_t port = 0;
 };
+
+LAB_AUTO_JSON(endpoint_config, address, port)
 
 /*
  * View over a received datagram's payload, valid only for the on_datagram

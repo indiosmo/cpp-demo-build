@@ -7,8 +7,8 @@
 
 namespace order_client {
 
-client::client(config configuration)
-  : sender_{std::move(configuration.endpoint)}
+client::client(client_config configuration)
+  : sender_{std::move(configuration.sender)}
 {
 }
 

@@ -26,8 +26,8 @@ lab::result<boost::asio::ip::address> parse_address(const std::string& text)
 
 } // namespace
 
-udp_sender::udp_sender(lab::network::types::endpoint_config endpoint)
-  : endpoint_config_{std::move(endpoint)}
+udp_sender::udp_sender(udp_sender_config config)
+  : config_{std::move(config)}
   , socket_{io_context_}
 {
 }
@@ -38,8 +38,8 @@ lab::result<void> udp_sender::connect()
     return {};
   }
 
-  BOOST_LEAF_ASSIGN(const auto address, parse_address(endpoint_config_.address));
-  endpoint_ = boost::asio::ip::udp::endpoint{address, endpoint_config_.port};
+  BOOST_LEAF_ASSIGN(const auto address, parse_address(config_.endpoint.address));
+  endpoint_ = boost::asio::ip::udp::endpoint{address, config_.endpoint.port};
 
   boost::system::error_code error;
   socket_.open(endpoint_.protocol(), error);
@@ -53,6 +53,10 @@ lab::result<void> udp_sender::connect()
 
 lab::result<void> udp_sender::send(std::string_view payload)
 {
+  if (payload.size() > config_.max_datagram_size) {
+    return lab::make_leaf_error(lab::error_code::invalid_argument, "datagram exceeds configured maximum size");
+  }
+
   LAB_LEAF_CHECK(connect());
 
   boost::system::error_code error;

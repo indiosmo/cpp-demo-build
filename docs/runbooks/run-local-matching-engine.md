@@ -94,9 +94,12 @@ toolchain libraries are on the runtime path.
    cat > _build/debug/client-stdin.json <<'JSON'
    {
      "order_client": {
-       "endpoint": {
-         "address": "127.0.0.1",
-         "port": 1234
+       "sender": {
+         "endpoint": {
+           "address": "127.0.0.1",
+           "port": 1234
+         },
+         "max_datagram_size": 65535
        }
      },
      "input": {

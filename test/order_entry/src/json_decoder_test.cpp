@@ -10,6 +10,14 @@ namespace {
 namespace routing = order_entry;
 namespace detail = routing::json_decoder_detail;
 
+routing::json_decoder make_decoder()
+{
+  return routing::json_decoder{
+    routing::json_decoder_config{
+      .max_datagram_size = 65535,
+    }};
+}
+
 } // namespace
 
 TEST_CASE("json_decoder_detail - decode_new_order", "[order_entry][json_decoder][parse]")
@@ -62,7 +70,7 @@ TEST_CASE("json_decoder_detail - decode enum tokens", "[order_entry][json_decode
 
 TEST_CASE("json_decoder - decode dispatches by message_type", "[order_entry][json_decoder][dispatch]")
 {
-  routing::json_decoder decoder;
+  auto decoder = make_decoder();
 
   const auto new_order = decoder.decode(
     R"({"message_type":"new_order_single","client_id":1,"cl_ord_id":10,"symbol":"IBM","side":"buy","order_qty":100,"price":25})");
@@ -85,7 +93,7 @@ TEST_CASE("json_decoder - decode dispatches by message_type", "[order_entry][jso
 
 TEST_CASE("json_decoder - reports invalid json", "[order_entry][json_decoder][dispatch]")
 {
-  routing::json_decoder decoder;
+  auto decoder = make_decoder();
   const auto decoded = decoder.decode("not-json");
   CHECK_FALSE(decoded);
 }

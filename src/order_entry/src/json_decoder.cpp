@@ -141,8 +141,17 @@ flush decode_flush(const lab::json::value&)
 
 } // namespace json_decoder_detail
 
+json_decoder::json_decoder(json_decoder_config config)
+  : config_{config}
+{
+}
+
 lab::result<request> json_decoder::decode(std::string_view payload) const
 {
+  if (payload.size() > config_.max_datagram_size) {
+    return lab::make_leaf_error(errors::parser_error{.reason = "datagram exceeds configured maximum size"});
+  }
+
   try {
     const auto document = lab::json::value::parse(payload.begin(), payload.end());
     const auto message_type = document.at("message_type").get<std::string>();

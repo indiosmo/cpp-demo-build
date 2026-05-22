@@ -1,11 +1,22 @@
 #ifndef MORFIX_QUICKFIX_CODECS_HPP
 #define MORFIX_QUICKFIX_CODECS_HPP
 
+#include "lab/json.hpp"
 #include "lab/result.hpp"
 #include "morfix/messages.hpp"
 #include "quickfix_fix/message.hpp"
 
+#include <string>
+
 namespace morfix_quickfix {
+
+struct b3_codec_config
+{
+  std::string venue;
+  std::string security_exchange;
+};
+
+LAB_AUTO_JSON(b3_codec_config, venue, security_exchange)
 
 class initiator_codec
 {

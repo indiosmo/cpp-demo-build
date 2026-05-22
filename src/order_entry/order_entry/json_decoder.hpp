@@ -7,6 +7,8 @@
 #include "order_entry/messages.hpp"
 #include "order_entry/types.hpp"
 
+#include <cstddef>
+
 /*
  * JSON decoder for the inbound order-entry wire protocol. Each datagram is
  * one object with a message_type discriminator and typed domain field names.
@@ -14,10 +16,22 @@
 
 namespace order_entry {
 
+struct json_decoder_config
+{
+  std::size_t max_datagram_size;
+};
+
+LAB_AUTO_JSON(json_decoder_config, max_datagram_size)
+
 class json_decoder final : public decoder
 {
 public:
+  explicit json_decoder(json_decoder_config config);
+
   lab::result<request> decode(std::string_view payload) const override;
+
+private:
+  json_decoder_config config_;
 };
 
 namespace json_decoder_detail {

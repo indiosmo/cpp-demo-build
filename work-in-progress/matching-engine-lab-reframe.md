@@ -319,11 +319,14 @@ Verification completed:
 
 ### Phase 8 Handoff
 
-Status: in progress, first slice completed.
+Status: in progress, second slice completed.
 
-The first phase-8 slice established the JSON-configurable application boundary
-and the lab default-field helper without yet moving every runtime default into
-typed config structs:
+Phase 8 now has the JSON-configurable application boundary and the typed config
+tree through the current server/client runtime surface. The remaining work is
+documentation and any future FIX runtime decision; the active UDP JSON demo is
+buildable and smoke-tested through the typed config path.
+
+Completed in slice 1:
 
 - ported Abacus-style `defaulted_field` into `lab`, exposed through
   `LAB_DEFAULTED_FIELD`, with JSON missing-key behavior that leaves wrapped
@@ -342,20 +345,30 @@ typed config structs:
 - updated README, DEVELOPING, INDEX, runtime docs, tuning docs, client README,
   and the local runbook for the JSON-config workflow.
 
+Completed in slice 2:
+
+- added `LAB_AUTO_JSON` for Boost.Describe-backed aggregate JSON binding, with
+  unknown-field rejection for described structs;
+- added JSON bindings for endpoint, logger, event-loop, runtime session,
+  publisher, engine, client, and optional FIX config shapes;
+- added strict functional configs for `order_client::udp_sender_config` and
+  `order_entry::json_decoder_config`, with runtime defaults translated into
+  explicit functional configs;
+- added datagram-size guards to the order-entry JSON decoder and UDP sender;
+- changed `server/main.cpp` and `client/main.cpp` to parse top-level typed
+  app config aggregates instead of hand-written field readers;
+- expanded `examples/configs/client.json`, `server.json`, and
+  `server-with-fix.json` to match the typed config tree;
+- updated README/index/runbook/highlight docs touched by the config shape.
+
 Deferred to the next slice:
 
-- implement the full typed config tree from `server/main.cpp` and
-  `client/main.cpp` down to the functional leaf components;
-- add per-library functional config structs where fields are currently
-  implicit, starting with `order_client::udp_sender_config` and
-  `order_entry::json_decoder_config`;
-- keep functional leaf configs strict: required fields only, no defaults;
-- use auto JSON binding for config structs instead of the temporary hand-written
-  readers in `server/main.cpp` and `client/main.cpp`;
-- apply `LAB_DEFAULTED_FIELD` at runtime and app config layers so JSON files can
-  omit defaulted values while functional leaves still receive explicit values;
-- add the ADR for the layered JSON config decision once the per-library split
-  has landed.
+- add the ADR for the layered JSON config decision now that the per-library
+  split has landed;
+- add dedicated app-config parse tests for the shipped JSON files if later
+  slices keep expanding the config surface;
+- decide whether the optional FIX config remains parsed at app level only or
+  grows a runtime composer.
 
 Verification completed:
 
@@ -367,6 +380,12 @@ Verification completed:
   `server examples/configs/server.json` plus
   `client examples/configs/client.json`, producing the expected seven
   market-data records for the crossing-orders scenario;
+- `ctest --test-dir _build/debug -R '^(lab|order_entry|order_client|matching_engine|market_data)/' --output-on-failure`
+  passed with 82/82 tests after loading `scripts/setenv.sh`;
+- `./build.sh debug` passed with 110/110 tests;
+- escalated local UDP smoke test passed with `server examples/configs/server.json`
+  plus `client examples/configs/client.json`;
+- escalated one-second bind check passed for `server examples/configs/server-with-fix.json`;
 - `git diff --check` passed.
 
 ## Phase 2: Legacy Harness Removal

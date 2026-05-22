@@ -1,32 +1,80 @@
 #include "server/application.hpp"
 #include "market_data/runtime/publisher_config.hpp"
 #include "matching_engine/runtime/engine_config.hpp"
+#include "morfix_quickfix/codecs.hpp"
 #include "order_entry/runtime/session_config.hpp"
+#include "quickfix_fix/session.hpp"
 
 #include "lab/error.hpp"
 #include "lab/error_code.hpp"
 #include "lab/json.hpp"
 #include "lab/log.hpp"
-#include "lab/network/types.hpp"
 #include "lab/result.hpp"
-
-#include "nlohmann/json.hpp"
 
 #include <atomic>
 #include <chrono>
 #include <csignal>
 #include <cstdlib>
 #include <iostream>
-#include <stdexcept>
+#include <optional>
 #include <string>
 #include <thread>
 
 namespace {
 
+struct thread_config
+{
+  lab::event_loop_config input{
+    .thread_name = "lab-input",
+    .idle_strategy = lab::busy_spin_idle{},
+  };
+
+  lab::event_loop_config processing{
+    .thread_name = "lab-engine",
+    .idle_strategy = lab::busy_spin_idle{},
+  };
+
+  lab::event_loop_config output{
+    .thread_name = "lab-output",
+    .idle_strategy = lab::busy_spin_idle{},
+  };
+};
+
+LAB_AUTO_JSON(thread_config, input, processing, output)
+
+struct fix_config
+{
+  LAB_DEFAULTED_FIELD(bool, enabled, false);
+  std::optional<quickfix_fix::session_pair_config> session;
+  std::optional<morfix_quickfix::b3_codec_config> b3;
+};
+
+LAB_AUTO_JSON(fix_config, enabled, session, b3)
+
 struct app_config
 {
-  server::config application;
+  order_entry::runtime::session_config order_entry;
+  matching_engine::runtime::engine_config matching_engine;
+  market_data::runtime::publisher_config market_data;
+  lab::logger_config logger{lab::console_logger_config{}};
+  thread_config threads;
+  std::optional<fix_config> fix;
 };
+
+LAB_AUTO_JSON(app_config, order_entry, matching_engine, market_data, logger, threads, fix)
+
+server::config make_runtime_config(const app_config& config)
+{
+  return server::config{
+    .order_entry = config.order_entry,
+    .matching_engine = config.matching_engine,
+    .market_data = config.market_data,
+    .logger = config.logger,
+    .input_thread = config.threads.input,
+    .processing_thread = config.threads.processing,
+    .output_thread = config.threads.output,
+  };
+}
 
 void print_usage(std::ostream& stream)
 {
@@ -45,142 +93,6 @@ lab::result<std::string> parse_config_path(int argc, char** argv)
   }
 
   return lab::make_leaf_error(lab::error_code::configuration_error, "expected one config file path");
-}
-
-std::string read_type(const nlohmann::json& json_object)
-{
-  std::string type;
-  lab::json::read_field(json_object, "type", type);
-  return type;
-}
-
-void require_type(const nlohmann::json& json_object, const std::string& expected_type)
-{
-  const auto actual_type = read_type(json_object);
-  if (actual_type != expected_type) {
-    throw std::runtime_error{"expected config type '" + expected_type + "', got '" + actual_type + "'"};
-  }
-}
-
-lab::network::types::endpoint_config read_endpoint(const nlohmann::json& json_object)
-{
-  lab::network::types::endpoint_config endpoint;
-  lab::json::read_field(json_object, "address", endpoint.address);
-  lab::json::read_field(json_object, "port", endpoint.port);
-  return endpoint;
-}
-
-order_entry::runtime::receiver_config read_receiver_config(const nlohmann::json& json_object)
-{
-  const auto type = read_type(json_object);
-  const auto endpoint = read_endpoint(json_object.at("endpoint"));
-
-  if (type == "asio_udp") {
-    return order_entry::runtime::asio_udp_receiver_config{.endpoint = endpoint};
-  }
-  if (type == "ef_vi_udp") {
-    return order_entry::runtime::ef_vi_udp_receiver_config{.endpoint = endpoint};
-  }
-
-  throw std::runtime_error{"unknown order-entry receiver type '" + type + "'"};
-}
-
-order_entry::runtime::decoder_config read_decoder_config(const nlohmann::json& json_object)
-{
-  require_type(json_object, "json");
-  return order_entry::runtime::json_decoder_config{};
-}
-
-order_entry::runtime::session_config read_order_entry_config(const nlohmann::json& json_object)
-{
-  return order_entry::runtime::session_config{
-    .receiver = read_receiver_config(json_object.at("receiver")),
-    .decoder = read_decoder_config(json_object.at("decoder")),
-  };
-}
-
-matching_engine::runtime::engine_config read_matching_engine_config(const nlohmann::json& json_object)
-{
-  matching_engine::runtime::engine_config config;
-  lab::json::read_field(json_object, "valid_symbols", config.valid_symbols);
-  lab::json::read_field(json_object, "expected_resting_orders", config.expected_resting_orders);
-  lab::json::read_field(json_object, "node_pool_chunk_size", config.node_pool_chunk_size);
-  return config;
-}
-
-market_data::runtime::encoder_config read_market_data_encoder_config(const nlohmann::json& json_object)
-{
-  require_type(json_object, "json");
-  return market_data::runtime::json_encoder_config{};
-}
-
-market_data::runtime::sink_config read_market_data_sink_config(const nlohmann::json& json_object)
-{
-  require_type(json_object, "spdlog");
-  return market_data::runtime::spdlog_sink_config{};
-}
-
-market_data::runtime::publisher_config read_market_data_config(const nlohmann::json& json_object)
-{
-  return market_data::runtime::publisher_config{
-    .encoder = read_market_data_encoder_config(json_object.at("encoder")),
-    .sink = read_market_data_sink_config(json_object.at("sink")),
-  };
-}
-
-lab::logger_config read_logger_config(const nlohmann::json& json_object)
-{
-  const auto type = read_type(json_object);
-  if (type == "console") {
-    return lab::console_logger_config{};
-  }
-  if (type == "null") {
-    return lab::null_logger_config{};
-  }
-  if (type == "file") {
-    std::string path;
-    lab::json::read_field(json_object, "path", path);
-    return lab::file_logger_config{.path = std::move(path)};
-  }
-
-  throw std::runtime_error{"unknown logger type '" + type + "'"};
-}
-
-lab::event_loop_idle_strategy read_idle_strategy(const nlohmann::json& json_object)
-{
-  const auto type = read_type(json_object);
-  if (type == "busy_spin") {
-    return lab::busy_spin_idle{};
-  }
-  if (type == "timed_wait") {
-    std::chrono::microseconds::rep duration_microseconds = 0;
-    lab::json::read_field(json_object, "duration_microseconds", duration_microseconds);
-    return lab::timed_wait_idle{.duration = std::chrono::microseconds{duration_microseconds}};
-  }
-
-  throw std::runtime_error{"unknown event-loop idle strategy '" + type + "'"};
-}
-
-lab::event_loop_config read_event_loop_config(const nlohmann::json& json_object)
-{
-  lab::event_loop_config config;
-  lab::json::read_field(json_object, "thread_name", config.thread_name);
-  lab::json::read_field(json_object, "queue_capacity", config.queue_capacity);
-  config.idle_strategy = read_idle_strategy(json_object.at("idle_strategy"));
-  return config;
-}
-
-void from_json(const nlohmann::json& json_object, app_config& config)
-{
-  config.application = server::config{
-    .order_entry = read_order_entry_config(json_object.at("order_entry")),
-    .matching_engine = read_matching_engine_config(json_object.at("matching_engine")),
-    .market_data = read_market_data_config(json_object.at("market_data")),
-    .logger = read_logger_config(json_object.at("logger")),
-    .input_thread = read_event_loop_config(json_object.at("threads").at("input")),
-    .processing_thread = read_event_loop_config(json_object.at("threads").at("processing")),
-    .output_thread = read_event_loop_config(json_object.at("threads").at("output")),
-  };
 }
 
 std::atomic<bool> g_stop_requested = false;
@@ -202,7 +114,7 @@ int main(int argc, char** argv)
       }
 
       BOOST_LEAF_ASSIGN(const auto config, lab::json::read_from_file<app_config>(config_path, true));
-      server::application app{config.application};
+      server::application app{make_runtime_config(config)};
 
       std::signal(SIGINT, signal_handler);
       std::signal(SIGTERM, signal_handler);

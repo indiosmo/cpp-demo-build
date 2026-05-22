@@ -1,13 +1,10 @@
 #include "lab/error.hpp"
 #include "lab/error_code.hpp"
 #include "lab/json.hpp"
-#include "lab/network/types.hpp"
 #include "lab/result.hpp"
 #include "order_client/client.hpp"
 #include "order_entry/json_decoder.hpp"
 #include "order_entry/messages.hpp"
-
-#include "nlohmann/json.hpp"
 
 #include <cstdlib>
 #include <fstream>
@@ -15,14 +12,66 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
+#include <utility>
+#include <variant>
 
 namespace {
 
+struct stdin_input_config
+{
+};
+
+LAB_AUTO_JSON(stdin_input_config)
+
+struct file_input_config
+{
+  std::string path;
+};
+
+LAB_AUTO_JSON(file_input_config, path)
+
+using input_config = std::variant<stdin_input_config, file_input_config>;
+
+void to_json(nlohmann::json& json_object, const input_config& config)
+{
+  std::visit(
+    [&](const auto& selection) {
+      using selection_t = std::decay_t<decltype(selection)>;
+      json_object = selection;
+      if constexpr (std::is_same_v<selection_t, stdin_input_config>) {
+        json_object["type"] = "stdin";
+      } else if constexpr (std::is_same_v<selection_t, file_input_config>) {
+        json_object["type"] = "file";
+      }
+    },
+    config);
+}
+
+void from_json(const nlohmann::json& json_object, input_config& config)
+{
+  const auto type = lab::json::read_type(json_object);
+  if (type == "stdin") {
+    config = stdin_input_config{};
+    return;
+  }
+  if (type == "file") {
+    file_input_config file;
+    lab::json::read_field(json_object, "path", file.path);
+    config = std::move(file);
+    return;
+  }
+
+  throw std::runtime_error{"unknown client input type '" + type + "'"};
+}
+
 struct app_config
 {
-  order_client::config order_client;
-  std::optional<std::string> input_path;
+  order_client::client_config order_client;
+  input_config input;
 };
+
+LAB_AUTO_JSON(app_config, order_client, input)
 
 void print_usage(std::ostream& stream)
 {
@@ -43,50 +92,26 @@ lab::result<std::string> parse_config_path(int argc, char** argv)
   return lab::make_leaf_error(lab::error_code::configuration_error, "expected one config file path");
 }
 
-std::string read_type(const nlohmann::json& json_object)
+std::optional<std::string> input_path(const input_config& config)
 {
-  std::string type;
-  lab::json::read_field(json_object, "type", type);
-  return type;
-}
-
-lab::network::types::endpoint_config read_endpoint(const nlohmann::json& json_object)
-{
-  lab::network::types::endpoint_config endpoint;
-  lab::json::read_field(json_object, "address", endpoint.address);
-  lab::json::read_field(json_object, "port", endpoint.port);
-  return endpoint;
-}
-
-order_client::config read_order_client_config(const nlohmann::json& json_object)
-{
-  return order_client::config{.endpoint = read_endpoint(json_object.at("endpoint"))};
-}
-
-std::optional<std::string> read_input_path(const nlohmann::json& json_object)
-{
-  const auto type = read_type(json_object);
-  if (type == "stdin") {
-    return std::nullopt;
-  }
-  if (type == "file") {
-    std::string path;
-    lab::json::read_field(json_object, "path", path);
-    return path;
-  }
-
-  throw std::runtime_error{"unknown client input type '" + type + "'"};
-}
-
-void from_json(const nlohmann::json& json_object, app_config& config)
-{
-  config.order_client = read_order_client_config(json_object.at("order_client"));
-  config.input_path = read_input_path(json_object.at("input"));
+  return std::visit(
+    [](const auto& selection) -> std::optional<std::string> {
+      using selection_t = std::decay_t<decltype(selection)>;
+      if constexpr (std::is_same_v<selection_t, file_input_config>) {
+        return selection.path;
+      } else {
+        return std::nullopt;
+      }
+    },
+    config);
 }
 
 lab::result<void> send_commands(std::istream& input, order_client::client& client)
 {
-  order_entry::json_decoder decoder;
+  order_entry::json_decoder decoder{
+    order_entry::json_decoder_config{
+      .max_datagram_size = 65535,
+    }};
 
   for (std::string line; std::getline(input, line);) {
     if (line.empty()) {
@@ -106,8 +131,9 @@ lab::result<void> run_client(const app_config& config)
 
   LAB_LEAF_CHECK(client.connect());
 
-  if (config.input_path) {
-    std::ifstream input{*config.input_path};
+  const auto configured_input_path = input_path(config.input);
+  if (configured_input_path) {
+    std::ifstream input{*configured_input_path};
     if (!input) {
       return lab::make_leaf_error(lab::error_code::configuration_error, "could not open input file");
     }
