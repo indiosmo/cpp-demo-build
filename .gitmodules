@@ -1,0 +1,3 @@
+[submodule "docs/cpp-guidelines"]
+	path = docs/cpp-guidelines
+	url = git@github.com:indiosmo/cpp-guidelines.git

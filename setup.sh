@@ -13,6 +13,7 @@ source "$SCRIPT_DIR/scripts/install_uv.sh"
 main() {
   printf '%s\n' "Setting up kraken-submission development environment..."
 
+  git -C "$SCRIPT_DIR" submodule update --init --recursive
   ensure_uv
   "$SCRIPT_DIR/scripts/install_precommit_hooks.sh"
 
