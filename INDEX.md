@@ -1,0 +1,158 @@
+# INDEX
+
+## System overview
+
+Senior C++ interview submission implementing a multi-threaded UDP-driven order book matching engine. The deliverable is a single binary, `kraken_submission`, that ingests CSV commands over UDP, matches them against per-symbol books, and publishes the resulting market data records to stdout. The codebase is organised as five static libraries (a shared vocabulary layer, two boundary domains, the matching engine, and a wiring shell) plus Catch2 unit tests and Google Benchmark microbenchmarks.
+
+## Tech stack
+
+- C++23
+- CMake (presets: debug, release, asan, tsan, clang)
+- Ninja generator
+- Boost (header-only) -- https://www.boost.org -- LEAF, container_hash, pfr, algorithm, stacktrace, asio, intrusive, pool, unordered
+- fmt 9.1 (`libfmt-dev`, header-only) -- https://github.com/fmtlib/fmt
+- spdlog (`libspdlog-dev`) -- https://github.com/gabime/spdlog
+- Catch2 (tests) -- https://github.com/catchorg/Catch2
+- Google Benchmark (microbenchmarks) -- https://github.com/google/benchmark
+- NamedType (vendored, MIT) -- https://github.com/joboccara/NamedType
+- SG14 inplace_function (vendored, BSL-1.0) -- https://github.com/WG21-SG14/SG14
+- moodycamel ReaderWriterQueue (vendored, BSD-2-Clause) -- https://github.com/cameron314/readerwriterqueue
+- TartanLlama expected (vendored, CC0-1.0) -- https://github.com/TartanLlama/expected
+
+## Directory structure
+
+```
+assessment-cpp-senior/
+|-- cmake/                                shared CMake modules (compiler flags, sanitizers)
+|-- docs/                                 ADRs, C++ design principles, engine spec, runtime docs, performance data
+|   |-- adr/                              architecture decision records (numbered, dated)
+|   `-- performance/                      benchmark results and raw data
+|-- reports/                              JUnit XML and HTML test reports (generated)
+|-- scripts/                              developer scripts (formatting, pre-commit, vendor sync)
+|-- submission/                           the deliverable workspace
+|   |-- benchmarks/                       Google Benchmark microbenchmarks
+|   |   |-- kraken/                       vocabulary-layer benchmarks
+|   |   |-- matching_engine/              engine throughput / latency benchmarks
+|   |   `-- order_book/                   per-shape order-book microbenchmarks
+|   |-- src/                              library sources (one subdirectory per module)
+|   |   |-- kraken/                       general-purpose vocabulary helpers
+|   |   |   |-- kraken/                   public headers
+|   |   |   |-- libs/                     network adapter sub-library (asio + ef_vi UDP receivers)
+|   |   |   `-- src/                      (currently empty; network impls live under libs/)
+|   |   |-- kraken_submission/            wiring shell + main; the kraken_submission executable target
+|   |   |-- market_data/                  outbound domain: typed events to CSV records to stdout
+|   |   |-- matching_engine/              composition domain: per-symbol books and the matching loop (v1, v2, v3)
+|   |   `-- order_routing/                inbound domain: UDP CSV bytes to typed routing requests
+|   |-- test/                             per-module Catch2 unit tests (mirrors src/ layout; not expanded)
+|   `-- vendor/                           copy-vendored third-party utilities (NamedType, expected, inplace_function, readerwriterqueue)
+|-- test/                                 Docker-based black-box scenarios 1-16 (do not modify; not expanded)
+`-- work-in-progress/                     working notes not yet promoted to docs/
+```
+
+## Modules
+
+### kraken
+
+Base path: `submission/src/kraken/kraken/`
+
+The project's general-purpose vocabulary layer -- the "internal Boost" the rest of the code is written against. It owns a small set of in-house primitives (strong types, fixed-size strings, an event loop, a structured error carrier, match-over-variant) and re-exports every copy-vendored third-party header behind a `kraken::` alias so a vendor swap is a single-header change. A `network` sub-namespace adds two UDP-receiver adapters (Boost.Asio and an `ef_vi` stub) plus their shared value types.
+
+Headers:
+
+- (P) algorithm.hpp        -- `string_view` `trim` / `ltrim` / `rtrim` plus a fixed-arity `split_fields<N>` that returns `array<string_view, N>`
+- (P) assert.hpp           -- `KRAKEN_ASSERT(expr)` macro: prints expression, location, and a `boost::stacktrace` dump, then aborts
+- (P) charconv.hpp         -- `from_chars<T>` returning `kraken::result`, with exact / partial modes and overloads for strong types and fixed strings
+- (I) concurrent_queue.hpp -- Aliases `moodycamel::ReaderWriterQueue` (and its blocking variant) as the project's SPSC lock-free queues
+- (P) error.hpp            -- Type-erased `kraken::error` value carrying any payload with `error_code()` / `what()`, plus leaf predicate adapters and `make_leaf_error`
+- (P) error_code.hpp       -- `kraken::error_code` enum (generic, invalid_argument, out_of_bounds, ...) wired into `std::error_code` via the category macro
+- (P) error_macros.hpp     -- `KRAKEN_DEFINE_ERROR_CATEGORY(NS)`: turns any domain's `error_code` enum into a usable `std::error_code` domain
+- (I) errors.hpp           -- `kraken::errors::generic_error` catch-all payload: an `error_code` plus optional free-form text
+- (P) event_loop.hpp       -- Pinned `jthread` running a blocking SPSC task queue plus pollers, with timed-wait or busy-spin idle strategies
+- (P) expected.hpp         -- Re-exports `tl::expected` as `kraken::expected` so the alias collapses to `std::expected` on C++23
+- (P) fixed_string.hpp     -- Bounded inline string templated on capacity and a strict / auto-truncate policy, with hash, fmt, and ostream support
+- (P) fmt.hpp              -- Project-wide aggregate include of the upstream fmt headers behind one entry point
+- (P) hash.hpp             -- `auto_hash<T>` reflective hasher via `boost::pfr`, plus the `KRAKEN_STD_HASH` and `KRAKEN_HASH_VALUE` macros
+- (P) inplace_function.hpp -- Alias of SG14 `inplace_function` with capacity as a template parameter, so capture-size regressions are compile errors
+- (P) log.hpp              -- Diagnostic logger facade with console / null / file backends and `KRAKEN_LOG_*` macros that capture the call site
+- (I) overload.hpp         -- Canonical `overload<Ts...>` aggregate plus its deduction guide for building visitor sets from lambdas
+- (P) result.hpp           -- Aliases `boost::leaf::result` as `kraken::result` and supplies the project's leaf scaffolding (assign / check / catch-all / exit-on-error macros)
+- (P) strong_type.hpp      -- NamedType-backed nominal typedef with call-through, comparison, same-type arithmetic, hashing, fmt, and a fixed-string-aware factory
+- (P) variant.hpp          -- `kraken::match` recursive-index dispatcher over `std::variant`, plus shape helpers (`extend_variant`, `concat_variants_t`, ...) and `KRAKEN_PLUCK`
+- (P) network/asio_udp_receiver.hpp  -- Boost.Asio UDP receiver: parses the endpoint, binds, and drives `on_datagram` from `async_receive_from`
+- (P) network/ef_vi_udp_receiver.hpp -- Stub Solarflare `ef_vi` kernel-bypass UDP receiver with the poll-driven shape (`open` / `poll` / `close`)
+- (P) network/types.hpp              -- Network value types: `endpoint_config { address; port }` and `datagram_view = string_view`
+
+### order_routing
+
+Base path: `submission/src/order_routing/order_routing/`
+
+Inbound-edge domain. Turns one framed wire packet into one typed routing request through pure synchronous code over value types. Owns the request vocabulary, the strong-typed field primitives, the abstract decoder boundary and its CSV implementation, the pipeline-stage session that drives the decoder, and the structured error vocabulary raised at the decoder boundary. A `runtime/` shell wraps the session with a UDP receiver behind a `setup`/`start`/`poll`/`stop` lifecycle.
+
+Headers:
+
+- (I) csv_decoder.hpp            -- CSV decoder for the EXERCISE.md protocol; wire-grammar violations are asserted per ADR 0003.
+- (I) decoder.hpp                -- Abstract decoder boundary: one packet to one `kraken::result<request>`; supports test doubles.
+- (I) error_code.hpp             -- `order_routing::error_code` enum (201xxx range) plus `to_string` and category registration.
+- (P) errors.hpp                 -- Structured `invalid_field`, `missing_field`, `unknown_order`, `parser_error` carried through `boost::leaf`.
+- (I) factories.hpp              -- `make_rejection` overloads composing a `rejection` from each structured decoder error and the raw payload.
+- (P) messages.hpp               -- Request value types `new_order`/`cancel_order`/`flush`, the `request` variant, and the `rejection` struct.
+- (I) session.hpp                -- Pipeline-stage `session`: synchronous `send(packet)` plus `on_request`/`on_rejected` callbacks.
+- (P) types.hpp                  -- Strong-typed primitives `user_id`, `user_order_id`, `symbol` (fixed_string<8>), `price`, `quantity`, `side`.
+- (P) runtime/session.hpp        -- Threaded composer owning UDP receiver, decoder, and inner session; lifecycle `setup`/`start`/`poll`/`stop`.
+- (P) runtime/session_config.hpp -- Variant-typed config selecting the UDP receiver backend (asio or ef_vi) and the decoder.
+
+### market_data
+
+Base path: `submission/src/market_data/market_data/`
+
+Outbound boundary that turns typed events into EXERCISE.md CSV records and hands them to a sink. The encoder, publisher pipeline stage, and sink interface are pure synchronous code over value types; thread ownership lives in the runtime composer. The default backend is an spdlog single-threaded stdout logger pinned to the publisher thread, which skips the per-write mutex of the multi-threaded variant.
+
+Headers:
+
+- (I) csv_encoder.hpp              -- `csv_encoder` and `csv_encoder_detail` free functions: one EXERCISE.md record per message variant.
+- (I) encoder.hpp                  -- Abstract encoder interface: one typed message to one wire record via `std::string encode(const message&)`.
+- (P) messages.hpp                 -- Outbound vocabulary structs (`order_ack`, `cancel_ack`, `trade`, `top_of_book`) and the `message` variant.
+- (I) publisher.hpp                -- Pipeline stage holding `encoder&` and `sink&`; `send()` encodes then writes.
+- (I) sink.hpp                     -- Abstract sink interface: `write(string_view record)` to whatever line-oriented transport the wiring picks.
+- (I) spdlog_sink.hpp              -- Default sink: single-threaded spdlog stdout logger, raw `%v` pattern, `flush_on(info)`.
+- (P) types.hpp                    -- Strong-type vocabulary (`user_id`, `user_order_id`, `price`, `quantity`, `total_quantity`) plus the `side` enum.
+- (P) runtime/publisher.hpp        -- Runtime composer that owns the chosen encoder and sink and constructs the inner `market_data::publisher`.
+- (P) runtime/publisher_config.hpp -- Variant-of-variants config surface (`encoder_config`, `sink_config`); each new backend is a new alternative.
+
+### matching_engine
+
+Base path: `submission/src/matching_engine/matching_engine/`
+
+Matches incoming requests against per-symbol bid/ask ladders and emits trade, ack, and top-of-book events directly. Owns one shared pool over every resting `order_node`, a cross-symbol `(user, user_order_id)` identity index for cancellation in one hop, and one preallocated book per configured symbol. Three iterations live in-tree: `v1` (sorted maps of vectors), `v2` (intrusive lists over a caller-owned pool), `v3` (templated intrusive lists over `boost::container::flat_map` with side-agnostic match); production picks `v3` through module-root aliases.
+
+Headers:
+
+- (I) conversions.hpp           -- Free `to_market_side` mapping routing-side to market-data side at emit sites.
+- (P) engine.hpp                -- Production engine alias: `using engine = v3::engine`.
+- (P) engine_config.hpp         -- Engine startup config: `valid_symbols`, `expected_resting_orders`, `node_pool_chunk_size`.
+- (I) error_code.hpp            -- `error_code` enum (`duplicate_order`, `unknown_symbol`) in the 202xxx range.
+- (I) errors.hpp                -- Structured leaf payloads (`duplicate_order`, `unknown_symbol`) for new-order rejections.
+- (I) factories.hpp             -- `make_order_state(new_order)`: builds the matcher's taker / resting payload.
+- (P) order_book.hpp            -- Production aliases: `order_book = v3::flat_order_book`, `order_node = v3::order_node`.
+- (P) order_state.hpp           -- Resting-order payload struct carrying user, order id, instrument, side, price, remaining.
+- (I) types.hpp                 -- Composite `order_key{user, order_id}` plus boost/std hash bindings for the identity index.
+- (I) v1/engine.hpp             -- v1 engine: in-place `match_buy` / `match_sell` over vector-backed books; logs rejections.
+- (I) v1/order_book.hpp         -- v1 book: `std::map<price, std::vector<order_state>>` per side; cancel scans linearly.
+- (I) v2/engine.hpp             -- v2 engine: drives the book through `fill_top_*_front`; engine-owned `boost::pool`.
+- (I) v2/order_book.hpp         -- v2 book: intrusive list per level over a caller-owned pool; `place` returns a node handle.
+- (P) v3/engine.hpp             -- v3 engine: owns pool, identity index, books map; dispatches via `kraken::match` and `boost::leaf`.
+- (I) v3/matching.hpp           -- Side-agnostic `match` template: walks levels, calls `consume_level`, bulk-erases consumed prefix.
+- (I) v3/order_book.hpp         -- v3 templated book: `flat_order_book` over `flat_map`; per-level FIFO with running `total_remaining`.
+- (I) v3/order_node.hpp         -- Intrusive `list_base_hook<normal_link>` wrapping `order_state`; safe-shutdown invariant.
+- (P) runtime/engine.hpp        -- Composer holding `optional<engine>`; exposes `setup` / `send` / `on_event` for the wiring shell.
+- (P) runtime/engine_config.hpp -- Deployment-default mirror of `engine_config` (defaults: chunk 32, expected 1024).
+
+### kraken_submission
+
+Base path: `submission/src/kraken_submission/kraken_submission/`
+
+Wiring shell that composes the project's domain runtimes into a three-thread application (input loop, processing loop, output loop) pinned to named threads, with cross-thread hops implemented as `post` closures and the receiver driven by a poller registered on the input loop. Owns the three `kraken::event_loop` instances, the three runtime composers, and the optional `boost::asio::io_context` the asio receiver backend borrows. Brings the pipeline up outbound-to-inbound so each consumer is live before its producer can post, and tears it down in reverse; backend selection is a config-time choice rather than a wiring change. Provides the `kraken_submission` executable entry point, which translates `SIGINT` / `SIGTERM` into application lifecycle.
+
+Headers:
+
+- (I) application.hpp -- `config` selecting backends and per-loop thread names; `application` owning the loops, runtimes, and `start`/`run`/`stop` lifecycle.

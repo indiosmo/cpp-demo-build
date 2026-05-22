@@ -1,0 +1,90 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 22,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/_build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "debug",
+      "inherits": "base",
+      "displayName": "Debug",
+      "description": "Debug build with assertions and no optimizations",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "KRAKEN_DEBUG": "ON",
+        "KRAKEN_RELEASE": "OFF"
+      }
+    },
+    {
+      "name": "release",
+      "inherits": "base",
+      "displayName": "Release",
+      "description": "Optimized release build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "KRAKEN_DEBUG": "OFF",
+        "KRAKEN_RELEASE": "ON"
+      }
+    },
+    {
+      "name": "asan",
+      "inherits": "debug",
+      "displayName": "ASan",
+      "description": "Debug build with Address/Leak/UB sanitizers",
+      "cacheVariables": {
+        "KRAKEN_ASAN": "ON"
+      }
+    },
+    {
+      "name": "tsan",
+      "inherits": "debug",
+      "displayName": "TSan",
+      "description": "Debug build with Thread sanitizer",
+      "cacheVariables": {
+        "KRAKEN_TSAN": "ON"
+      }
+    },
+    {
+      "name": "clang",
+      "inherits": "debug",
+      "displayName": "Clang",
+      "description": "Debug build with Clang + Address/UB sanitizers",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "KRAKEN_ASAN": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "debug",   "configurePreset": "debug"   },
+    { "name": "release", "configurePreset": "release" },
+    { "name": "asan",    "configurePreset": "asan"    },
+    { "name": "tsan",    "configurePreset": "tsan"    },
+    { "name": "clang",   "configurePreset": "clang"   }
+  ],
+  "testPresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    { "name": "debug",   "inherits": "base", "configurePreset": "debug"   },
+    { "name": "release", "inherits": "base", "configurePreset": "release" },
+    { "name": "asan",    "inherits": "base", "configurePreset": "asan"    },
+    { "name": "tsan",    "inherits": "base", "configurePreset": "tsan"    },
+    { "name": "clang",   "inherits": "base", "configurePreset": "clang"   }
+  ]
+}

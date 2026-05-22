@@ -1,0 +1,17 @@
+CompileFlags:
+  CompilationDatabase: _build/clang
+  Add:
+    [
+      -Wno-unknown-attributes,
+      -Wno-unknown-pragmas,
+      -ferror-limit=0,
+    ]
+
+Hover:
+  ShowAKA: Yes
+
+Diagnostics:
+  UnusedIncludes: None
+
+Index:
+  Background: Build

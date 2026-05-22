@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>kraken: dependency management -- decision matrix</title>
+<style>
+  :root {
+    --bg: #fafaf7;
+    --fg: #1a1a1a;
+    --muted: #6b6b6b;
+    --rule: #d8d6cf;
+    --accent: #6b5b3a;
+
+    --good-bg: #d8ebd2;
+    --good-fg: #1f4a26;
+    --ok-bg:   #f4ecc6;
+    --ok-fg:   #5a4a10;
+    --bad-bg:  #f0c8bc;
+    --bad-fg:  #6a1d12;
+    --na-bg:   #ececec;
+    --na-fg:   #555;
+  }
+  html, body { background: var(--bg); color: var(--fg); }
+  body {
+    font: 15px/1.55 -apple-system, "Segoe UI", system-ui, sans-serif;
+    margin: 0;
+    padding: 32px 40px 80px;
+    max-width: 1280px;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h1 .sub { font-weight: 400; color: var(--muted); font-size: 15px; margin-left: 8px; }
+  h2 {
+    font-size: 16px;
+    margin: 36px 0 10px;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  h3.decision {
+    font-size: 15px;
+    margin: 22px 0 8px;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .decision-body { margin: 0 0 8px; max-width: 78ch; }
+  p.lede { color: var(--muted); margin: 0 0 24px; max-width: 78ch; }
+
+  table { width: 100%; border-collapse: collapse; background: white; font-size: 13.5px; margin-bottom: 8px; }
+  th, td {
+    border: 1px solid var(--rule);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f3f1ea; font-weight: 600; }
+  th .opt-sub {
+    display: block;
+    font-weight: 400;
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 3px;
+    line-height: 1.4;
+  }
+
+  td.criterion { width: 16%; font-weight: 600; background: #faf8f1; }
+
+  td.good { background: var(--good-bg); color: var(--good-fg); }
+  td.ok   { background: var(--ok-bg);   color: var(--ok-fg); }
+  td.bad  { background: var(--bad-bg);  color: var(--bad-fg); }
+  td.na   { background: var(--na-bg);   color: var(--na-fg); font-style: italic; }
+
+  .premises, .open-questions {
+    margin-top: 8px;
+    padding: 16px 20px;
+    background: white;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+  }
+  .premises h2, .open-questions h2 { margin-top: 0; }
+  .premises ul, .open-questions ul { margin: 0; padding-left: 20px; }
+  .premises li, .open-questions li { margin: 4px 0; }
+  .premises li b, .open-questions li b { color: var(--accent); }
+
+  code { background: #f3f1ea; padding: 1px 5px; border-radius: 3px; font-size: 12.5px; }
+</style>
+</head>
+<body>
+
+<h1>kraken: dependency management <span class="sub">decision matrix</span></h1>
+<p class="lede">
+  The submission needs four small header-only utilities (strong-typedef helper,
+  fixed-capacity callable, SPSC queue, <code>expected</code> vocabulary type -- see
+  <code>DEPENDENCIES.md</code>). How do we bring them into the build? Constraints
+  in play: the graded harness runs
+  <code>docker build</code> then <code>docker run</code> against the submission, delivery
+  is by <code>git bundle</code>, and the project has an interview-shaped deadline rather
+  than a multi-year maintenance horizon.
+</p>
+
+<div class="premises">
+  <h2>Assumptions</h2>
+  <ul>
+    <li><b>All four utilities are header-only.</b> No upstream build systems to plug in;
+        the integration is "add to the include path".</li>
+    <li><b>Delivery is a <code>git bundle</code>.</b> Per <code>EXERCISE.md</code>, the
+        submission is shipped as a single pack file. Whatever isn't in the parent
+        repo's history doesn't travel.</li>
+    <li><b>Network is available during <code>docker build</code>.</b> The submission's
+        Dockerfile already runs <code>apt-get update</code> and <code>apt-get install</code>
+        for the toolchain and system libraries, so network is on. Copy-vendor is still
+        preferred -- the bundle constraint decides it independently, and removing
+        configure-time fetches eliminates a transient-failure axis during a one-shot
+        grading run.</li>
+    <li><b>Versions are pinned once.</b> No update cadence to amortise over; pick a
+        commit per dep at vendoring time and leave it.</li>
+    <li><b><code>fixed_string</code> and <code>match</code> / <code>match_partial</code>
+        are not vendored.</b> Both are small enough to be written in-house under
+        <code>submission/src/kraken/kraken/</code>, so they drop out of the vendored
+        list and the count goes from six to four.</li>
+    <li><b>All four remaining upstream licenses are permissive.</b> MIT (NamedType),
+        BSL-1.0 (SG14 <code>inplace_function</code>), BSD-2-Clause
+        (<code>readerwriterqueue</code>), and CC0-1.0 (TartanLlama <code>expected</code>).
+        Attribution requirements are satisfied by shipping each upstream's
+        <code>LICENSE</code> inside <code>submission/vendor/&lt;name&gt;/</code>.</li>
+  </ul>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Criterion</th>
+      <th>A. Copy-vendor
+        <span class="opt-sub">Drop the upstream headers into <code>submission/vendor/&lt;name&gt;/</code>; commit a <code>VERSION.txt</code> with upstream URL and SHA next to each.</span>
+      </th>
+      <th>B. Git submodules
+        <span class="opt-sub">Each upstream lives at <code>submission/vendor/&lt;name&gt;</code> as a submodule pinned by SHA.</span>
+      </th>
+      <th>C. CMake <code>FetchContent</code>
+        <span class="opt-sub">One <code>FetchContent_Declare</code> per dep in the top-level CMake; sources fetched at configure time, pinned by <code>GIT_TAG</code>.</span>
+      </th>
+      <th>D. <code>ExternalProject</code> superproject
+        <span class="opt-sub">A custom CMake module orchestrates per-dep <code>ExternalProject_Add</code> blocks with their own download / configure / build / install steps and dependency edges into the consumer.</span>
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="criterion">Network-failure surface during grade</td>
+      <td class="good">Zero. Sources are bytes in the tree by the time the Dockerfile
+        <code>COPY</code>s; no fetch step can fail.</td>
+      <td class="bad">Submodule contents don't live in the parent repo, so the standard
+        <code>COPY</code> + <code>cmake</code> Dockerfile sees empty submodule directories.
+        Fixing it requires either a host-side pre-init step before bundling or a
+        Dockerfile rework with git + recursive checkout, both of which add their own
+        failure surfaces.</td>
+      <td class="ok">Network is available, but each configure-time fetch is a transient
+        failure axis (GitHub flake, DNS, mirror outage) during a one-shot grading run.</td>
+      <td class="ok">Same per-dep fetch surface as FetchContent; the failures land at
+        build time rather than configure time but they land all the same.</td>
+    </tr>
+    <tr>
+      <td class="criterion">Travels through <code>git bundle</code></td>
+      <td class="good">Files in the tree pack into the bundle natively. Grader unbundles
+        and has everything.</td>
+      <td class="bad"><code>git bundle</code> packs only the parent repo's history.
+        Submodule gitlinks travel, contents don't -- grader gets dangling refs.</td>
+      <td class="good">Only CMake declarations live in the tree; they travel fine.</td>
+      <td class="good">Only CMake declarations travel.</td>
+    </tr>
+    <tr>
+      <td class="criterion">Setup cost</td>
+      <td class="good">Per dep: <code>git clone --depth=1</code>, copy headers, write
+        <code>VERSION.txt</code>, add one <code>add_library(... INTERFACE)</code>.
+        Minutes.</td>
+      <td>Per dep: <code>git submodule add</code> plus build wiring; small but
+        introduces a "did you init?" failure mode that costs time later.</td>
+      <td>Per dep: one <code>FetchContent_Declare</code> + <code>MakeAvailable</code>.
+        Modest, but four of them.</td>
+      <td class="bad">Real boilerplate per dep (download + install + glue to expose
+        headers). Pays superproject costs for no benefit on header-only libs.</td>
+    </tr>
+    <tr>
+      <td class="criterion">Configure / first-build time</td>
+      <td class="good">No fetch step at all.</td>
+      <td>One-off fetch on <code>submodule update --init</code>; cached after.</td>
+      <td>First configure does N git fetches over the network.</td>
+      <td class="bad">Build-time fetch + extract; touches every clean rebuild and
+        slows incremental work on a fresh build tree.</td>
+    </tr>
+    <tr>
+      <td class="criterion">Version pinning</td>
+      <td class="good">Exact bytes are committed. Reproducible by construction; no
+        SHA to verify.</td>
+      <td>Gitlink pins the SHA. Reproducible if the upstream URL still resolves.</td>
+      <td>Pinned by <code>GIT_TAG &lt;sha&gt;</code>. Reproducible if upstream is up.</td>
+      <td>Pinned by URL + SHA. Same upstream-availability caveat.</td>
+    </tr>
+    <tr>
+      <td class="criterion">CMake complexity</td>
+      <td class="good">One <code>INTERFACE</code> target per dep with
+        <code>target_include_directories</code>. Nothing else.</td>
+      <td>Comparable to copy-vendor, plus a guard for "submodule directory empty" with
+        a clear error message.</td>
+      <td>Modern CMake idiom, well-supported, but each block needs the right flags
+        (<code>GIT_SHALLOW</code>, <code>SYSTEM</code>, <code>EXCLUDE_FROM_ALL</code>)
+        to behave.</td>
+      <td class="bad">Real engineering: per-dep targets, dependency edges between the
+        external project and the consumer, exported include dirs. Appropriate for
+        non-trivial libraries; overkill here.</td>
+    </tr>
+    <tr>
+      <td class="criterion">Cold-clone local dev</td>
+      <td class="good">Clone, configure, build. Nothing else.</td>
+      <td>One extra step: <code>--recurse-submodules</code> or post-clone
+        <code>submodule update --init</code>. Easy to forget; pleasant error messages
+        mitigate but don't eliminate.</td>
+      <td>First configure needs network.</td>
+      <td>First build needs network.</td>
+    </tr>
+    <tr>
+      <td class="criterion">Updateability</td>
+      <td>Manual re-copy if an upstream fix is worth taking. Fine for "pin once".</td>
+      <td class="good"><code>cd vendor/&lt;name&gt; &amp;&amp; git checkout &lt;sha&gt;</code>;
+        commit the gitlink bump.</td>
+      <td class="good">Bump the SHA literal; reconfigure.</td>
+      <td class="good">Bump the SHA; rebuild.</td>
+    </tr>
+    <tr>
+      <td class="criterion">Repo size impact</td>
+      <td>Adds the source bytes. Six header-only libs together are well under a
+        megabyte.</td>
+      <td class="good">Pointers only.</td>
+      <td class="good">No sources in tree.</td>
+      <td class="good">No sources in tree.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 class="decision">Decision</h3>
+<p class="decision-body">
+  <b>Copy-vendor.</b> The two hard constraints -- offline Docker grade and clean
+  <code>git bundle</code> delivery -- both point at it, and they are the only
+  rows that genuinely could blow up the submission. Every other option fails at
+  least one of them; the wins they offer (smaller repo, easier updates) carry
+  no weight on an interview timeline where dependencies are pinned once.
+</p>
+<p class="decision-body">
+  Mechanics: per dep, <code>git clone --depth=1</code> the upstream into a scratch
+  directory, copy just the public headers into <code>submission/vendor/&lt;name&gt;/</code>,
+  write a one-line <code>VERSION.txt</code> with the upstream URL plus the
+  commit SHA, declare one <code>add_library(&lt;name&gt; INTERFACE)</code> in the
+  vendor <code>CMakeLists.txt</code>, and re-export under
+  <code>submission/src/kraken/kraken/&lt;role&gt;.hpp</code> per the alias rule
+  documented in <code>DEPENDENCIES.md</code>. The <code>VERSION.txt</code> is
+  the audit trail -- a reader can match the vendored bytes to an upstream commit
+  without git archaeology.
+</p>
+<p class="decision-body">
+  Considerations for the others: submodules are out because a <code>git bundle</code>
+  doesn't carry submodule contents and the standard <code>COPY</code>-then-<code>cmake</code>
+  Dockerfile doesn't init them; fixing either end adds more moving parts than
+  the alternative removes. FetchContent is the option a longer-lived project
+  would pick -- bump-a-SHA updates are nice, and the build environment does
+  have network -- but every configure-time fetch is a transient-failure surface
+  during a one-shot grading run, and copy-vendor removes that surface entirely.
+  An <code>ExternalProject</code> superproject is the right tool for libraries that
+  bring their own build systems and need custom configure/install integration;
+  it is the wrong tool for four header-only utilities.
+</p>
+<p class="decision-body">
+  Future polish if we ever wanted to keep the easy-update property:
+  <code>FetchContent_Declare</code> with <code>FETCHCONTENT_SOURCE_DIR_&lt;name&gt;</code>
+  pointed at the vendored tree gives the bump-a-SHA flow on top of offline-by-default.
+  Not worth wiring during this submission; worth noting as a no-regret upgrade path.
+</p>
+
+</body>
+</html>

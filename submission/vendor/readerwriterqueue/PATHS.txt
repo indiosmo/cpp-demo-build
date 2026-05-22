@@ -1,0 +1,6 @@
+# Upstream sits at repo root with the three public headers alongside
+# benchmarks and tests we don't use. Narrow to the headers plus license.
+/readerwriterqueue.h
+/atomicops.h
+/readerwritercircularbuffer.h
+/LICENSE.md

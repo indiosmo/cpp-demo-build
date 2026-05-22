@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>kraken: CSV parser shape -- decision matrix</title>
+<style>
+  :root {
+    --bg: #fafaf7;
+    --fg: #1a1a1a;
+    --muted: #6b6b6b;
+    --rule: #d8d6cf;
+    --accent: #6b5b3a;
+    --good-bg: #d8ebd2;
+    --good-fg: #1f4a26;
+    --ok-bg: #f4ecc6;
+    --ok-fg: #5a4a10;
+    --bad-bg: #f0c8bc;
+    --bad-fg: #6a1d12;
+  }
+  html, body { background: var(--bg); color: var(--fg); }
+  body {
+    font: 15px/1.55 -apple-system, "Segoe UI", system-ui, sans-serif;
+    margin: 0;
+    padding: 32px 40px 80px;
+    max-width: 1280px;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h1 .sub { font-weight: 400; color: var(--muted); font-size: 15px; margin-left: 8px; }
+  h2 {
+    font-size: 16px;
+    margin: 28px 0 10px;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  h3.decision {
+    font-size: 15px;
+    margin: 22px 0 8px;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  p.lede, .decision-body { max-width: 78ch; }
+  p.lede { color: var(--muted); margin: 0 0 24px; }
+  table { width: 100%; border-collapse: collapse; background: white; font-size: 13.5px; margin-bottom: 8px; }
+  th, td {
+    border: 1px solid var(--rule);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f3f1ea; font-weight: 600; }
+  th .opt-sub {
+    display: block;
+    font-weight: 400;
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 3px;
+    line-height: 1.4;
+  }
+  td.criterion { width: 16%; font-weight: 600; background: #faf8f1; }
+  td.good { background: var(--good-bg); color: var(--good-fg); }
+  td.ok { background: var(--ok-bg); color: var(--ok-fg); }
+  td.bad { background: var(--bad-bg); color: var(--bad-fg); }
+  .premises {
+    margin-top: 8px;
+    padding: 16px 20px;
+    background: white;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+  }
+  .premises h2 { margin-top: 0; }
+  .premises ul { margin: 0; padding-left: 20px; }
+  .premises li { margin: 4px 0; }
+  .premises li b { color: var(--accent); }
+  code { background: #f3f1ea; padding: 1px 5px; border-radius: 3px; font-size: 12.5px; }
+</style>
+</head>
+<body>
+
+<h1>kraken: CSV parser shape <span class="sub">decision matrix</span></h1>
+<p class="lede">
+  The order routing stage turns one UDP datagram into one typed command. The input grammar is
+  small: three record markers and fixed field counts. The decision is how much generic CSV
+  machinery to put between those bytes and the typed command variant.
+</p>
+
+<div class="premises">
+  <h2>Assumptions</h2>
+  <ul>
+    <li><b>Inputs are well-formed exercise commands.</b> The provided <code>test/*/in.csv</code>
+      rows match the documented command shapes, and <code>EXERCISE.md</code> says hidden tests
+      use the same format. The decoder treats this as a precondition: helpers assert on
+      violation instead of returning <code>kraken::result</code> errors.</li>
+    <li><b>The wire grammar is closed.</b> The exercise defines <code>N</code>, <code>C</code>,
+      and <code>F</code> only; there is no quoted field, escaped comma, multiline record, or
+      schema extension requirement.</li>
+    <li><b>Malformed data is not a primary design target.</b> The <code>errors::parse_error</code>
+      payload and the rejection branch in <code>session.cpp</code> stay defined so a future
+      producer can re-enable structured rejection, but the CSV decoder under the current
+      contract never reaches them.</li>
+    <li><b>Order routing is on the processing path.</b> Avoiding avoidable allocation and broad
+      parser dependencies matters more than accepting CSV dialect features the exercise does not
+      use.</li>
+    <li><b>Delivery time is constrained.</b> The submission window is tight. Where a stock
+      library helper short-cuts the implementation, the implementation accepts the helper
+      even at a measurable performance cost and flags the call site for a perf-driven follow-up.
+      This premise governs the splitter sub-decision below the main matrix; the parser-shape
+      decision itself does not bend on it.</li>
+  </ul>
+</div>
+
+<div class="premises">
+  <h2>Open Questions</h2>
+  <ul>
+    <li>Does the per-parse <code>std::vector&lt;std::string_view&gt;</code> allocation in
+      <code>boost::algorithm::split</code> show up once end-to-end benchmarks exist? If yes,
+      swap to <code>boost::tokenizer</code> (lazy, non-allocating) or splice tokens into a
+      stack-resident <code>boost::container::static_vector&lt;N+1&gt;</code>. Until measured,
+      the <code>IMPROVEMENT:</code> marker in <code>csv_decoder.cpp</code> is the only
+      reminder.</li>
+  </ul>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Criterion</th>
+      <th>A. Fixed-shape <code>string_view</code> split
+        <span class="opt-sub">Switch on byte zero, split the known number of fields for that marker, parse fields into strong types.</span>
+      </th>
+      <th>B. General tokenizer
+        <span class="opt-sub">Keep a reusable token stream over <code>string_view</code> and let each message decoder pull fields one by one.</span>
+      </th>
+      <th>C. CSV/parser library
+        <span class="opt-sub">Use Boost.Tokenizer, a header-only CSV library, or a parser combinator to interpret the record.</span>
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="criterion">Fit to exercise grammar</td>
+      <td class="good">Direct match: one marker maps to one fixed field layout.</td>
+      <td>Works, but models a stream when the grammar is a fixed tuple.</td>
+      <td class="ok">Works, but brings CSV dialect behavior the protocol does not specify.</td>
+    </tr>
+    <tr>
+      <td class="criterion">Well-formed input assumption</td>
+      <td class="good">Benefits most from the assumption: helpers take the grammar as a precondition and assert on violation rather than threading <code>kraken::result</code> through every conversion.</td>
+      <td class="ok">Still carries machinery for unexpected token flow even though malformed input is not the target.</td>
+      <td class="bad">Optimizes for inputs outside the exercise scope, such as quoting and escaping.</td>
+    </tr>
+    <tr>
+      <td class="criterion">Allocation behavior</td>
+      <td class="ok">Shape itself is allocation-free (datagram slices, <code>from_chars</code> for numbers). Current splitter sub-choice (<code>boost::algorithm::split</code>) heap-allocates a <code>std::vector&lt;std::string_view&gt;</code> per parse; reversible to a lazy or stack-resident form -- see Open Questions.</td>
+      <td class="good">Can stay allocation-free if it remains <code>string_view</code>-based.</td>
+      <td class="ok">Some available tokenizers materialize <code>std::string</code> tokens or decode escape sequences into owned buffers.</td>
+    </tr>
+    <tr>
+      <td class="criterion">Error-path needs</td>
+      <td>Precondition-only: arity, marker, side, symbol length, and numeric conversion are asserted, not returned. <code>csv_decoder::decode</code> keeps the <code>kraken::result&lt;command&gt;</code> boundary so a future producer can re-enable structured errors without changing the interface.</td>
+      <td>Also enough; token-by-token diagnostics can be slightly more local.</td>
+      <td class="ok">Library parse failures would still need translation into domain-specific rejections.</td>
+    </tr>
+    <tr>
+      <td class="criterion">Dependency surface</td>
+      <td class="good">No parser dependency; reuses the project <code>kraken::from_chars</code> helper.</td>
+      <td class="good">No parser dependency, but leaves more local parser vocabulary in the decoder.</td>
+      <td class="bad">Adds or exposes parser dependency weight for a closed grammar.</td>
+    </tr>
+    <tr>
+      <td class="criterion">Reader clarity</td>
+      <td class="good">The code structure mirrors the protocol: switch, split, construct command.</td>
+      <td class="ok">More flexible than necessary; the reader must track cursor behavior.</td>
+      <td class="ok">The parser abstraction hides mechanics but introduces dialect questions.</td>
+    </tr>
+    <tr>
+      <td class="criterion">Future grammar expansion</td>
+      <td class="ok">Adding quoting or variable-width messages would require rework.</td>
+      <td>Moderate: the token stream can absorb more message-specific parsing.</td>
+      <td class="good">Best if the protocol becomes real CSV with quoting, escaping, or variable columns.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 class="decision">Decision</h3>
+<p class="decision-body">
+  <b>Decision: fixed-shape <code>string_view</code> split.</b> The parser follows the exercise
+  contract rather than implementing a general CSV dialect: switch on the first byte, split the
+  expected field count for that marker, and parse into strong command types.
+</p>
+<p class="decision-body">
+  The well-formed input assumption decides the trade-off. The internal helpers
+  (<code>split_fields</code>, <code>parse_number</code>, <code>parse_side</code>,
+  <code>parse_symbol</code>, and the per-marker <code>decode_*</code> functions) take the
+  grammar as a precondition, return their domain types directly, and assert on violation
+  via <code>KRAKEN_ASSERT</code>. The decoder boundary keeps its
+  <code>kraken::result&lt;command&gt;</code> return so a future non-CSV decoder can carry
+  richer errors; under the current contract the CSV path always yields a value, and the
+  <code>errors::parse_error</code> payload plus <code>session.cpp</code> rejection branch
+  remain defined for that future producer.
+</p>
+<p class="decision-body">
+  <b>Sub-decision: splitter implementation.</b> Within A, the splitter is
+  <code>boost::algorithm::split</code> into a <code>std::vector&lt;std::string_view&gt;</code>
+  rather than a hand-rolled cursor or a non-allocating <code>boost::tokenizer</code>. The
+  trade is one heap allocation per parse against fewer lines, fewer edge cases to argue about,
+  and faster sign-off under the submission deadline. The call site carries an
+  <code>IMPROVEMENT:</code> comment naming the lazy follow-ups, and the cost is tracked in
+  Open Questions above. The parser-shape decision is unchanged; the time-pressure assumption
+  bites only on this sub-call.
+</p>
+
+</body>
+</html>

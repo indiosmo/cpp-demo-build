@@ -1,0 +1,1110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Kraken Order Book — Senior Submission</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --paper:         #F6F4EE;
+    --paper-elev:    #EFEDE6;
+    --ink:           #15171B;
+    --ink-mid:       #34383F;
+    --ink-soft:      #6A6F77;
+    --ink-faint:     #9A9DA3;
+    --hairline:      #D4CFC0;
+    --hairline-soft: #E4E0D2;
+    --accent:        #C2410C;
+    --accent-deep:   #9A330A;
+    --accent-soft:   #E07A4A;
+    --accent-bg:     #F5E6DB;
+    --code-bg:       #ECE8DC;
+
+    --serif: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --sans:  "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono:  "IBM Plex Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+    --radius:    8px;
+    --radius-sm: 5px;
+    --rail:      200px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  a {
+    color: var(--accent-deep);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(154,51,10,0.25);
+    transition: color 160ms ease, border-color 160ms ease;
+  }
+  a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--ink-mid);
+  }
+
+  /* ---- Page shell --------------------------------------------------- */
+
+  .shell {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 32px 32px 72px;
+  }
+  @media (max-width: 720px) {
+    .shell { padding: 20px 16px 56px; }
+  }
+
+  /* ---- Masthead ----------------------------------------------------- */
+
+  .masthead {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 32px;
+    align-items: end;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--hairline);
+    margin-bottom: 36px;
+  }
+  @media (max-width: 880px) { .masthead { grid-template-columns: 1fr; } }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .eyebrow::before {
+    content: "";
+    display: inline-block;
+    width: 24px; height: 1px;
+    background: var(--accent);
+  }
+  h1.title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(38px, 6vw, 56px);
+    line-height: 1.04;
+    letter-spacing: -0.022em;
+    margin: 0 0 14px 0;
+    color: var(--ink);
+  }
+  p.lede {
+    font-size: 16px;
+    line-height: 1.55;
+    color: var(--ink-mid);
+    margin: 0;
+    max-width: 60ch;
+  }
+  .meta {
+    display: grid;
+    grid-template-columns: max-content max-content;
+    gap: 4px 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+    padding: 14px 18px;
+    background: var(--paper-elev);
+    border: 1px solid var(--hairline-soft);
+    border-radius: var(--radius-sm);
+    min-width: 240px;
+  }
+  .meta dt {
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 10px;
+    align-self: center;
+  }
+  .meta dd { margin: 0; color: var(--ink-mid); font-weight: 500; }
+  .meta dd code { background: transparent; padding: 0; color: var(--accent-deep); }
+
+  /* ---- Two-column main: rail + content ------------------------------- */
+
+  .main {
+    display: grid;
+    grid-template-columns: var(--rail) minmax(0, 1fr);
+    gap: 56px;
+  }
+  @media (max-width: 980px) {
+    .main { grid-template-columns: 1fr; gap: 24px; }
+  }
+
+  /* ---- Sticky left rail --------------------------------------------- */
+
+  .rail {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+    height: max-content;
+    padding-right: 8px;
+  }
+  @media (max-width: 980px) {
+    .rail {
+      position: relative;
+      top: 0;
+      padding-right: 0;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--hairline);
+    }
+  }
+
+  .rail__label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 12px 0;
+  }
+
+  .rail__nav {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-left: 1px solid var(--hairline-soft);
+  }
+  .rail__nav li { margin: 0; }
+  .rail__nav a {
+    display: block;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--ink-soft);
+    padding: 8px 0 8px 14px;
+    margin-left: -1px;
+    border-left: 2px solid transparent;
+    border-bottom: none;
+    transition: color 140ms ease, border-color 140ms ease;
+  }
+  .rail__nav a:hover { color: var(--ink); border-bottom: none; }
+  .rail__nav a.is-active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+  }
+  .rail__nav__num {
+    color: var(--ink-faint);
+    margin-right: 10px;
+    font-weight: 400;
+  }
+  .rail__nav a.is-active .rail__nav__num { color: var(--accent-soft); }
+
+  /* ---- Content column ------------------------------------------------ */
+
+  .content { min-width: 0; }
+
+  .section {
+    margin: 0 0 72px 0;
+    scroll-margin-top: 24px;
+  }
+  .section:first-child { margin-top: 0; }
+  .section:last-child { margin-bottom: 0; }
+
+  .section__num {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 8px 0;
+  }
+  .section__title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 26px;
+    line-height: 1.18;
+    letter-spacing: -0.012em;
+    margin: 0 0 16px 0;
+    color: var(--ink);
+  }
+  .section__lede {
+    font-size: 14.5px;
+    color: var(--ink-mid);
+    margin: 0 0 20px 0;
+    max-width: 68ch;
+    line-height: 1.6;
+  }
+  .section__lede:last-child { margin-bottom: 0; }
+
+  /* ---- Architecture SVG --------------------------------------------- */
+
+  .arch {
+    margin: 8px 0 0 0;
+    padding: 16px;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    background: var(--paper);
+    overflow: auto;
+  }
+  .arch img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+  }
+  .arch__caption {
+    margin: 12px 0 0 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    letter-spacing: 0.04em;
+  }
+  .arch__caption a { color: var(--ink-soft); border-bottom: none; }
+  .arch__caption a:hover { color: var(--accent-deep); }
+
+  .arch__note {
+    margin: 22px 0 0 0;
+    font-size: 14.5px;
+    color: var(--ink-mid);
+    line-height: 1.6;
+    max-width: 78ch;
+  }
+
+  /* ---- Highlights ---------------------------------------------------- */
+
+  .highlights {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--hairline-soft);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  @media (max-width: 1180px) { .highlights { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 760px)  { .highlights { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px)  { .highlights { grid-template-columns: 1fr; } }
+
+  .highlight {
+    background: var(--paper);
+    padding: 18px 18px 20px 18px;
+    display: flex;
+    flex-direction: column;
+  }
+  .highlight__tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+    margin: 0 0 10px 0;
+  }
+  .highlight__keyword {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 22px;
+    line-height: 1.15;
+    letter-spacing: -0.012em;
+    color: var(--ink);
+    margin: 0 0 10px 0;
+  }
+  .highlight__body {
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--ink-mid);
+    margin: 0;
+  }
+  .highlight__body em {
+    color: var(--ink-soft);
+  }
+
+  .performance {
+    margin-top: 18px;
+    padding: 18px;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    background: var(--paper);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 1.3fr);
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .performance { grid-template-columns: 1fr; } }
+  .performance__label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 8px 0;
+  }
+  .performance__title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 21px;
+    line-height: 1.2;
+    letter-spacing: -0.012em;
+    color: var(--ink);
+    margin: 0 0 10px 0;
+  }
+  .performance__body {
+    margin: 0 0 14px 0;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--ink-mid);
+    max-width: 60ch;
+  }
+  .performance__metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    margin: 0 0 12px 0;
+    background: var(--hairline-soft);
+    border: 1px solid var(--hairline-soft);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .performance__metric {
+    background: var(--paper-elev);
+    padding: 12px;
+  }
+  .performance__metric dt {
+    margin: 0 0 4px 0;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .performance__metric dd {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 26px;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .performance__metric dd span {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-left: 3px;
+  }
+  .performance__note {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+  .performance__chart {
+    margin: 0;
+    min-width: 0;
+  }
+  .performance__chart img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--hairline-soft);
+    border-radius: var(--radius-sm);
+    background: #ffffff;
+  }
+  .performance__chart figcaption {
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+
+  /* ---- Constraints --------------------------------------------------- */
+
+  .constraints {
+    list-style: none;
+    counter-reset: c;
+    margin: 0;
+    padding: 0;
+  }
+  .constraints li {
+    counter-increment: c;
+    position: relative;
+    padding: 14px 0 14px 44px;
+    border-top: 1px solid var(--hairline-soft);
+    font-size: 14px;
+    color: var(--ink-mid);
+    line-height: 1.55;
+  }
+  .constraints li:last-child { border-bottom: 1px solid var(--hairline-soft); }
+  .constraints li::before {
+    content: counter(c, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+  .constraints strong { color: var(--ink); font-weight: 600; }
+
+  .narrow {
+    margin-top: 32px;
+    padding: 20px 24px;
+    background: var(--paper-elev);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+  .narrow__label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--accent-deep);
+    font-weight: 600;
+    margin: 0 0 8px 0;
+  }
+  .narrow__title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 17px;
+    color: var(--ink);
+    margin: 0 0 10px 0;
+  }
+  .narrow p {
+    margin: 0 0 10px 0;
+    font-size: 13.5px;
+    color: var(--ink-mid);
+    line-height: 1.6;
+  }
+  .narrow p:last-child { margin-bottom: 0; }
+
+  /* ---- Principles ---------------------------------------------------- */
+
+  .principles {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 1180px) { .principles { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 880px)  { .principles { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px)  { .principles { grid-template-columns: 1fr; } }
+  .pcard {
+    background: var(--paper);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 16px 16px 14px 16px;
+    display: flex;
+    flex-direction: column;
+  }
+  .pcard__num {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+    margin: 0 0 4px 0;
+    letter-spacing: 0.1em;
+  }
+  .pcard__name {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 13.5px;
+    color: var(--ink);
+    margin: 0 0 8px 0;
+    line-height: 1.3;
+  }
+  .pcard__body {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--ink-mid);
+    margin: 0 0 12px 0;
+    flex: 1;
+  }
+  .pcard__where {
+    font-family: var(--mono);
+    font-size: 11px;
+    margin: 0;
+    padding-top: 10px;
+    border-top: 1px dashed var(--hairline);
+    color: var(--ink-soft);
+  }
+  .pcard__where a { border-bottom: none; color: var(--accent-deep); }
+  .pcard__where a:hover { text-decoration: underline; color: var(--accent); }
+
+  /* ---- Decisions ----------------------------------------------------- */
+
+  .adrs {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin: 0 0 32px 0;
+  }
+  @media (max-width: 880px) { .adrs { grid-template-columns: 1fr; } }
+  .adr {
+    background: var(--paper);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+  }
+  .adr__id {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0 0 4px 0;
+  }
+  .adr__title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 17px;
+    color: var(--ink);
+    margin: 0 0 10px 0;
+    line-height: 1.25;
+  }
+  .adr__body {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--ink-mid);
+    margin: 0 0 14px 0;
+    flex: 1;
+  }
+  .adr__links {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .adr__links a {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    padding: 5px 10px;
+    background: var(--paper-elev);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-sm);
+    color: var(--ink-mid);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .adr__links a:hover {
+    color: var(--accent-deep);
+    border-color: var(--accent-soft);
+    background: var(--accent-bg);
+  }
+
+  .local {
+    border-top: 1px solid var(--hairline-soft);
+    padding-top: 22px;
+  }
+  .local__head {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ink-faint);
+    margin: 0 0 12px 0;
+  }
+  .local__list { list-style: none; margin: 0; padding: 0; }
+  .local__list li {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--hairline-soft);
+    font-size: 13px;
+    color: var(--ink-mid);
+    line-height: 1.55;
+  }
+  .local__list li:last-child { border-bottom: none; }
+  .local__list strong {
+    display: block;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  /* ---- Read more — grouped index ----------------------------------- */
+
+  .idx {
+    column-count: 2;
+    column-gap: 56px;
+    column-rule: 1px solid var(--hairline-soft);
+  }
+  @media (max-width: 720px) {
+    .idx { column-count: 1; column-rule: none; }
+  }
+  .idx__group {
+    break-inside: avoid;
+    margin: 0 0 30px 0;
+  }
+  .idx__group:last-child { margin-bottom: 0; }
+  .idx__group-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--hairline);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .idx__group-title::before {
+    content: "";
+    display: inline-block;
+    width: 18px; height: 1px;
+    background: var(--accent);
+  }
+  .idx__list { margin: 0; padding: 0; }
+  .idx__list dt {
+    font-family: var(--serif);
+    font-size: 14.5px;
+    line-height: 1.45;
+    color: var(--ink);
+    margin: 14px 0 0 0;
+  }
+  .idx__list dt:first-of-type { margin-top: 0; }
+  .idx__list dd {
+    margin: 4px 0 0 0;
+    padding: 0;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .idx__list dd a {
+    color: var(--ink-mid);
+    border-bottom: 1px dotted rgba(106, 111, 119, 0.4);
+  }
+  .idx__list dd a:hover {
+    color: var(--accent-deep);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ---- Footer -------------------------------------------------------- */
+
+  .colophon {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--hairline);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    letter-spacing: 0.04em;
+  }
+
+  /* ---- Skip link / a11y --------------------------------------------- */
+  .skip {
+    position: absolute;
+    left: -10000px;
+    top: auto;
+    width: 1px; height: 1px; overflow: hidden;
+  }
+  .skip:focus {
+    position: static;
+    width: auto; height: auto;
+    padding: 8px 12px;
+    background: var(--ink);
+    color: white;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to main content</a>
+
+<div class="shell">
+
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">Kraken C++ Interview — Senior Submission</p>
+      <h1 class="title">Kraken Order Book</h1>
+      <p class="lede">A multi-threaded UDP matching engine. This page summarizes the architecture, threading model, design principles, and major decisions.</p>
+    </div>
+    <dl class="meta" aria-label="Submission metadata">
+      <dt>Author</dt><dd>Luiz Siqueira</dd>
+      <dt>Language</dt><dd>C++20</dd>
+      <dt>Build</dt><dd>CMake + Docker</dd>
+      <dt>Binary</dt><dd><code>kraken_submission</code></dd>
+    </dl>
+  </header>
+
+  <div class="main" id="main">
+
+    <aside class="rail" aria-label="Page contents">
+      <p class="rail__label">Contents</p>
+      <ul class="rail__nav" id="rail-nav">
+        <li><a href="#architecture"><span class="rail__nav__num">01</span>Architecture</a></li>
+        <li><a href="#highlights"><span class="rail__nav__num">02</span>Highlights</a></li>
+        <li><a href="#constraints"><span class="rail__nav__num">03</span>Constraints</a></li>
+        <li><a href="#principles"><span class="rail__nav__num">04</span>Principles</a></li>
+        <li><a href="#decisions"><span class="rail__nav__num">05</span>Decisions</a></li>
+        <li><a href="#more"><span class="rail__nav__num">06</span>Read more</a></li>
+      </ul>
+    </aside>
+
+    <main class="content">
+
+      <!-- 01 ARCHITECTURE -->
+      <section class="section" id="architecture">
+        <p class="section__num">01 — Architecture</p>
+        <h2 class="section__title">Architecture</h2>
+        <div class="arch">
+          <a href="docs/architecture.svg" target="_blank" rel="noopener">
+            <img src="docs/architecture.svg" alt="Architecture diagram: data flow from UDP receiver through order_routing, matching_engine, and market_data, organised by thread (Routing, Matching, Output) and by composition layer (runtime, application, core, network).">
+          </a>
+          <p class="arch__caption">Source: <a href="docs/architecture.svg" target="_blank" rel="noopener">docs/architecture.svg</a> — open in a new tab to zoom.</p>
+        </div>
+
+        <p class="arch__note">Three threads, each running a <code>kraken::event_loop</code> — a single consumer plus an SPSC blocking queue of posted closures, plus an optional set of pollers run on the consumer thread every iteration. The two cross-thread edges (input → processing, processing → output) hand off domain values via <code>post</code>; the asio <code>io_context</code> rides on the input loop as a poller, so the UDP receiver shares the input thread without owning one of its own. The shipped binary configures every loop with <code>kraken::busy_spin_idle</code>, so the cross-thread hop carries no wake-up latency. Loop semantics are documented in <code>docs/event-loop.md</code>; the startup ordering is in <code>docs/runtime-startup.md</code>.</p>
+      </section>
+
+      <!-- 02 HIGHLIGHTS -->
+      <section class="section" id="highlights">
+        <p class="section__num">02 — Highlights</p>
+        <h2 class="section__title">Highlights</h2>
+        <p class="section__lede">Five claims this submission stands behind. The longer write-up lives in <code>docs/highlights.md</code>.</p>
+
+        <div class="highlights">
+          <div class="highlight">
+            <p class="highlight__tag">H.01</p>
+            <h3 class="highlight__keyword">Fast</h3>
+            <p class="highlight__body">At a representative 200-order single price level, the production v3 book reports ~12 ns p99 insert and ~10 ns p99 cancel latency.</p>
+          </div>
+          <div class="highlight">
+            <p class="highlight__tag">H.02</p>
+            <h3 class="highlight__keyword">Resilient</h3>
+            <p class="highlight__body">Clean build under GCC and Clang, every sanitiser combination green, zero warnings against a flag set well beyond <code>-Wall -Wextra</code>.</p>
+          </div>
+          <div class="highlight">
+            <p class="highlight__tag">H.03</p>
+            <h3 class="highlight__keyword">Modular</h3>
+            <p class="highlight__body">Every pipeline stage — including the UDP backend and the matching engine itself — plugs in behind a typed seam and swaps without touching the rest of the code.</p>
+          </div>
+          <div class="highlight">
+            <p class="highlight__tag">H.04</p>
+            <h3 class="highlight__keyword">Safe by design</h3>
+            <p class="highlight__body">Strong types, exhaustive switches, structured errors, and a clean runtime / domain split move whole classes of bug to compile time.</p>
+          </div>
+          <div class="highlight">
+            <p class="highlight__tag">H.05</p>
+            <h3 class="highlight__keyword">Configurable</h3>
+            <p class="highlight__body">Reshape the system — threading, idle strategies, backends, sinks — by changing config, not code.</p>
+          </div>
+        </div>
+
+        <div class="performance">
+          <div>
+            <p class="performance__label">Latency snapshot</p>
+            <h3 class="performance__title">v3 <code>flat_order_book</code> percentiles at depth 200.</h3>
+            <p class="performance__body">The benchmark records insert and cancel batches on a single-symbol, single-price-level workload. The current p99 figures are the headline numbers surfaced in the project README and performance note.</p>
+            <dl class="performance__metrics">
+              <div class="performance__metric">
+                <dt>Insert p99</dt>
+                <dd>12.07<span>ns/op</span></dd>
+              </div>
+              <div class="performance__metric">
+                <dt>Cancel p99</dt>
+                <dd>9.78<span>ns/op</span></dd>
+              </div>
+            </dl>
+            <p class="performance__note">* Google Benchmark reports one value per repetition, and each value is itself a mean across the 200 iterations the registration pins. These percentiles describe run-to-run dispersion of averages, not true per-call tail latency. See <a href="docs/performance.md">docs/performance.md</a> for the full methodology.</p>
+          </div>
+          <figure class="performance__chart">
+            <img src="docs/performance/latency_percentiles.svg" alt="Bar chart of v3 flat_order_book insert and cancel latency percentiles at depth 200. Insert is roughly 8.5 ns through p90, 9.9 ns at p95, and 12.1 ns at p99; cancel is roughly 7.8 ns at p50, 8.0 ns through p95, and 9.8 ns at p99.">
+            <figcaption>Source: <code>docs/performance/latency_percentiles.svg</code>, generated from <code>docs/performance/data/benchmark.json</code>.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- 03 CONSTRAINTS -->
+      <section class="section" id="constraints">
+        <p class="section__num">03 — Constraints</p>
+        <h2 class="section__title">Constraints</h2>
+        <p class="section__lede">The exercise is closed: CSV input over UDP on a fixed port, CSV output on stdout, a fixed scenario set. The constraints below shape the design more than any individual choice.</p>
+
+        <ol class="constraints">
+          <li><strong>Inputs are well-formed.</strong> The decoder treats the documented grammar as a precondition. The matching engine trusts the typed commands it receives.</li>
+          <li><strong>Inputs are static and finite.</strong> No load test, no live exchange feed, no transport changes. The wiring layer hard-codes the three-thread topology rather than abstracting it.</li>
+          <li><strong>The book is the core of the exercise.</strong> Strong typing, error handling, and runtime composition are scaffolding. The matching loop and the per-symbol book are what an evaluator most wants to read, and most of the complexity sits there.</li>
+          <li><strong>The submission ships once.</strong> No future maintainers, no roadmap, no migration story. Extensibility seams stay where they cost nothing to keep and are removed where they would only add code.</li>
+          <li><strong>Production conventions still apply.</strong> Code organisation, documentation, testing, error handling, and build hygiene follow production conventions. The structural shape is production; the leaves are one-shot.</li>
+        </ol>
+
+        <div class="narrow">
+          <p class="narrow__label">Boundary contract</p>
+          <h3 class="narrow__title">Narrow contracts at the boundaries.</h3>
+          <p>A production trading system never trusts the wire. It validates every field of every datagram, treats malformed input as routine, and turns hostile input into a structured rejection without destabilising the matching loop. That discipline costs real plumbing.</p>
+          <p>This submission inverts the contract. The hidden tests use the same well-formed CSV shapes as the provided scenarios, so the CSV decoder treats field count, marker validity, numeric parseability, side tokens, and symbol length as preconditions. The <code>kraken::result&lt;command&gt;</code> seat at the decoder boundary stays in place so a future non-CSV transport with richer errors can slot in. The cost is recorded as a follow-up in <code>DESIGN.md</code>.</p>
+        </div>
+      </section>
+
+      <!-- 04 PRINCIPLES -->
+      <section class="section" id="principles">
+        <p class="section__num">04 — Principles</p>
+        <h2 class="section__title">Design principles</h2>
+        <p class="section__lede">Eight principles the codebase commits to. Each one names a representative landing spot in code. The full discussion is in <code>docs/cpp-design-principles.md</code>.</p>
+
+        <div class="principles">
+
+          <div class="pcard">
+            <p class="pcard__num">P.01</p>
+            <p class="pcard__name">Functional core, imperative shell.</p>
+            <p class="pcard__body">Domain libraries are pure synchronous code over value types. Effects sit in a wiring shell that composes the pure stages.</p>
+            <p class="pcard__where"><a href="submission/src/kraken_submission/src/application.cpp">application.cpp</a></p>
+          </div>
+
+          <div class="pcard">
+            <p class="pcard__num">P.02</p>
+            <p class="pcard__name">Domain-owned vocabulary.</p>
+            <p class="pcard__body">Each domain declares its own types and errors. Peer domains stay independent; the composition domain consumes both.</p>
+            <p class="pcard__where"><a href="submission/src/order_routing/order_routing/types.hpp">order_routing/types.hpp</a></p>
+          </div>
+
+          <div class="pcard">
+            <p class="pcard__num">P.03</p>
+            <p class="pcard__name">Compile-time correctness, strong types.</p>
+            <p class="pcard__body">Strong-typed primitives plus designated initializers. Reordering or swapping arguments fails to compile.</p>
+            <p class="pcard__where"><a href="submission/src/matching_engine/src/v3/engine.cpp">matching_engine/v3/engine.cpp</a></p>
+          </div>
+
+          <div class="pcard">
+            <p class="pcard__num">P.04</p>
+            <p class="pcard__name">Compile-time correctness, exhaustive variants.</p>
+            <p class="pcard__body"><code>enum class</code> switches with no <code>default</code>; visiting <code>std::variant</code> through <code>match</code>. Adding an alternative without an overload fails to compile.</p>
+            <p class="pcard__where"><a href="submission/src/market_data/src/csv_encoder.cpp">market_data/csv_encoder.cpp</a></p>
+          </div>
+
+          <div class="pcard">
+            <p class="pcard__num">P.05</p>
+            <p class="pcard__name">Structured errors at boundaries.</p>
+            <p class="pcard__body"><code>kraken::result&lt;T&gt;</code> is the interior vocabulary; boundaries consume it with <code>leaf::try_handle_*</code> and return <code>void</code>/<code>optional</code>/<code>expected</code>. The matching loop trusts the typed values the boundary already validated.</p>
+            <p class="pcard__where"><a href="submission/src/kraken_submission/src/application.cpp">application.cpp</a></p>
+          </div>
+
+          <div class="pcard">
+            <p class="pcard__num">P.06</p>
+            <p class="pcard__name">Declarative style.</p>
+            <p class="pcard__body"><code>engine::handle</code> reads as named stages — duplicate check, ack, match, residual, top-of-book — with predicates staged before the branching.</p>
+            <p class="pcard__where"><a href="submission/src/matching_engine/src/v3/engine.cpp">matching_engine/v3/engine.cpp</a></p>
+          </div>
+
+          <div class="pcard">
+            <p class="pcard__num">P.07</p>
+            <p class="pcard__name">Performance discipline.</p>
+            <p class="pcard__body">Three book implementations live in the tree (<code>v1</code>, <code>v2</code>, <code>v3</code>); each optimisation iteration is measured against the simpler one. Hot-path swaps happen only when a benchmark or invariant requires one.</p>
+            <p class="pcard__where"><a href="submission/src/matching_engine/matching_engine/v3/order_book.hpp">v3/order_book.hpp</a></p>
+          </div>
+
+          <div class="pcard">
+            <p class="pcard__num">P.08</p>
+            <p class="pcard__name">Behaviour-first tests.</p>
+            <p class="pcard__body">Catch2 drives the engine through <code>send</code> and captures emissions via <code>on_event</code>. The unit suite uses no sockets, loops, or threads.</p>
+            <p class="pcard__where"><a href="submission/test/matching_engine/src/matching_engine_test.cpp">matching_engine_test.cpp</a></p>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- 05 DECISIONS -->
+      <section class="section" id="decisions">
+        <p class="section__num">05 — Decisions</p>
+        <h2 class="section__title">Decisions</h2>
+        <p class="section__lede">Major decisions are recorded as ADRs. Each one comes with a decision-matrix HTML artifact that scores the options against the decision drivers. Localized decisions are commented inline at the call site; the more consequential ones are listed below.</p>
+
+        <div class="adrs">
+
+          <div class="adr">
+            <p class="adr__id">ADR 0001</p>
+            <h3 class="adr__title">C++ project layout</h3>
+            <p class="adr__body">Aggregated <code>src/</code> / <code>test/</code> / <code>benchmarks/</code> trees under <code>submission/</code>, stuttering <code>&lt;lib&gt;/&lt;lib&gt;/</code> headers, library plus thin executable. Picked over module-colocated tests because it gives a single declaration site for the Catch2 and Google Benchmark dependencies and lets tooling target each tree at one stable path.</p>
+            <div class="adr__links">
+              <a href="docs/adr/0001-cpp-project-layout-matrix.html">Decision matrix</a>
+            </div>
+          </div>
+
+          <div class="adr">
+            <p class="adr__id">ADR 0002</p>
+            <h3 class="adr__title">Copy-vendor third-party utilities</h3>
+            <p class="adr__body">Upstream headers under <code>submission/vendor/</code> with a pinned SHA and the upstream LICENSE. Picked over git submodules, CMake <code>FetchContent</code>, and <code>ExternalProject</code> because the grading <code>docker build</code> must not depend on a configure-time network fetch, and the <code>git bundle</code> delivery format does not carry submodule contents.</p>
+            <div class="adr__links">
+              <a href="docs/adr/0002-copy-vendor-third-party-utilities-matrix.html">Decision matrix</a>
+            </div>
+          </div>
+
+          <div class="adr">
+            <p class="adr__id">ADR 0003</p>
+            <h3 class="adr__title">Parse CSV as fixed-shape commands</h3>
+            <p class="adr__body">Byte zero selects the command type, the message-specific decoder splits the known field count, and numeric fields go through <code>kraken::from_chars</code>. Picked over a general tokenizer or a parser library because the exercise grammar is closed; field validity is treated as a documented precondition rather than threaded through <code>kraken::result</code>.</p>
+            <div class="adr__links">
+              <a href="docs/adr/0003-parse-csv-as-fixed-shape-commands-matrix.html">Decision matrix</a>
+            </div>
+          </div>
+
+          <div class="adr">
+            <p class="adr__id">ADR 0004</p>
+            <h3 class="adr__title">Stage the order-book data structure by iteration</h3>
+            <p class="adr__body">Sorted price-level maps for the first iteration — the smallest implementation that passes the suite with the right semantics — then intrusive lists plus a shared object pool for the optimisation iteration. The shipped binary uses the optimisation-iteration shape; both implementations live in the tree and run head-to-head in a benchmark.</p>
+            <div class="adr__links">
+              <a href="docs/adr/0004-keep-order-book-as-sorted-price-level-maps-matrix.html">Decision matrix</a>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="local">
+          <p class="local__head">Localized decisions</p>
+          <ul class="local__list">
+            <li>
+              <strong>Engine-owned shared <code>boost::pool</code> for resting-order storage.</strong>
+              One pool, shared across every per-symbol book. Symbol activity is uneven, so a shared pool absorbs the variance: slots freed by a shallow symbol are immediately available to a deep one.
+            </li>
+            <li>
+              <strong><code>unordered_flat_map</code> for the cross-symbol identity index.</strong>
+              The index is used only for point access. Iterator and reference stability across rehashes is not load-bearing, so the flat variant gives better lookup-per-cache-line behaviour.
+            </li>
+            <li>
+              <strong>Intrusive list plus pool layout inside a price level.</strong>
+              Each resting order sits in a pool-allocated node hooked into the price level's intrusive list. Nodes never relocate, so the cross-symbol index can hold raw <code>order_node*</code> with stable lifetime.
+            </li>
+            <li>
+              <strong>SPSC blocking queue coupled to the event loop.</strong>
+              The three-thread topology has exactly two cross-thread edges, each with one producer and one consumer. MPSC would pay for synchronisation the topology never exercises.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 06 READ MORE -->
+      <section class="section" id="more">
+        <p class="section__num">06 — Read more</p>
+        <h2 class="section__title">Where to read next</h2>
+
+        <div class="idx">
+
+          <section class="idx__group">
+            <h3 class="idx__group-title">Start here</h3>
+            <dl class="idx__list">
+              <dt>The problem statement</dt>
+              <dd><a href="EXERCISE.md">EXERCISE.md</a></dd>
+              <dt>The technical pitch in one page</dt>
+              <dd><a href="docs/highlights.md">docs/highlights.md</a></dd>
+            </dl>
+          </section>
+
+          <section class="idx__group">
+            <h3 class="idx__group-title">How the project thinks</h3>
+            <dl class="idx__list">
+              <dt>How the project thinks about C++</dt>
+              <dd><a href="docs/cpp-design-principles.md">docs/cpp-design-principles.md</a></dd>
+              <dt>Showcase of applied principles in code</dt>
+              <dd><a href="docs/showcase.md">docs/showcase.md</a></dd>
+              <dt>Why we made the major choices</dt>
+              <dd><a href="DESIGN.md">DESIGN.md</a></dd>
+              <dt>Architectural decisions with full reasoning</dt>
+              <dd><a href="docs/adr/">docs/adr/</a></dd>
+            </dl>
+          </section>
+
+          <section class="idx__group">
+            <h3 class="idx__group-title">How the system works</h3>
+            <dl class="idx__list">
+              <dt>A map of the source tree</dt>
+              <dd><a href="submission/README.md">submission/README.md</a></dd>
+              <dt>The matching engine spec</dt>
+              <dd><a href="docs/engine-specs.md">docs/engine-specs.md</a></dd>
+              <dt>How the application wires itself together at startup</dt>
+              <dd><a href="docs/runtime-startup.md">docs/runtime-startup.md</a></dd>
+              <dt>The event loop primitive each thread runs</dt>
+              <dd><a href="docs/event-loop.md">docs/event-loop.md</a></dd>
+            </dl>
+          </section>
+
+          <section class="idx__group">
+            <h3 class="idx__group-title">Build &amp; operate</h3>
+            <dl class="idx__list">
+              <dt>Dependency strategy and inventory</dt>
+              <dd><a href="DEPENDENCIES.md">DEPENDENCIES.md</a></dd>
+              <dt>Build presets and developer setup</dt>
+              <dd><a href="DEVELOPING.md">DEVELOPING.md</a></dd>
+              <dt>How to tune the host for production-grade latency</dt>
+              <dd><a href="docs/tuning-guide.md">docs/tuning-guide.md</a></dd>
+            </dl>
+          </section>
+
+        </div>
+      </section>
+
+      <footer class="colophon">
+        <span>Kraken senior order-book submission · Luiz Siqueira</span>
+        <span>Set in IBM Plex · single-file HTML</span>
+      </footer>
+
+    </main>
+
+  </div>
+
+</div>
+
+<script>
+(function () {
+  const navLinks = Array.from(document.querySelectorAll('#rail-nav a'));
+  const sections = navLinks
+    .map(a => document.querySelector(a.getAttribute('href')))
+    .filter(Boolean);
+
+  function setActive(id) {
+    navLinks.forEach(a => {
+      a.classList.toggle('is-active', a.getAttribute('href') === '#' + id);
+    });
+  }
+
+  function pickActive() {
+    const offset = 80;
+    let current = sections[0];
+    for (const s of sections) {
+      const top = s.getBoundingClientRect().top;
+      if (top - offset < 0) current = s;
+      else break;
+    }
+    if (current) setActive(current.id);
+  }
+
+  pickActive();
+  window.addEventListener('scroll', pickActive, { passive: true });
+  window.addEventListener('hashchange', pickActive);
+})();
+</script>
+
+</body>
+</html>

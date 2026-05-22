@@ -1,0 +1,6 @@
+_build/
+build/
+compile_commands.json
+.cache/
+CMakeUserPresets.json
+.claude/

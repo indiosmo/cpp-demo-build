@@ -1,0 +1,154 @@
+# Developing
+
+This document covers working on the repository itself: setting up a local
+environment, building, running tests, and the conventions the project follows.
+
+## First-time setup
+
+Run the setup script once after cloning:
+
+```bash
+./setup.sh
+```
+
+This installs `uv`, then installs the
+[prek](https://github.com/j178/prek)-managed pre-commit hook that runs
+`clang-format` on staged C++ files. If `uv` or `prek` are missing, the script
+offers to install them. The hook configuration lives in `.pre-commit-config.yaml`.
+
+`uv` is shared by developer scripts such as `scripts/render_performance_charts.py`;
+run `./scripts/install_uv.sh` directly when you only need that toolchain.
+
+## Building and testing
+
+`build.sh` wraps the CMake configure, build, and `ctest` steps so the common
+workflow is a single command:
+
+```bash
+./build.sh                       # debug preset, all targets, run tests
+./build.sh release               # release preset
+./build.sh asan kraken_submission # named preset and target
+./build.sh debug -DKRAKEN_BUILD_BENCHMARKS=OFF  # forward extra cmake options
+```
+
+Anything after the optional target that starts with `-` is forwarded to the
+configure step. Tests run automatically after a successful build.
+
+Build outputs live under `_build/<preset>/`. The script also refreshes a
+top-level `compile_commands.json` so clangd works in the editor without a
+separate build.
+
+### Presets
+
+The repo ships several CMake presets covering different compilers and
+sanitizers (Address/Leak/UB, Thread, Clang+ASan, plus plain debug and
+release). The authoritative list is `CMakePresets.json`; pass the preset name
+as the first argument to `build.sh`, or invoke `cmake --preset=<name>`
+directly.
+
+Use the sanitizer presets when chasing memory or threading bugs locally and
+before submitting changes -- they catch issues the default debug build misses.
+
+### Running CMake directly
+
+If you prefer not to use `build.sh`:
+
+```bash
+cmake --preset=debug
+cmake --build _build/debug
+ctest --test-dir _build/debug --output-on-failure
+```
+
+## Project layout
+
+- `submission/` -- the code under development: source, unit tests, and
+  microbenchmarks. The build produces a `kraken_submission` binary plus a
+  Catch2 test runner.
+- `test/` -- the Docker-based black-box test harness used by the assessment
+  (see [README.md](README.md)). Do not modify.
+- `cmake/` -- shared CMake modules (compiler flags, sanitizer wiring).
+- `scripts/` -- developer scripts invoked by `setup.sh` and the pre-commit
+  hook.
+- `docs/adr/` -- architecture decision records. Start a new ADR when making a
+  decision worth recording; see existing entries for the format.
+
+## Code style
+
+C++ source is formatted with `clang-format` using the rules in `.clang-format`.
+The pre-commit hook formats changed files automatically; to reformat the whole
+tree manually, run `./scripts/format.sh --all`.
+
+## Conventions
+
+### Const placement
+
+West const everywhere: `const T&`, `const T*`, `const auto&`. The qualifier
+sits to the left of the type it applies to. Avoid the east-const form
+`T const&` / `auto const`.
+
+### Namespace aliases
+
+Use the standard aliases when a source or test file reads several domain
+namespaces together often enough that the abbreviation improves clarity:
+
+```cpp
+namespace md = market_data;
+namespace me = matching_engine;
+namespace rt = order_routing;
+```
+
+These aliases keep nested domain vocabulary short enough to read, for example
+`md::types::price`.
+
+Within a domain's own namespace, keep the `types::` qualifier on domain types.
+Do not bring individual types into scope:
+
+```cpp
+auto price = types::price{100};
+```
+
+```cpp
+using types::price; // Do not do this.
+```
+
+Never add namespace aliases or `using` declarations to header files. They leak
+into includers and make name lookup depend on include order.
+
+In `.cpp` and test files, use judgment. A single invocation in a file does not
+warrant a namespace alias; repeated cross-domain vocabulary usually does.
+
+## Refreshing the performance charts
+
+`docs/performance/` holds the rendered SVG that [`docs/performance.md`](docs/performance.md)
+links to. Rendering is split in two so iterating on chart aesthetics does
+not re-run benchmarks:
+
+1. **Collect** -- runs the order-book microbench under the
+   `current_latency_percentiles` filter and writes the google-benchmark
+   JSON under `docs/performance/data/`:
+
+   ```bash
+   ./build.sh release matching_engine_order_book_benchmark
+   ./scripts/collect_performance_data.sh
+   ```
+
+   The benchmark registration carries its own `Iterations(...)`,
+   `Repetitions(...)`, and `ComputeStatistics(...)` for p50/p90/p95/p99,
+   so the script passes `--benchmark_min_time` for parity with other
+   drivers but the value has no effect on per-repetition iteration
+   count. Wall time is a few seconds. The resulting `benchmark.json` is
+   committed so the doc rebuilds on a fresh clone without re-running
+   the bench.
+
+2. **Render** -- reads only `docs/performance/data/benchmark.json` and
+   writes the percentile SVG:
+
+   ```bash
+   ./scripts/render_performance_charts.py
+   ```
+
+## Running the assessment harness
+
+The Docker-based test harness used by the assessment is documented in
+[README.md](README.md). The convenience wrapper `./run_submission.sh` builds
+the image and runs the tests in one step.

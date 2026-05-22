@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="InterviewTests" tests="16" failures="0" errors="0" time="3" timestamp="2026-05-19T14:06:40-03:00">
+    <testcase name="test_1" classname="InterviewTests" time=".055514201"/>
+    <testcase name="test_10" classname="InterviewTests" time=".058961202"/>
+    <testcase name="test_11" classname="InterviewTests" time=".077495202"/>
+    <testcase name="test_12" classname="InterviewTests" time=".073352502"/>
+    <testcase name="test_13" classname="InterviewTests" time=".062470002"/>
+    <testcase name="test_14" classname="InterviewTests" time=".070888902"/>
+    <testcase name="test_15" classname="InterviewTests" time=".115275003"/>
+    <testcase name="test_16" classname="InterviewTests" time=".080739902"/>
+    <testcase name="test_2" classname="InterviewTests" time=".099876102"/>
+    <testcase name="test_3" classname="InterviewTests" time=".060347201"/>
+    <testcase name="test_4" classname="InterviewTests" time=".056092901"/>
+    <testcase name="test_5" classname="InterviewTests" time=".063260001"/>
+    <testcase name="test_6" classname="InterviewTests" time=".071669100"/>
+    <testcase name="test_7" classname="InterviewTests" time=".083609901"/>
+    <testcase name="test_8" classname="InterviewTests" time=".086905701"/>
+    <testcase name="test_9" classname="InterviewTests" time=".161672001"/>
+  </testsuite>
+</testsuites>

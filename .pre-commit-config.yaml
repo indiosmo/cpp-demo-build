@@ -1,0 +1,9 @@
+repos:
+-   repo: local
+    hooks:
+    -   id: clang-format
+        name: Run clang-format
+        entry: ./scripts/format.sh
+        language: script
+        pass_filenames: false
+        always_run: true
