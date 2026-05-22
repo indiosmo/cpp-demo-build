@@ -11,9 +11,9 @@
 
 /*
  * Component test for the production matching engine exposed through
- * matching_engine::engine. The black-box CSV harness under test/ exercises
- * every protocol-level scenario byte-for-byte against the recorded outputs;
- * this file keeps one in-process scenario for fast iteration through the
+ * matching_engine::engine. Protocol-level scenarios exercise the runtime
+ * boundary through typed codecs; this file keeps one in-process scenario for
+ * fast iteration through the
  * synchronous callback channel.
  *
  * The scenario uses a few resting orders, an aggressing sell that

@@ -1,6 +1,6 @@
 add_library(matching_engine STATIC
+  src/engine.cpp
   src/runtime/engine.cpp
-  src/v3/engine.cpp
 )
 add_library(matching_engine::matching_engine ALIAS matching_engine)
 

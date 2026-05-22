@@ -11,6 +11,14 @@ The request variant has four alternatives:
 - `cancel_order` -- cancel a live order by `orig_cl_ord_id`.
 - `flush` -- clear every book silently.
 
+## Wire Protocol
+
+The UDP protocol carries one compact JSON object per datagram. Requests use a
+`message_type` discriminator with values `new_order_single`, `replace_order`,
+`cancel_order`, and `flush`, plus field names matching the typed
+`order_entry` model. The client and server both route through the typed model:
+JSON is a boundary codec, not the matching-engine data structure.
+
 ## Data Structures
 
 ### Per-Symbol Order Book
@@ -21,8 +29,8 @@ One book is allocated for each configured symbol:
 - **Asks** are price-ordered ascending; the front is the best ask.
 - Within one price level, orders keep arrival order.
 
-The current production book is
-[`matching_engine/v3/order_book.hpp`](../src/matching_engine/matching_engine/v3/order_book.hpp):
+The production book is
+[`matching_engine/order_book.hpp`](../src/matching_engine/matching_engine/order_book.hpp):
 sorted price-level maps over intrusive lists of pool-allocated nodes.
 
 ### Identity Index
@@ -51,7 +59,7 @@ bid side. Trades execute at the maker's resting price. The engine emits:
 - `market_data::mbo_book_update` for the order's own side when a residual
   limit order rests at the new best.
 
-`price == 0` is the demo CSV sentinel for a market order. Market
+`price == 0` is the demo JSON sentinel for a market order. Market
 remainders are dropped as IOC. Limit remainders rest.
 
 ### replace_order

@@ -20,9 +20,9 @@ Three thread roles map cleanly to three isolated cores:
 
 | Loop | Hot work | Tuning emphasis |
 |------|----------|-----------------|
-| Input | UDP receive, CSV decode, route | NIC, IRQ steering, kernel-bypass |
+| Input | UDP receive, JSON decode, route | NIC, IRQ steering, kernel-bypass |
 | Processing | Order books, matching | Cache locality, no preemption |
-| Output | CSV encode, stdout writeback | No preemption; tolerates more jitter than input or processing |
+| Output | JSON encode, stdout writeback | No preemption; tolerates more jitter than input or processing |
 
 Everything below either takes work off these cores, or shortens the
 path packets and memory take to reach them.
@@ -410,10 +410,10 @@ number that matters.
   `cat /sys/devices/system/cpu/isolated`,
   `cat /sys/devices/system/cpu/cpu<N>/cpufreq/scaling_governor`,
   `ethtool -c <interface>`, `onload_stackdump lots`.
-- **Moved the number.** Run the engine's microbenchmarks (see
-  `../benchmarks/order_book/`) before and after each
-  layer. Track p50 and p99 separately; the tuning that helps p99 the
-  most (interrupt steering, idle, NUMA) is often invisible at p50.
+- **Moved the number.** Use a representative client/server workload before
+  and after each layer. Track median and tail latency separately; the tuning
+  that helps tail latency the most (interrupt steering, idle, NUMA) is often
+  invisible at the median.
 - **Find new jitter.** `perf sched record`, `bcc/runqlat`,
   `bcc/hardirqs`, and `cyclictest` all surface where time still
   leaves the busy-spin loop after the obvious sources are gone.
@@ -422,6 +422,5 @@ number that matters.
 
 - Application-level tuning -- allocator choice, container sizing,
   branch hints -- in [`cpp-design-principles.md`](cpp-design-principles.md).
-- Benchmark methodology in `../benchmarks/order_book/`.
 - BIOS and firmware (HT disable, P-state ownership, PCIe lane
   layout) live with the hardware runbook.

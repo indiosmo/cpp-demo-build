@@ -30,16 +30,16 @@ struct ef_vi_udp_receiver_config
 
 using receiver_config = std::variant<asio_udp_receiver_config, ef_vi_udp_receiver_config>;
 
-struct csv_decoder_config
+struct json_decoder_config
 {
 };
 
-using decoder_config = std::variant<csv_decoder_config>;
+using decoder_config = std::variant<json_decoder_config>;
 
 struct session_config
 {
   receiver_config receiver;
-  decoder_config decoder{csv_decoder_config{}};
+  decoder_config decoder{json_decoder_config{}};
 };
 
 } // namespace order_entry::runtime

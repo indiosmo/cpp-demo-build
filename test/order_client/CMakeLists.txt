@@ -1,5 +1,5 @@
 add_executable(order_client_test
-  src/csv_encoder_test.cpp
+  src/json_encoder_test.cpp
 )
 
 target_link_libraries(order_client_test

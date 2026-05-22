@@ -6,7 +6,7 @@ engine, and the per-symbol books are layered, who owns the
 Observable behaviour is specified in
 [`docs/engine-specs.md`](../../../../docs/engine-specs.md); the
 data-structure choice is recorded in
-[ADR 0004](../../../../docs/adr/0004-keep-order-book-as-sorted-price-level-maps.md).
+[ADR 0004](../../../../docs/adr/0004-use-flat-price-level-maps-with-intrusive-pooled-orders.md).
 
 ## Layers
 
@@ -30,11 +30,11 @@ flowchart LR
   Wiring-shell entry point. Holds an `optional<engine>` and exposes
   `setup` / `send` / `on_event`. Construction can fail without
   leaving a half-built composer behind.
-- **Engine** (`matching_engine::v3::engine`). Synchronous domain
+- **Engine** (`matching_engine::engine`). Synchronous domain
   object. Owns the pool, the cross-symbol identity index, and the
   per-symbol books. Dispatches each `request` variant through
   `lab::match` to a typed `handle()` overload.
-- **Order book** (`matching_engine::v3::flat_order_book`). Pure data
+- **Order book** (`matching_engine::order_book`). Pure data
   structure: two side maps of `price -> price_level`, each level a
   FIFO of `order_node` with a running `total_remaining`. `place` and
   `cancel` operate on engine-owned handles; the book only links and
@@ -57,7 +57,7 @@ the index holds the same addresses from a second direction.
   orders consult it for duplicate detection. Cross-symbol uniqueness
   is a protocol invariant, so the index is engine-wide rather than
   per-book.
-- **`books_`** -- one `flat_order_book` per configured symbol,
+- **`books_`** -- one `order_book` per configured symbol,
   preallocated from `valid_symbols`. The container is a node map:
   the matching loop holds a book reference across callback
   emissions, so references must survive growth.
@@ -72,12 +72,12 @@ slabs in one shot. A `static_assert` on `order_state` pins the
 trivial destructibility that makes this safe; the intrusive hook
 uses `normal_link` so book destructors don't trip on still-linked
 elements at teardown. See
-[`order_node.hpp`](../matching_engine/v3/order_node.hpp) for the
+[`order_node.hpp`](../matching_engine/order_node.hpp) for the
 full lifetime argument.
 
 ## Matching as a free function
 
-[`matching.hpp`](../matching_engine/v3/matching.hpp) defines `match`
+[`matching.hpp`](../matching_engine/matching.hpp) defines `match`
 as a function template parameterised on the side-map type, a cross
 predicate, and `on_trade` / `on_release` callbacks. It walks levels
 from best outward, bulk-erases the consumed prefix in one range

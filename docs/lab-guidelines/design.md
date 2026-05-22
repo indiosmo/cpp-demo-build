@@ -34,7 +34,6 @@ src/<module>/
     runtime/               threaded or queued wrappers
   src/                     translation units
 test/<module>/src/         Catch2 cases mirroring src/<module>/<module>/
-benchmarks/<module>/src/   Google Benchmark targets
 ```
 
 The current anchors are under `src/`.
@@ -82,7 +81,7 @@ lab names:
 - catch-all boundary handlers use `LAB_CATCH_AND_LOG`.
 
 The first local candidate for container lookup helpers is
-[`matching_engine::v3::engine`](../../src/matching_engine/src/v3/engine.cpp):
+[`matching_engine::engine`](../../src/matching_engine/src/engine.cpp):
 duplicate-order checks, book lookup, cancel lookup, and error mapping already
 show the shape.
 
@@ -114,7 +113,7 @@ application composition layer, not in the domain object constructor.
 ## Matching engine core
 
 The portfolio value is concentrated in
-[`matching_engine::v3`](../../src/matching_engine/matching_engine/v3/).
+[`matching_engine`](../../src/matching_engine/matching_engine/).
 Plans should preserve the price-time semantics, identity index, pool-backed
 intrusive order nodes, and book-update emission behavior unless the plan is
 explicitly about changing the engine.

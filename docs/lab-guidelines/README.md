@@ -17,7 +17,7 @@ should follow the `lab::` names here.
 |---|---|
 | [`design.md`](design.md) | Maps design principles into the matching engine, runtime shell, and lab utility layer. |
 | [`testing.md`](testing.md) | Maps testing principles into Catch2 targets, test data, and scenario-shaped tests. |
-| [`debugging.md`](debugging.md) | Maps debugging principles into logging, assertions, sanitizers, benchmarks, and trace points. |
+| [`debugging.md`](debugging.md) | Maps debugging principles into logging, assertions, sanitizers, and trace points. |
 | [`agent-examples.md`](agent-examples.md) | Project-specific good/bad pairs for agent edits; load sections on demand. |
 
 ## Placeholder mapping

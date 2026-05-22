@@ -36,8 +36,8 @@ packages are already present and `apt update` is slow or blocked, run:
 ./setup.sh --skip-system-packages
 ```
 
-`uv` is shared by developer scripts such as `scripts/render_performance_charts.py`;
-run `./scripts/install_uv.sh` directly when you only need that toolchain.
+Run `./scripts/install_uv.sh` directly when you only need the Python
+toolchain used by project scripts.
 
 Source the toolchain environment before running CMake directly:
 
@@ -57,7 +57,7 @@ workflow is a single command:
 ./build.sh release               # release preset
 ./build.sh asan server           # named preset and target
 ./build.sh asan client           # named preset and target
-./build.sh debug -DLAB_BUILD_BENCHMARKS=OFF  # forward extra cmake options
+./build.sh debug -DLAB_BUILD_EXAMPLES=ON     # forward extra cmake options
 ```
 
 Anything after the optional target that starts with `-` is forwarded to the
@@ -93,8 +93,8 @@ ctest --test-dir _build/debug --output-on-failure
 
 - `src/` -- libraries and the `client` and `server` applications.
 - `test/` -- module unit tests.
-- `benchmarks/` -- Google Benchmark microbenchmarks.
-- `vendor/` -- copy-vendored third-party utilities.
+- `vendor/` -- CMake `FetchContent` dependency declarations.
+- `examples/` -- local demo inputs and expected market-data records.
 - `cmake/` -- shared CMake modules (compiler flags, sanitizer wiring).
 - `scripts/` -- developer scripts invoked by `setup.sh` and the pre-commit
   hook.
@@ -146,36 +146,6 @@ into includers and make name lookup depend on include order.
 In `.cpp` and test files, use judgment. A single invocation in a file does not
 warrant a namespace alias; repeated cross-domain vocabulary usually does.
 
-## Refreshing the performance charts
-
-`docs/performance/` holds the rendered SVG that [`docs/performance.md`](docs/performance.md)
-links to. Rendering is split in two so iterating on chart aesthetics does
-not re-run benchmarks:
-
-1. **Collect** -- runs the order-book microbench under the
-   `current_latency_percentiles` filter and writes the google-benchmark
-   JSON under `docs/performance/data/`:
-
-   ```bash
-   ./build.sh release matching_engine_order_book_benchmark
-   ./scripts/collect_performance_data.sh
-   ```
-
-   The benchmark registration carries its own `Iterations(...)`,
-   `Repetitions(...)`, and `ComputeStatistics(...)` for p50/p90/p95/p99,
-   so the script passes `--benchmark_min_time` for parity with other
-   drivers but the value has no effect on per-repetition iteration
-   count. Wall time is a few seconds. The resulting `benchmark.json` is
-   committed so the doc rebuilds on a fresh clone without re-running
-   the bench.
-
-2. **Render** -- reads only `docs/performance/data/benchmark.json` and
-   writes the percentile SVG:
-
-   ```bash
-   ./scripts/render_performance_charts.py
-   ```
-
 ## Running the server
 
 Build the server and client targets, then run the binaries from the selected
@@ -185,9 +155,9 @@ preset:
 ./build.sh debug server
 ./build.sh debug client
 ./_build/debug/server --host 127.0.0.1 --port 1234
-printf 'N, 1, IBM, 10, 100, B, 1\nF\n' | ./_build/debug/client --host 127.0.0.1 --port 1234
+./_build/debug/client --host 127.0.0.1 --port 1234 --input examples/scenarios/crossing-orders.jsonl
 ```
 
-The process listens for UDP order commands and writes market data records to
+The process listens for UDP JSON order commands and writes market data records to
 stdout. Use `ctest --test-dir _build/debug --output-on-failure` to rerun the
 unit tests for an existing build tree.

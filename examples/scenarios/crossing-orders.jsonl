@@ -1,0 +1,6 @@
+{"message_type":"new_order_single","client_id":1,"cl_ord_id":1,"symbol":"IBM","side":"buy","order_qty":100,"price":10}
+{"message_type":"new_order_single","client_id":1,"cl_ord_id":2,"symbol":"IBM","side":"sell","order_qty":100,"price":12}
+{"message_type":"new_order_single","client_id":2,"cl_ord_id":102,"symbol":"IBM","side":"sell","order_qty":100,"price":11}
+{"message_type":"new_order_single","client_id":2,"cl_ord_id":103,"symbol":"IBM","side":"sell","order_qty":100,"price":10}
+{"message_type":"new_order_single","client_id":1,"cl_ord_id":3,"symbol":"IBM","side":"buy","order_qty":100,"price":10}
+{"message_type":"flush"}

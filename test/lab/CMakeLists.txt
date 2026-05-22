@@ -3,6 +3,7 @@ add_executable(lab_test
   src/charconv_test.cpp
   src/expected_test.cpp
   src/fixed_string_test.cpp
+  src/json_test.cpp
   src/strong_type_test.cpp
 )
 

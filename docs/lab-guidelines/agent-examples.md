@@ -128,7 +128,7 @@ synchronous unit tests.
 Good -- unit test drives the domain directly:
 
 ```cpp
-matching_engine::v3::engine engine{make_engine_config()};
+matching_engine::engine engine{make_engine_config()};
 engine.on_event = [&](const market_data::message& message) {
   emitted.push_back(message);
 };
@@ -142,8 +142,8 @@ Bad -- every matching rule is tested only through a spawned server process:
 
 ```cpp
 run_server();
-run_client("crossing-order.csv");
-CHECK(read_stdout() == expected_csv);
+run_client("crossing-order.jsonl");
+CHECK(read_stdout() == expected_jsonl);
 ```
 
 ## Documentation Comments

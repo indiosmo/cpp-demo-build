@@ -17,8 +17,8 @@ Decision matrix:
 
 ## Key Changes
 
-- Move layout from `submission/` to root-level `src/`, `test/`,
-  `benchmarks/`, and `vendor/`.
+- Move layout from `submission/` to root-level `src/`, `test/`, and
+  `vendor/`.
 - Rename project identity:
   - Repo/docs name: `matching-engine-lab`
   - CMake project: `matching_engine_lab`
@@ -42,9 +42,13 @@ Decision matrix:
   - generated submission page
   - generated assessment reports under `reports/`
   - take-home wording in comments, scripts, and docs
-- Preserve the existing matching behavior. The CSV protocol is only an
-  intermediate demo surface; phase 5 replaces it with JSON over the same typed
+- Preserve the existing matching behavior. The CSV protocol was an
+  intermediate demo surface; phase 5 replaced it with JSON over the same typed
   domain boundaries.
+- Phase 6 moves the codec architecture toward the Abacus layering model:
+  normalized order routing, canonical FIX rendering, venue specs, concrete FIX
+  engine stubs, and glue layers that bind those pieces without collapsing the
+  boundaries.
 
 ## Phase Handoffs
 
@@ -57,14 +61,12 @@ the identity rename:
 
 - moved library sources to `src/`;
 - merged module unit tests into root `test/`;
-- moved Google Benchmark targets to `benchmarks/`;
-- moved copy-vendored dependencies to `vendor/`;
+- moved dependency declarations under `vendor/`;
 - renamed the utility module, headers, namespace, macros, and CMake alias to
   `lab` / `lab::core` / `LAB_*`;
 - renamed the wiring shell and executable to `server`;
 - updated thread names to `lab-input`, `lab-engine`, and `lab-output`;
-- rewired root CMake to add `vendor`, `src`, `test`, and `benchmarks`
-  directly;
+- rewired root CMake to add `vendor`, `src`, and `test` directly;
 - updated durable docs and scripts for the new layout.
 
 Verification completed:
@@ -77,10 +79,8 @@ Verification completed:
 
 Status: completed.
 
-Phase 2 removed the Docker and generated-report workflow surfaces:
+Phase 2 removed the legacy harness and generated-report workflow surfaces:
 
-- deleted `Dockerfile`;
-- deleted `.dockerignore`;
 - deleted `run_submission.sh`;
 - deleted `run_local_submission.sh`;
 - deleted tracked generated reports under `reports/`.
@@ -94,16 +94,16 @@ durable path is the regular local build:
 - `DEVELOPING.md` documents the local server workflow;
 - `DEPENDENCIES.md` describes system packages as local setup inputs;
 - `INDEX.md`, `docs/highlights.md`, and lab guideline docs no longer describe
-  the Docker or grading harness as the active workflow;
-- CMake and source comments no longer explain behavior in terms of Docker,
-  grading, or report generation.
+  the grading harness as the active workflow;
+- CMake and source comments no longer explain behavior in terms of grading or
+  report generation.
 
 Verification completed:
 
 - `./build.sh debug` passed with 70/70 tests.
 - `git diff --check` passed.
-- Focused searches over touched durable surfaces found no remaining Docker
-  wrapper or grading workflow references.
+- Focused searches over touched durable surfaces found no remaining grading
+  workflow references.
 
 ### Phase 3 Handoff
 
@@ -126,10 +126,29 @@ Verification completed:
 - `ctest --test-dir _build/debug --output-on-failure` passed with the
   remaining unit-test suite.
 
-Phase 3.1 should reintroduce Docker as a compose stack for the complete local
-environment. This is a project-owned demo and development workflow, not a
-grading harness. At this stage, the stack should run the client and matching
-engine together.
+### Phase 3.1 Handoff
+
+Status: dropped.
+
+Phase 3.1 was removed from the reframe. A separate packaged environment would
+duplicate the local C++ toolchain build and make the demo path too heavy for
+this portfolio repo.
+
+The retained demo surface is host-local:
+
+- `examples/scenarios/crossing-orders.jsonl` stores the scenario input;
+- `examples/expected/crossing-orders-market-data.jsonl` stores the expected
+  market-data output;
+- `README.md`, `DEVELOPING.md`, `DEPENDENCIES.md`, and `INDEX.md` describe the
+  regular `./build.sh` plus direct `server` / `client` workflow.
+
+Verification completed:
+
+- `./build.sh debug` passed with 78/78 tests.
+- Local smoke test passed: started `_build/debug/server` on a throwaway UDP
+  port, sent `examples/scenarios/crossing-orders.jsonl` with
+  `_build/debug/client`, and observed the expected market-data JSONL sequence.
+- `git diff --check` passed.
 
 ### Phase 4 Handoff
 
@@ -156,18 +175,67 @@ Verification completed:
 
 ### Phase 5 Handoff
 
-Status: pending.
+Status: completed for the current demo protocol.
 
-Phase 5 should replace the CSV demo protocol with JSON codecs built on a
-`lab::json` port of Abacus `mil::json`. Phase 4 owns the domain vocabulary;
-phase 5 owns how clients, servers, scenario files, and stdout encode those
-typed messages.
+Phase 5 replaced the CSV demo protocol with JSON at the active runtime
+boundaries:
 
-## Phase 2: Docker Removal
+- added `lab::json` as a focused nlohmann-backed adapter for strong types,
+  fixed strings, optionals, chrono durations, typed parsing, and JSONL reads;
+- added `order_entry::json_decoder` for inbound UDP command datagrams;
+- added `order_client::json_encoder` and rewired `order_client::client` to send
+  JSON command datagrams;
+- changed the `client` executable to read JSONL commands, decode them into
+  typed `order_entry::request` values, and send them through the typed client;
+- added `market_data::json_encoder` and rewired the runtime publisher so stdout
+  carries JSON market-data records;
+- removed the CSV decoder and encoder sources and their tests from the active
+  build;
+- updated the README, index, engine spec, module docs, and lab guidelines so
+  the documented workflow is JSON over UDP and JSONL at file/stdout boundaries.
 
-- Delete grading-specific Docker machinery:
-  - `Dockerfile`
-  - `.dockerignore`
+Verification completed:
+
+- `./build.sh debug` passed with 78/78 tests.
+
+The current client remains a one-way scenario sender. A later response-channel
+phase can add client-side decoding for `execution_report` and `cancel_reject`
+and server-side publication of those order-entry lifecycle events if the demo
+needs an interactive order-entry response stream.
+
+### Phase 6 Handoff
+
+Status: planned.
+
+Phase 6 should scaffold the fully modular codec architecture. Model the order
+routing side after Abacus `aor`, `aorfix`, `ospec`, `onixs_fix`,
+`onixs_bentry`, `aorfix_onixs_fix`, and `aorfix_onixs_bentry`, but use
+matching-engine-lab names and dependencies:
+
+- `mor` -- normalized Matching Engine Order Routing messages and interfaces;
+- `morfix` -- canonical FIX rendering of `mor`;
+- `ospec` -- venue tags, values, and normalization functions;
+- `quickfix_fix` -- QuickFIX-compatible local FIX engine boundary in place of
+  the OnixS vendor wrappers;
+- `morfix_quickfix` -- glue layer that binds `morfix`, `ospec`, and the FIX
+  engine boundary.
+
+Market data should use the same principle with a smaller surface:
+
+- `mmd` -- normalized Matching Engine Market Data events;
+- codec modules that render `mmd` to JSON, FIX, or later binary protocols;
+- transport modules that publish encoded records over stdout, WebSocket, FIX,
+  or another delivery channel.
+
+Use B3 as the reference venue, with a simplified surface based on
+`b3-entrypoint-messages-8.4.2.xml` and
+`b3-market-data-messages-2.2.0.xml`. Those XML files describe the binary
+protocol, but the same business messages and fields should drive the simplified
+FIX and market-data model.
+
+## Phase 2: Legacy Harness Removal
+
+- Delete grading-specific machinery:
   - `run_submission.sh`
   - `run_local_submission.sh`
 - Update `README.md` and `DEVELOPING.md` to document regular local workflows:
@@ -175,8 +243,8 @@ typed messages.
   - direct `cmake --preset=debug`
   - `ctest --test-dir _build/debug --output-on-failure`
   - running `./_build/debug/server`
-- Remove Docker/grading/package assumptions from `DEPENDENCIES.md`; keep
-  package inventory as developer setup context only.
+- Remove grading/package assumptions from `DEPENDENCIES.md`; keep package
+  inventory as developer setup context only.
 
 ## Phase 3: Runtime Refactor and Client
 
@@ -184,7 +252,7 @@ typed messages.
 - Add `src/order_client/`:
   - public typed client API using `order_entry::new_order_single`,
     `cancel_order`, and `flush`
-  - CSV encoding for outbound order commands
+  - command encoding for outbound order commands
   - UDP sender backed by Boost.Asio
   - configurable endpoint, defaulting to `127.0.0.1:1234`
 - Add `src/client/` executable:
@@ -192,31 +260,18 @@ typed messages.
   - supports a simple CLI: `--host`, `--port`, `--input`
   - exits nonzero on file/socket/config errors
 - Keep `server` as the matching-engine server that listens
-  on UDP and writes market data CSV to stdout.
+  on UDP and writes market-data records to stdout.
 - Remove the old scenario files and shell-runner workflow from `test/`.
 - Keep scenario-shaped coverage in focused unit tests and local demo commands.
 
-### Phase 3.1: Compose Stack
+### Phase 3.1: Local Demo Decision
 
-Reintroduce Docker as a compose-based local environment after the client and
-server path exists. Model the structure after the `fleet` and `observability`
-repos:
+Status: dropped.
 
-- Use a small root compose file as the entry point.
-- Put service-specific compose fragments under a Docker or infrastructure
-  subtree, then include them from the root compose file.
-- Use shared env-file anchors for image versions and local overrides.
-- Use a named bridge network for the matching-engine lab stack.
-- Define one service for `server` and one service for
-  `client`; the client should target the server by service
-  name inside the compose network.
-- Treat health checks, startup ordering, and one-shot client runs as part of
-  the compose contract so the stack can demonstrate a full scenario.
-- Keep scenario inputs and expected market-data outputs in the same example or
-  integration-fixture locations chosen for phase 3, rather than embedding them
-  in compose files.
-- Document the compose workflow as an optional full-environment path alongside
-  the local build workflow.
+Keep the complete demo on the host-local path after the client and server path
+exists. Scenario inputs and expected market-data outputs live under
+`examples/`, and documentation should present `./build.sh`, direct `server`,
+and direct `client` commands as the supported demo workflow.
 
 ## Phase 4: Industry Message Vocabulary
 
@@ -307,101 +362,113 @@ style later.
 
 ## Phase 5: JSON Wire Protocol And Codecs
 
-Replace CSV order-entry input and market-data output with JSON. Keep the typed
-domain model as the source of truth and make JSON a concrete codec layer around
-those domain values.
+Phase 5 is the current baseline. The active demo protocol is JSON over UDP for
+order-entry commands and JSONL for files and stdout. `lab::json` carries the
+shared JSON helpers, `order_entry::json_decoder` decodes inbound command
+datagrams, `order_client::json_encoder` encodes outgoing command datagrams, and
+`market_data::json_encoder` writes market-data records. This phase removed the
+CSV codecs from the active build.
 
-### Lab JSON Port
+Keep this path buildable while phase 6 scaffolds the modular codec stack. The
+current JSON command surface can move behind the new module boundaries once
+`mor` and `mmd` exist.
 
-Port Abacus `mil::json` into the lab utility layer as `lab::json`:
+## Phase 6: Modular Codec Architecture Scaffold
 
-- base the port on `/home/msi/abacus_workspace/abacus/src/mil/mil/json.hpp`;
-- rename the macros and helper names to the lab vocabulary, for example
-  `LAB_AUTO_JSON_PFR`, `LAB_AUTO_JSON_PFR_NAMESPACE`, `lab::json::dump`,
-  `lab::json::try_parse`, and `lab::json::read_jsonl`;
-- preserve support for strong types, fixed strings, optional fields,
-  defaulted fields, enums by name, chrono values, variants with explicit type
-  tags, and Boost.Asio buffers;
-- add focused `test/lab/` coverage based on
-  `/home/msi/abacus_workspace/abacus/test/mil/json/src/test_json.cpp` and
-  `test_complex_type.cpp`;
-- register auto JSON for the order-entry and market-data namespaces after the
-  phase 4 domain types exist.
+Scaffold the order-routing and market-data codec architecture so later phases
+can fill in real B3/FIX behavior without changing module boundaries.
 
-Use Abacus as a reference, not a drop-in namespace copy. The public utility in
-this repo should be `lab::json`.
+### Order Routing Stack
 
-### Message Envelope
+Follow the Abacus layering model, renamed for this project:
 
-Use one JSON object per message. Each object should carry a stable message
-type discriminator plus the domain fields for that message. Prefer the same
-field names as the phase 4 domain types so examples, tests, and logs read like
-the C++ model.
+| Abacus module | Matching-engine-lab module | Role |
+|---|---|---|
+| `aor` | `mor` | Normalized Matching Engine Order Routing domain used by the matching engine, clients, risk stages, and tests. |
+| `aorfix` | `morfix` | Canonical FIX-shaped rendering of `mor`, independent of any FIX engine. |
+| `ospec` | `ospec` | Venue-specific tags, values, field wrappers, and normalization functions. |
+| `onixs_fix` / `onixs_bentry` | `quickfix_fix` | QuickFIX-compatible local FIX engine boundary used instead of vendor wrappers. |
+| `aorfix_onixs_fix` | `morfix_quickfix` | Glue layer that composes `morfix`, `ospec`, and the FIX engine boundary into initiator and acceptor sessions. |
 
-For files and stdout, use JSONL: one JSON message object per line. For UDP, use
-one JSON message object per datagram. This keeps the existing local workflow
-simple while making the payload self-describing.
+`mor` owns the normalized request and event model:
 
-### Order Entry Codecs
+- requests: `new_order_single`, `replace_request`, `cancel_request`, and
+  `flush_request` for the lab scenario surface;
+- events: `execution_report`, `cancel_reject`, and any explicit session or
+  parser reject event the runtime needs;
+- interfaces: `source`, `sink`, and `pipeline_stage` with bidirectional wiring
+  helpers matching the Abacus callback convention;
+- conversions between current `order_entry` messages and `mor` while the
+  rename is staged.
 
-Add concrete codecs for the two order-entry roles:
+`morfix` owns the canonical FIX layer:
 
-- client-side codec:
-  - encodes `new_order_single`, `replace_order`, and `cancel_order` requests;
-  - decodes `execution_report` and `cancel_reject` responses;
-  - is used by `order_client` and the `client` executable.
-- server-side codec:
-  - decodes order-entry requests from UDP datagrams;
-  - encodes order-entry responses emitted by the matching pipeline;
-  - is wired at the server boundary before requests enter the matching engine
-    and after matching outcomes become order-entry responses.
+- FIX-flavoured request and event structs with standard tag names and value
+  enums;
+- initiator and acceptor session abstractions that translate between `mor` and
+  FIX-shaped messages;
+- ClOrdID, OrigClOrdID, ExecID, request correlation, and order lifecycle
+  bookkeeping that belongs to FIX order routing rather than the matching
+  engine.
 
-The codec interfaces should be explicit, following the direction of Abacus
-AOR/FIX codecs:
+`ospec` owns venue profiles. Start with `ospec::b3` and keep the first slice
+small:
 
-- `/home/msi/abacus_workspace/abacus/src/aor/aor/messages.hpp` for normalized
-  request and response type shape;
-- `/home/msi/abacus_workspace/abacus/src/aorfix_onixs_fix/aorfix_onixs_fix/initiator_codec.hpp`
-  for the client-side encode-request/decode-response split;
-- `/home/msi/abacus_workspace/abacus/src/aorfix_onixs_fix/aorfix_onixs_fix/acceptor_codec.hpp`
-  for the server-side decode-request/encode-response split;
-- `/home/msi/abacus_workspace/abacus/src/aorfix_onixs_fix/src/codecs/abacus/`
-  and `test/aorfix_onixs_fix/src/test_abacus_codec.cpp` for concrete codec
-  implementation and round-trip test shape.
+- tag constants and strong field wrappers for the fields used by
+  `new_order_single`, `replace_request`, `cancel_request`,
+  `execution_report`, and `cancel_reject`;
+- value constants and normalization functions for side, order type,
+  time-in-force, order status, execution type, liquidity, aggressor, reject
+  reason, and security identity;
+- references to `b3-entrypoint-messages-8.4.2.xml` for order-entry business
+  messages and field names.
 
-### Market Data Codecs
+The `quickfix_fix` layer is a stub in this phase. It should expose local typed
+session and message interfaces that `morfix_quickfix` can depend on, with no
+hard dependency on a QuickFIX package until a later implementation phase.
 
-Add a concrete market-data JSON codec:
+`morfix_quickfix` owns the concrete adapter shape:
 
-- client-side codec:
-  - decodes `security_definition`, `security_status`, `execution_summary`,
-    `trade`, and `mbo_book_update` messages.
-- server-side codec:
-  - encodes those market-data messages from typed domain events.
+- `initiator_codec` and `acceptor_codec` interfaces modelled after
+  Abacus `aorfix_onixs_fix`;
+- `codecs::b3` stubs that map between `morfix` messages and the local FIX
+  message abstraction using `ospec::b3` normalization;
+- `initiator_sink`, `acceptor_source`, and runtime session stubs that compile
+  and wire callbacks, even when the codec bodies return
+  `not_implemented`-style errors.
 
-Market data stays separate from order entry. Do not put order-entry responses
-and market-data events into one shared message variant unless a boundary needs
-an envelope that can carry both streams.
+### Market Data Stack
 
-Use `/home/msi/abacus_workspace/abacus/src/macuco/macuco/market_data.hpp` and
-`/home/msi/abacus_workspace/abacus/src/macuco/macuco/bumdf_adapter.hpp` only as
-reference material for UMDF-shaped naming and normalization boundaries. Abacus
-market data is not yet properly normalized and modularized, so do not copy its
-module shape into this repo.
+Market data uses the same modular boundary with fewer moving parts because the
+matching engine produces the events:
+
+- `mmd` owns normalized Matching Engine Market Data events:
+  `security_definition`, `security_status`, `execution_summary`, `trade`, and
+  `mbo_book_update`;
+- `mmd_json` owns JSON and JSONL rendering of `mmd` events, replacing the
+  current `market_data::json_encoder` location once the module exists;
+- `mmdfix` owns FIX-shaped market-data records and B3 normalization hooks;
+- transport interfaces separate encoded payloads from delivery, with initial
+  stdout and stub WebSocket/FIX transports.
+
+Use `b3-market-data-messages-2.2.0.xml` as the reference for B3 market-data
+message names, field names, and enumerated values. The first scaffold should
+cover only the messages already emitted by the engine.
 
 ### Migration Shape
 
-- Add `src/lab/lab/json.hpp` and its tests before replacing codecs.
-- Add JSON codecs next to the owning domains:
-  - order-entry JSON codec under `src/order_entry/`;
-  - order-client wrapper under `src/order_client/`;
-  - market-data JSON codec under `src/market_data/`.
-- Replace CSV decoder and encoder wiring in `server`, `client`, and examples.
-- Remove or deprecate CSV codecs once JSON integration tests cover the same
-  scenario behavior.
-- Update README-level diagrams and command examples so the runtime pipeline says
-  JSON decoder/encoder and examples use JSONL.
-- Add or update an ADR for the project wire format decision.
+- Add empty or minimal CMake targets for `mor`, `morfix`, `ospec`,
+  `quickfix_fix`, `morfix_quickfix`, `mmd`, `mmd_json`, `mmdfix`, and
+  market-data transport stubs.
+- Move or wrap current `order_entry` messages behind `mor` without changing
+  matching behavior.
+- Move or wrap current `market_data` messages behind `mmd` without changing
+  matching behavior.
+- Keep the current JSON demo path running through compatibility adapters while
+  the new module names land.
+- Update `README.md`, `INDEX.md`, module READMEs, and lab guidelines after the
+  scaffold lands so durable docs describe the modular codec architecture.
+- Add an ADR for the order-routing and market-data codec layering decision.
 
 ## Test Plan
 
@@ -412,9 +479,9 @@ module shape into this repo.
     vocabulary in durable project surfaces
 - After phase 2:
   - `./build.sh debug`
-  - confirm no Docker wrapper docs remain
+  - confirm no grading wrapper docs remain
 - After phase 3:
-  - unit tests for client CSV encoding
+  - unit tests for client command encoding
   - unit tests for client config validation
   - integration test: start `server`, send fixture
     commands with `client`, compare market-data output
@@ -431,16 +498,29 @@ module shape into this repo.
   - scenario-shaped tests updated from legacy CSV records to the new event model
     or its chosen wire encoding
 - After phase 5:
-  - unit tests for `lab::json` strong type, optional, defaulted field, enum,
-    variant, buffer parse, and JSONL helpers
-  - order-entry client codec tests for request encoding and response decoding
-  - order-entry server codec tests for request decoding and response encoding
+  - unit tests for `lab::json` strong type, optional, fixed string, chrono,
+    typed parse, and JSONL helpers
+  - order-entry client codec tests for request encoding
+  - order-entry server codec tests for request decoding
   - market-data server codec tests for event encoding
-  - market-data client codec tests for event decoding
-  - JSON round-trip or approval tests for representative messages from every
-    order-entry and market-data variant
-  - integration test: start `server`, send JSONL commands with `client`, compare
-    JSONL order-entry responses and market-data output
+  - JSON parse or approval tests for representative order-entry and
+    market-data variants
+  - integration test: start `server`, send JSONL commands with `client`, and
+    compare JSONL market-data output
+- After phase 6:
+  - compile tests for the `mor` source, sink, pipeline-stage, and wiring
+    interfaces
+  - conversion tests between current `order_entry` messages and `mor`
+    requests/events
+  - `morfix` session and lifecycle tests for ClOrdID, OrigClOrdID, ExecID, and
+    request correlation stubs
+  - `ospec::b3` normalization tests for the simplified order-entry and
+    market-data value sets
+  - `morfix_quickfix` codec-interface tests proving the initiator and acceptor
+    stubs compile and route typed failures through `lab::result`
+  - `mmd` and `mmd_json` tests proving current market-data events still encode
+    to the phase 5 JSONL shape through the new boundary
+  - focused build: `./build.sh debug`
 
 ## Assumptions
 
@@ -448,4 +528,5 @@ module shape into this repo.
   user-owned and should not be restored unless explicitly requested.
 - `work-in-progress/` remains ephemeral; the reframe plan can live there
   during execution but should not be linked from durable docs.
-- CSV remains an implementation detail only until phase 5 replaces it with JSON.
+- CSV has been replaced in the active demo path. Phase 6 should preserve the
+  JSON path while the modular codec scaffold lands.

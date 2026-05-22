@@ -1,11 +1,10 @@
-#include "order_client/client.hpp"
-#include "order_entry/csv_decoder.hpp"
-#include "order_entry/messages.hpp"
-
 #include "lab/error.hpp"
 #include "lab/error_code.hpp"
 #include "lab/fmt.hpp"
 #include "lab/result.hpp"
+#include "order_client/client.hpp"
+#include "order_entry/json_decoder.hpp"
+#include "order_entry/messages.hpp"
 
 #include <charconv>
 #include <cstdint>
@@ -82,7 +81,7 @@ lab::result<cli_options> parse_arguments(int argc, char** argv)
 
 lab::result<void> send_commands(std::istream& input, order_client::client& client)
 {
-  order_entry::csv_decoder decoder;
+  order_entry::json_decoder decoder;
 
   for (std::string line; std::getline(input, line);) {
     if (line.empty()) {
@@ -134,9 +133,7 @@ int main(int argc, char** argv)
       LAB_LEAF_CHECK(run_client(options));
       return EXIT_SUCCESS;
     },
-    LAB_RESULT_CATCH_ALL(
-      print_usage(std::cerr);
-      return EXIT_FAILURE;));
+    LAB_RESULT_CATCH_ALL(print_usage(std::cerr); return EXIT_FAILURE;));
 
   return result;
 }

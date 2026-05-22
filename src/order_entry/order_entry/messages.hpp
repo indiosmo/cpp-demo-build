@@ -8,7 +8,7 @@
 #include <variant>
 
 /*
- * Typed order-entry messages. The CSV decoder maps the demo wire protocol
+ * Typed order-entry messages. The JSON decoder maps the demo wire protocol
  * into these values; the matching engine consumes this order-entry surface
  * rather than sharing market-data message types.
  */

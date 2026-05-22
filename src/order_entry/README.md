@@ -12,7 +12,7 @@ order-entry requests through pure synchronous code over value types.
   (identifiers, prices, quantities, sides, symbols), so neighbouring
   fields cannot be silently transposed at a call site.
 - A wire-format decoder that parses framed bytes into the request
-  vocabulary. The fixed-shape command protocol is recorded in
+  vocabulary. The JSON command protocol is recorded in
   [`docs/engine-specs.md`](../../../docs/engine-specs.md).
 - A pipeline-stage session that drives the decoder and emits either a
   typed request or a structured rejection.

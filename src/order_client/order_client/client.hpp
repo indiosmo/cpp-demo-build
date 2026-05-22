@@ -1,12 +1,11 @@
 #ifndef ORDER_CLIENT_CLIENT_HPP
 #define ORDER_CLIENT_CLIENT_HPP
 
-#include "order_client/csv_encoder.hpp"
-#include "order_client/udp_sender.hpp"
-#include "order_entry/messages.hpp"
-
 #include "lab/network/types.hpp"
 #include "lab/result.hpp"
+#include "order_client/json_encoder.hpp"
+#include "order_client/udp_sender.hpp"
+#include "order_entry/messages.hpp"
 
 namespace order_client {
 
@@ -31,7 +30,7 @@ public:
   lab::result<void> send(const order_entry::request& request);
 
 private:
-  csv_encoder encoder_;
+  json_encoder encoder_;
   udp_sender sender_;
 };
 

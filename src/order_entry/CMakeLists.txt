@@ -3,7 +3,7 @@ project(order_entry VERSION 0.1.0
   LANGUAGES CXX)
 
 add_library(order_entry STATIC
-  src/csv_decoder.cpp
+  src/json_decoder.cpp
   src/session.cpp
   src/runtime/session.cpp
 )

@@ -6,7 +6,7 @@ This repository began as a senior C++ take-home exercise: a multi-threaded UDP
 order book that reads CSV order commands, maintains price-time books, matches
 crossing orders, and publishes market data records. The implementation already
 goes beyond the narrow exercise by presenting production-shaped architecture,
-documentation, tests, benchmarks, and design rationale.
+documentation, tests, and design rationale.
 
 The next direction is to turn that work into `matching-engine-lab`: a C++26
 portfolio demonstrator. The project should read as a deliberate engineering
@@ -22,11 +22,11 @@ tooling.
 
 The current repo carries two identities at once. The strongest code is the
 matching-engine core and the surrounding architecture: typed domain boundaries,
-runtime composition, thread ownership, structured errors, benchmarks, and
-per-library documentation. That material belongs in the portfolio version.
+runtime composition, thread ownership, structured errors, and per-library
+documentation. That material belongs in the portfolio version.
 
 The surrounding frame still belongs to the original delivery channel. Names,
-paths, scripts, generated reports, Docker harnesses, and docs refer to legacy
+paths, scripts, generated reports, harnesses, and docs refer to legacy
 branding, grading, submission bundles, provided scenarios, and the constraints
 of the take-home. That frame should be removed or rewritten.
 
@@ -38,16 +38,14 @@ of the take-home. That frame should be removed or rewritten.
   they make the code clearer, safer, or easier to maintain.
 - A clear README that introduces the matching engine, runtime pipeline, and
   learning value of the repo.
-- A normal root project layout with source, tests, benchmarks, vendor code,
-  docs, and examples in conventional locations.
+- A normal root project layout with source, tests, vendor code, docs, and
+  examples in conventional locations.
 - Project identity based on `matching-engine-lab`, with `lab` as the internal
   utility namespace.
 - A server application that receives UDP JSON order-entry requests and publishes
   JSON order-entry responses and market data.
 - A client library and command-line app that can send JSON order-entry requests
   to the server, decode responses, and consume market-data messages.
-- An optional compose stack that runs the client and server as the complete
-  local demo environment.
 - Unit tests and local demo commands that demonstrate behavior without reading
   like an assessment harness.
 - Documentation that explains the design, trade-offs, and extension points as
@@ -60,8 +58,7 @@ Every implementation plan for this reframe should pass these checks:
 - It removes interview, employer, grading, and submission framing from durable
   project surfaces.
 - It preserves the technical strengths already present: matching semantics,
-  typed boundaries, domain/runtime split, benchmark story, and design
-  rationale.
+  typed boundaries, domain/runtime split, and design rationale.
 - It moves the project toward modern C++26 without using new features for
   novelty alone.
 - It follows `docs/lab-guidelines/` when choosing helper names, result

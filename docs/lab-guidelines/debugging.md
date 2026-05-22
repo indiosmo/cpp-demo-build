@@ -3,8 +3,8 @@
 Lab-side mapping for
 [`cpp-guidelines/cpp-debugging-principles/`](../cpp-guidelines/cpp-debugging-principles/).
 The shared guide owns the investigation loop. This file names the local
-logging, assertion, sanitizer, benchmark, and trace surfaces that produce
-evidence for that loop.
+logging, assertion, sanitizer, and trace surfaces that produce evidence for
+that loop.
 
 Symbol-to-header lookups live in the
 [README placeholder table](README.md#placeholder-mapping).
@@ -83,19 +83,6 @@ For matching defects, trace from the emitted market-data record backward to the
 matching-engine request and then into the book operation. Avoid adding
 per-order hot-path logs as a first move; unit tests and focused counters are
 usually less perturbing.
-
-## Performance evidence
-
-Performance debugging uses the benchmark targets and the committed chart data.
-Current anchors:
-
-- [`docs/performance.md`](../performance.md)
-- [`benchmarks/order_book`](../../benchmarks/order_book/)
-- [`scripts/collect_performance_data.sh`](../../scripts/collect_performance_data.sh)
-- [`scripts/render_performance_charts.py`](../../scripts/render_performance_charts.py)
-
-When the layout reframe moves benchmarks to the root, update this guide and
-the performance doc together.
 
 ## Client/server failures
 

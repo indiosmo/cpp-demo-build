@@ -27,7 +27,7 @@ Tag convention:
 - module first: `[matching_engine]`, `[order_entry]`, `[order_client]`,
   `[market_data]`, `[lab]`;
 - then test type or feature: `[unit]`, `[integration]`, `[codec]`,
-  `[runtime]`, `[error]`, `[benchmark-support]`.
+  `[runtime]`, `[error]`.
 
 Process-level client/server runs are local workflow checks rather than a CTest
 surface in this repo.
@@ -75,27 +75,22 @@ area for the owning module.
 
 Keep focused unit tests driving synchronous domain stages directly. Broad
 scenario-shaped coverage belongs in module tests with typed values and local
-helpers, not CSV fixture directories.
+helpers, not wire fixture directories.
 
 ## Codec tests
 
-`order_entry::csv_decoder` and `market_data::csv_encoder` are codec
+`order_entry::json_decoder` and `market_data::json_encoder` are codec
 boundaries. Their tests should stay table-driven and assert wire-visible
 contracts. Current anchors:
 
-- [`csv_decoder_test.cpp`](../../test/order_entry/src/csv_decoder_test.cpp)
-- [`csv_encoder_test.cpp`](../../test/market_data/src/csv_encoder_test.cpp)
+- [`json_decoder_test.cpp`](../../test/order_entry/src/json_decoder_test.cpp)
+- [`json_encoder_test.cpp`](../../test/market_data/src/json_encoder_test.cpp)
 
 The `order_client` encoder tests cover outbound order commands. The CLI process
 is kept thin; exercise command shapes through the library and parser tests.
 
-## Benchmark support
+## Performance Support
 
-Benchmarks are portfolio evidence only when their workloads are readable and
-repeatable. Keep microbenchmarks under `benchmarks/<module>/`, with scenario
-builders named in domain vocabulary. Avoid generated benchmark bodies that are
-hard to audit.
-
-The current performance chart data can remain committed, but any new benchmark
-story should document the workload and host assumptions in the performance
-guide.
+The benchmark suite is intentionally absent during the reframe. When it returns,
+keep workloads readable and repeatable, name scenario builders in domain
+vocabulary, and document host assumptions beside the benchmark entry points.

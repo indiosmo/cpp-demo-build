@@ -4,7 +4,7 @@ project(order_client VERSION 0.1.0
 
 add_library(order_client STATIC
   src/client.cpp
-  src/csv_encoder.cpp
+  src/json_encoder.cpp
   src/udp_sender.cpp
 )
 add_library(order_client::order_client ALIAS order_client)

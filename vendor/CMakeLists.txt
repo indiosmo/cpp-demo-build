@@ -1,6 +1,6 @@
 # Third-party dependencies. Every dependency reaches the build through
 # FetchContent from a public GitHub upstream pinned by tag or SHA, per
-# ADR 0002 (docs/adr/0002-copy-vendor-third-party-utilities.md).
+# ADR 0002 (docs/adr/0002-use-fetchcontent-for-third-party-dependencies.md).
 #
 # Boost and the C++26 standard library are toolchain-provided and not
 # declared here -- see scripts/dependencies/install_boost.sh and the
@@ -57,11 +57,21 @@ add_library(lab::vendor::readerwriterqueue ALIAS lab_vendor_readerwriterqueue)
 target_include_directories(lab_vendor_readerwriterqueue SYSTEM INTERFACE
   ${readerwriterqueue_SOURCE_DIR})
 
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+FetchContent_Declare(nlohmann_json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG        v3.12.0
+  GIT_SHALLOW    TRUE
+  SYSTEM
+  EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(nlohmann_json)
+
 # Compiled libraries of functions. The upstream CMake defines the
 # canonical target (fmt::fmt-header-only, spdlog::spdlog,
-# Catch2::Catch2WithMain, benchmark::benchmark_main); consumers link
-# those names directly. Tests, examples, docs, and install rules are
-# disabled per dependency to keep them out of this build.
+# Catch2::Catch2WithMain); consumers link those names directly. Tests,
+# examples, docs, and install rules are disabled per dependency to keep them
+# out of this build.
 
 set(FMT_INSTALL OFF CACHE BOOL "" FORCE)
 set(FMT_TEST    OFF CACHE BOOL "" FORCE)
@@ -108,17 +118,3 @@ FetchContent_MakeAvailable(Catch2)
 # can include(Catch).
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" PARENT_SCOPE)
-
-set(BENCHMARK_ENABLE_TESTING     OFF CACHE BOOL "" FORCE)
-set(BENCHMARK_ENABLE_INSTALL     OFF CACHE BOOL "" FORCE)
-set(BENCHMARK_INSTALL_DOCS       OFF CACHE BOOL "" FORCE)
-set(BENCHMARK_ENABLE_WERROR      OFF CACHE BOOL "" FORCE)
-set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "" FORCE)
-FetchContent_Declare(benchmark
-  GIT_REPOSITORY https://github.com/google/benchmark.git
-  GIT_TAG        v1.9.1
-  GIT_SHALLOW    TRUE
-  SYSTEM
-  EXCLUDE_FROM_ALL
-)
-FetchContent_MakeAvailable(benchmark)

@@ -23,6 +23,7 @@ target_link_libraries(lab_core
   INTERFACE
     Boost::headers
     fmt::fmt-header-only
+    nlohmann_json::nlohmann_json
     lab::vendor::inplace_function
     lab::vendor::NamedType
     lab::vendor::readerwriterqueue

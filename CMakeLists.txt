@@ -16,7 +16,6 @@ option(LAB_RELEASE          "Build with release flags and optimizations"  OFF)
 option(LAB_DEBUG            "Build with debug-friendly settings"          OFF)
 option(LAB_ASAN             "Build with Address/Leak/UB Sanitizer"        OFF)
 option(LAB_TSAN             "Build with Thread Sanitizer"                 OFF)
-option(LAB_BUILD_BENCHMARKS "Build google-benchmark microbenchmarks"      ON)
 option(LAB_BUILD_EXAMPLES   "Build illustrative example binaries"         OFF)
 
 include(CompilerFlags)
@@ -37,8 +36,4 @@ add_subdirectory(src)
 
 if(BUILD_TESTING)
   add_subdirectory(test)
-endif()
-
-if(LAB_BUILD_BENCHMARKS)
-  add_subdirectory(benchmarks)
 endif()

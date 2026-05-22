@@ -60,8 +60,8 @@
 <h1>ADR-0001: C++ project layout <span class="sub">decision matrix</span></h1>
 <p class="lede">
   Companion to ADR-0001. The decision compares three repository shapes for
-  <code>matching-engine-lab</code>: a flat executable, module-colocated tests and
-  benchmarks, and root-level aggregated trees.
+  <code>matching-engine-lab</code>: a flat executable, module-colocated tests,
+  and root-level aggregated trees.
 </p>
 
 <div class="premises">
@@ -69,7 +69,7 @@
   <ul>
     <li><b>Project identity:</b> the repository is a C++26 matching-engine lab with its project root at the repository root.</li>
     <li><b>Modules:</b> the project has utility, order-entry, matching-engine, market-data, server, and client surfaces.</li>
-    <li><b>Tooling:</b> Catch2, Google Benchmark, CTest, formatting, and static-analysis workflows should have stable top-level paths.</li>
+    <li><b>Tooling:</b> Catch2, CTest, formatting, and static-analysis workflows should have stable top-level paths.</li>
     <li><b>Growth path:</b> adding a module, executable, benchmark, or integration test should be additive.</li>
   </ul>
 </div>
@@ -79,8 +79,8 @@
     <tr>
       <th>Criterion</th>
       <th>A. Flat single-target <span class="opt-sub">One executable target owns the behavior.</span></th>
-      <th>B. Module-colocated <span class="opt-sub">Each module owns its source, tests, and benchmarks beneath one directory.</span></th>
-      <th>C. Root-level aggregated <span class="opt-sub">Sibling <code>src/</code>, <code>test/</code>, <code>benchmarks/</code>, and <code>vendor/</code> trees.</span></th>
+      <th>B. Module-colocated <span class="opt-sub">Each module owns its source and tests beneath one directory.</span></th>
+      <th>C. Root-level aggregated <span class="opt-sub">Sibling <code>src/</code>, <code>test/</code>, and <code>vendor/</code> trees.</span></th>
     </tr>
   </thead>
   <tbody>
@@ -88,19 +88,19 @@
       <td class="criterion">Growth</td>
       <td class="bad">A second library or executable forces a restructure.</td>
       <td class="good">New modules are additive.</td>
-      <td class="good">New modules, tests, benchmarks, and applications are additive.</td>
+      <td class="good">New modules, tests, and applications are additive.</td>
     </tr>
     <tr>
       <td class="criterion">Tooling scope</td>
       <td class="ok">Simple only while the project is tiny.</td>
-      <td class="bad">Production-only tools need per-module exclusions for nested tests and benchmarks.</td>
-      <td class="good">Tools target <code>src/</code>, <code>test/</code>, <code>benchmarks/</code>, or <code>vendor/</code> directly.</td>
+      <td class="bad">Production-only tools need per-module exclusions for nested tests.</td>
+      <td class="good">Tools target <code>src/</code>, <code>test/</code>, or <code>vendor/</code> directly.</td>
     </tr>
     <tr>
       <td class="criterion">CMake reuse</td>
-      <td class="bad">No durable place for shared test or benchmark setup.</td>
+      <td class="bad">No durable place for shared test setup.</td>
       <td class="ok">Each module repeats some dependency setup.</td>
-      <td class="good">Test and benchmark dependencies are found once per tree.</td>
+      <td class="good">Test dependencies are found once for the tree.</td>
     </tr>
     <tr>
       <td class="criterion">Module locality</td>
@@ -126,8 +126,7 @@
 <h2>Decision</h2>
 <p class="decision-body">
   <b>Decision: C. Root-level aggregated.</b> The project uses root
-  <code>src/</code>, <code>test/</code>, <code>benchmarks/</code>, and
-  <code>vendor/</code> trees. The small locality cost is accepted because the
+  <code>src/</code>, <code>test/</code>, and <code>vendor/</code> trees. The small locality cost is accepted because the
   build, tooling, and portfolio orientation are clearer.
 </p>
 </body>

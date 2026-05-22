@@ -47,7 +47,7 @@ flowchart TB
 
     subgraph routing[order_entry::runtime::session]
       direction LR
-      decoder[csv_decoder]
+      decoder[json_decoder]
       inner_session[order_entry::session]
       receiver[asio_udp_receiver]
     end
@@ -59,7 +59,7 @@ flowchart TB
 
     subgraph publisher_box[market_data::runtime::publisher]
       direction LR
-      encoder[csv_encoder]
+      encoder[json_encoder]
       sink[spdlog_sink]
       inner_publisher[market_data::publisher]
     end

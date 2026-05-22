@@ -1,5 +1,4 @@
 #include "catch2/catch_test_macros.hpp"
-
 #include "lab/algorithm.hpp"
 
 #include <string_view>
@@ -131,7 +130,7 @@ TEST_CASE("split_fields - trailing empty slot")
 
 TEST_CASE("split_fields - new_order body")
 {
-  // Mirrors the body that csv_decoder hands in after stripping the marker and
+  // Mirrors the body a delimiter-based codec hands in after stripping a marker and
   // its trailing comma from "N, 1, IBM, 10, 100, B, 1".
   const auto fields = lab::split_fields<6>(" 1, IBM, 10, 100, B, 1");
 

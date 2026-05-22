@@ -1,5 +1,5 @@
 add_library(market_data STATIC
-  src/csv_encoder.cpp
+  src/json_encoder.cpp
   src/publisher.cpp
   src/spdlog_sink.cpp
   src/runtime/publisher.cpp

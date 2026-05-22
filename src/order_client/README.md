@@ -3,11 +3,11 @@
 Typed UDP client library for order-entry commands. It accepts
 `order_entry::new_order_single`, `order_entry::replace_order`,
 `order_entry::cancel_order`, and `order_entry::flush`, encodes them into
-the inbound CSV command protocol, and sends each command as one UDP datagram.
+the inbound JSON command protocol, and sends each command as one UDP datagram.
 
 ## Components
 
-- `order_client::csv_encoder` maps typed order-entry requests to CSV command
+- `order_client::json_encoder` maps typed order-entry requests to JSON command
   records.
 - `order_client::udp_sender` owns the Boost.Asio UDP socket and endpoint.
 - `order_client::client` is the public API that combines encoding and sending.

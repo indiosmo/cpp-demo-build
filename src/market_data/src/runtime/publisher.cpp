@@ -1,14 +1,13 @@
 #include "market_data/runtime/publisher.hpp"
 
-#include "market_data/csv_encoder.hpp"
-#include "market_data/messages.hpp"
-#include "market_data/runtime/publisher_config.hpp"
-#include "market_data/spdlog_sink.hpp"
-
 #include "lab/error_code.hpp"
 #include "lab/log.hpp"
 #include "lab/result.hpp"
 #include "lab/variant.hpp"
+#include "market_data/json_encoder.hpp"
+#include "market_data/messages.hpp"
+#include "market_data/runtime/publisher_config.hpp"
+#include "market_data/spdlog_sink.hpp"
 
 #include <memory>
 
@@ -36,9 +35,9 @@ void publisher::send(const market_data::message& msg)
   publisher_->send(msg);
 }
 
-void publisher::setup_encoder(const csv_encoder_config&)
+void publisher::setup_encoder(const json_encoder_config&)
 {
-  encoder_ = std::make_unique<csv_encoder>();
+  encoder_ = std::make_unique<json_encoder>();
 }
 
 void publisher::setup_sink(const spdlog_sink_config&)

@@ -6,8 +6,9 @@ Three named threads on a busy-spin idle, one per pipeline stage.
 Bounded, preallocated containers throughout, so the hot path stays
 out of the allocator.
 
-Latency charts, percentile histograms, and the benchmark methodology
-live in the performance docs.
+The matching core keeps cancellation, matching, and book-update paths
+direct and allocation-aware. The benchmark suite is intentionally absent
+while the reframe is in flight and will be rebuilt as a separate piece.
 
 ## Resilient
 
@@ -29,10 +30,10 @@ through a config field. The project shows the seam at two scales:
 - **Inside a stage.** The UDP receiver has two implementations in
   tree -- one over Boost.Asio, one over Solarflare's kernel-bypass
   API -- selected by config.
-- **Across a stage boundary.** The matching engine has three
-  implementations in tree (`v1`, `v2`, `v3`) behind the same alias.
-  Production uses `v3`; the older versions stay as benchmark and
-  test references.
+- **Across a stage boundary.** The matching engine separates inbound
+  order-entry requests, outbound order-entry lifecycle events, and
+  outbound market-data events through typed callbacks. The runtime
+  shell wires those callbacks without changing the synchronous core.
 
 The decoder, encoder, publisher, and sink expose the same shape.
 

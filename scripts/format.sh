@@ -9,7 +9,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$PROJECT_ROOT"
 
-PATHS=(src/ test/ benchmarks/)
+PATHS=(src/ test/)
 EXCLUDES=(':(exclude)vendor/')
 
 if [[ "${1:-}" == "--all" ]]; then

@@ -2,15 +2,14 @@
 #define ORDER_ENTRY_RUNTIME_SESSION_HPP
 
 #include "boost/asio/io_context.hpp"
-#include "order_entry/decoder.hpp"
-#include "order_entry/messages.hpp"
-#include "order_entry/runtime/session_config.hpp"
-#include "order_entry/session.hpp"
-
 #include "lab/inplace_function.hpp"
 #include "lab/network/asio_udp_receiver.hpp"
 #include "lab/network/ef_vi_udp_receiver.hpp"
 #include "lab/result.hpp"
+#include "order_entry/decoder.hpp"
+#include "order_entry/messages.hpp"
+#include "order_entry/runtime/session_config.hpp"
+#include "order_entry/session.hpp"
 
 #include <memory>
 #include <optional>
@@ -54,7 +53,7 @@ private:
   lab::result<void> setup_receiver(const asio_udp_receiver_config& config, boost::asio::io_context& io_context);
   lab::result<void> setup_receiver(const ef_vi_udp_receiver_config& config);
 
-  void setup_decoder(const csv_decoder_config& config);
+  void setup_decoder(const json_decoder_config& config);
 
   // Non-owning; set in the asio setup_receiver overload, null on the ef_vi
   // branch.

@@ -2,7 +2,7 @@
 
 Inventory of third-party libraries the build depends on, how they reach
 CMake, and the procedure for adding a new one. The mechanism is recorded
-in [ADR 0002](docs/adr/0002-copy-vendor-third-party-utilities.md); the
+in [ADR 0002](docs/adr/0002-use-fetchcontent-for-third-party-dependencies.md); the
 `lab::` alias rule and the full vocabulary catalogue live in
 [`src/lab/README.md`](src/lab/README.md).
 
@@ -19,15 +19,15 @@ loading (see [`DEVELOPING.md`](DEVELOPING.md)).
 | `lab::vendor::inplace_function` | [SG14 `inplace_function`](https://github.com/WG21-SG14/SG14) | SHA `c9261438` | `lab::inplace_function<Sig, Cap>`: pipeline-stage `on_*` callbacks with no capture allocation. |
 | `lab::vendor::readerwriterqueue` | [moodycamel::ReaderWriterQueue](https://github.com/cameron314/readerwriterqueue) | `v1.0.6` | `lab::concurrent_queue<T>`: lock-free SPSC edges between pipeline threads. |
 | `fmt::fmt-header-only` | [fmtlib/fmt](https://github.com/fmtlib/fmt) | `11.0.2` | Lab vocabulary formatting; shared ABI with `spdlog`. |
+| `nlohmann_json::nlohmann_json` | [nlohmann/json](https://github.com/nlohmann/json) | `v3.12.0` | `lab::json`: JSON parsing and formatting for the UDP command and market-data protocols. |
 | `spdlog::spdlog` | [gabime/spdlog](https://github.com/gabime/spdlog) | `v1.14.1` | `market_data::spdlog_sink`. Built with `SPDLOG_FMT_EXTERNAL_HO=ON` so it inlines through the same `fmt` headers as the lab vocabulary. |
 | `Catch2::Catch2WithMain` | [catchorg/Catch2](https://github.com/catchorg/Catch2) | `v3.7.1` | Unit tests. `Catch.cmake` is added to `CMAKE_MODULE_PATH` so `catch_discover_tests` is available. |
-| `benchmark::benchmark_main` | [google/benchmark](https://github.com/google/benchmark) | `v1.9.1` | Microbenchmarks. |
 
 The libraries-of-types tier wraps each upstream behind a thin
 `lab::vendor::<name>` INTERFACE target so domain code never depends on the
 upstream type directly. The libraries-of-functions tier exposes the upstream
 target unchanged because the upstream vocabulary (`fmt::`, `spdlog::`,
-`Catch2::`, `benchmark::`) is already part of the project vocabulary.
+`Catch2::`) is already part of the project vocabulary.
 
 All declarations live in [`vendor/CMakeLists.txt`](vendor/CMakeLists.txt).
 The first configure populates the `FetchContent` cache from GitHub;
@@ -46,7 +46,7 @@ Boost is installed by
 under `$WORKSPACE_ROOT` and the CMake presets pin `BOOST_ROOT` / `Boost_ROOT`
 to the same prefix. The workspace install pattern mirrors the abacus
 workspace setup. This carve-out is recorded in
-[ADR 0002](docs/adr/0002-copy-vendor-third-party-utilities.md).
+[ADR 0002](docs/adr/0002-use-fetchcontent-for-third-party-dependencies.md).
 
 ## Adding a third-party dependency
 

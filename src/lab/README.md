@@ -3,17 +3,16 @@
 The project's general-purpose utility library -- the "internal Boost"
 that every other library is written against. It owns the small set of
 compile-time and runtime primitives the rest of the code depends on,
-and re-exports the copy-vendored third-party headers behind a
-`lab::` namespace.
+and re-exports third-party types behind a `lab::` namespace.
 
 The aliasing rule is the load-bearing convention: domain libraries
 depend on `lab::` aliases, never on the upstream header directly.
-Swapping a vendored library out is a one-header change inside this
+Swapping a dependency out is a one-header change inside this
 directory rather than a sweep across call sites. The current inventory
 and the provenance of each upstream live in
 [`DEPENDENCIES.md`](../../../DEPENDENCIES.md);
-[ADR 0002](../../../docs/adr/0002-copy-vendor-third-party-utilities.md)
-records why dependencies are copy-vendored.
+[ADR 0002](../../../docs/adr/0002-use-fetchcontent-for-third-party-dependencies.md)
+records why dependencies use CMake `FetchContent`.
 
 ## Catalogue
 
@@ -28,6 +27,7 @@ records why dependencies are copy-vendored.
 | `algorithm` | `string_view` trimming and fixed-arity field splitting -- the small set of spellings the codebase reaches for repeatedly. |
 | `charconv` | `from_chars` / `to_chars` returning `lab::result`, with exact and partial match modes and built-in support for `strong_type` wrappers. |
 | `hash` | Reflective `auto_hash` for aggregates via `boost::pfr`, plus the `LAB_STD_HASH` macro that wires it into `std::hash`. |
+| `json` | nlohmann/json adapter for strong types, fixed strings, optionals, field helpers, and `lab::result` parse/read helpers. |
 | `concurrent_queue` | Single-producer / single-consumer lock-free queue, used on the two cross-thread edges of the pipeline. Aliased from `moodycamel::ReaderWriterQueue`; the blocking variant (`BlockingReaderWriterQueue`) backs the event-loop task queue. |
 | `event_loop` | Pinned worker thread driving a `concurrent_queue` of work items, with a selectable idle strategy (`timed_wait_idle` or `busy_spin_idle`) and graceful shutdown. The runtime layer composes the three pipeline threads on top of it. |
 | `log` | Small diagnostic logging facade. Defaults to stderr so the stdout sink can own the market-data stream; the destination is pluggable to a file or null logger at startup. |

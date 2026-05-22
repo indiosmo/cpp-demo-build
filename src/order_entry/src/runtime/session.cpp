@@ -1,10 +1,6 @@
 #include "order_entry/runtime/session.hpp"
 
 #include "boost/leaf/handle_errors.hpp"
-#include "order_entry/csv_decoder.hpp"
-#include "order_entry/messages.hpp"
-#include "order_entry/runtime/session_config.hpp"
-
 #include "lab/error_code.hpp"
 #include "lab/log.hpp"
 #include "lab/network/asio_udp_receiver.hpp"
@@ -12,6 +8,9 @@
 #include "lab/network/types.hpp"
 #include "lab/result.hpp"
 #include "lab/variant.hpp"
+#include "order_entry/json_decoder.hpp"
+#include "order_entry/messages.hpp"
+#include "order_entry/runtime/session_config.hpp"
 
 #include <memory>
 #include <string_view>
@@ -110,9 +109,9 @@ lab::result<void> session::setup_receiver(const ef_vi_udp_receiver_config& confi
   return {};
 }
 
-void session::setup_decoder(const csv_decoder_config&)
+void session::setup_decoder(const json_decoder_config&)
 {
-  decoder_ = std::make_unique<csv_decoder>();
+  decoder_ = std::make_unique<json_decoder>();
 }
 
 } // namespace order_entry::runtime

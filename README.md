@@ -4,7 +4,7 @@ Multi-threaded UDP order book matching engine, built as a C++26 systems
 portfolio project with the local GCC 16 toolchain documented in
 [`DEVELOPING.md`](DEVELOPING.md).
 
-Core matching logic lives in the `matching_engine/v3` module.
+Core matching logic lives in the `matching_engine` module.
 
 ## Architecture
 
@@ -21,7 +21,7 @@ flowchart LR
   subgraph input_thread[Input thread]
     direction LR
     udp[UDP receiver]
-    decoder[CSV decoder]
+    decoder[JSON decoder]
     session[Routing session]
     udp -->|datagram| decoder
     decoder -->|request| session
@@ -36,7 +36,7 @@ flowchart LR
 
   subgraph output_thread[Output thread]
     direction LR
-    encoder[CSV encoder]
+    encoder[JSON encoder]
     publisher[Publisher]
     sink[stdout sink]
     encoder --> publisher --> sink
@@ -57,11 +57,9 @@ flowchart LR
 
 ## Highlights
 
-- **Fast.** ~12 ns p99 insert and ~10 ns p99 cancel at a realistic
-  200-order single-level depth on the production
-  `matching_engine::v3::flat_order_book`; see
-  [`docs/performance.md`](docs/performance.md) for the percentile chart and
-  methodology.
+- **Hot-path conscious.** The matching core uses direct cancellation,
+  intrusive resting-order nodes, and pre-sized runtime structures; the
+  benchmark suite will be rebuilt after the current reframe settles.
 - **Resilient.** Clean build under GCC and Clang, with all sanitiser
   combinations green and zero warnings against a flag set well beyond
   `-Wall -Wextra`.
@@ -95,9 +93,9 @@ non-HFT consumers.
 
 | Thread | Stages it owns | Notes |
 |--------|----------------|-------|
-| Input | UDP receiver, CSV decoder, order-entry session | The asio `io_context` runs as a non-blocking poller against the same loop, so datagrams advance in line with posted tasks. |
+| Input | UDP receiver, JSON decoder, order-entry session | The asio `io_context` runs as a non-blocking poller against the same loop, so datagrams advance in line with posted tasks. |
 | Processing | Matching engine, per-symbol books | Pure synchronous chain over posted requests; no pollers. |
-| Output | CSV encoder, publisher, stdout sink | The publisher is the sole writer of stdout, so no per-record locking. |
+| Output | JSON encoder, publisher, stdout sink | The publisher is the sole writer of stdout, so no per-record locking. |
 
 Inside any one thread, the stages run as a direct synchronous chain;
 no stage knows it lives behind an event loop.
@@ -111,9 +109,9 @@ statement and the pointers to the ADRs that explain its shape.
 |---------|------|
 | [`lab`](src/lab/) | General-purpose utilities ("our internal Boost"). |
 | [`order_entry`](src/order_entry/) | Inbound domain. UDP bytes to typed order-entry requests. |
-| [`order_client`](src/order_client/) | Typed client library. Order-entry requests to UDP CSV datagrams. |
+| [`order_client`](src/order_client/) | Typed client library. Order-entry requests to UDP JSON datagrams. |
 | [`matching_engine`](src/matching_engine/) | The main trading domain. Per-symbol order books and the matching loop. |
-| [`market_data`](src/market_data/) | Outbound domain. Typed messages to CSV records on stdout. |
+| [`market_data`](src/market_data/) | Outbound domain. Typed messages to JSON records on stdout. |
 | [`server`](src/server/) | Wiring shell. Owns the three event loops and the executable. |
 | [`client`](src/client/) | CLI sender for scenario files or stdin. |
 
@@ -151,10 +149,10 @@ Run the UDP server and send commands:
 
 ```bash
 ./_build/debug/server --host 127.0.0.1 --port 1234
-printf 'N, 1, IBM, 10, 100, B, 1\nF\n' | ./_build/debug/client --host 127.0.0.1 --port 1234
+./_build/debug/client --host 127.0.0.1 --port 1234 --input examples/scenarios/crossing-orders.jsonl
 ```
 
-The server listens for CSV order commands over UDP and writes market data
+The server listens for JSON order commands over UDP and writes market data
 records to stdout. Use `ctest --test-dir _build/debug --output-on-failure`
 when you want to rerun the test suite without rebuilding.
 
@@ -176,13 +174,13 @@ project conventions.
 
 ```
 .
+|-- examples/           Demo scenario inputs and expected market-data output
 |-- src/               Libraries and client/server applications
 |-- test/              Unit tests
-|-- benchmarks/        Google Benchmark microbenchmarks
-|-- vendor/            Copy-vendored third-party utilities
+|-- vendor/            CMake FetchContent dependency declarations
 |-- cmake/             Shared CMake modules
 |-- scripts/           Developer scripts (formatting, pre-commit)
-|-- docs/              ADRs, C++ design principles, engine spec, runtime and event-loop docs, performance
+|-- docs/              ADRs, C++ design principles, engine spec, runtime and event-loop docs
 |-- build.sh           CMake configure + build + ctest wrapper
 `-- setup.sh           Local toolchain and hook setup
 ```

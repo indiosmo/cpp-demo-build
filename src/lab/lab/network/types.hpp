@@ -17,8 +17,8 @@ struct endpoint_config
 /*
  * View over a received datagram's payload, valid only for the on_datagram
  * call that delivered it (the underlying buffer is the receiver's reusable
- * receive_buffer_). Typed as string_view because the CSV protocol is
- * CSV text and downstream parses out of the view directly.
+ * receive_buffer_). Typed as string_view because the JSON protocol is
+ * text and downstream parses out of the view directly.
  */
 using datagram_view = std::string_view;
 

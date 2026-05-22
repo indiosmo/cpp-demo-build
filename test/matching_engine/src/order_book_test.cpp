@@ -9,9 +9,7 @@
 
 /*
  * Component tests for the production order-book primitive exposed through
- * matching_engine::order_book. Historical implementations stay in the source
- * tree for comparison, but unit tests follow the non-versioned alias used by
- * the application.
+ * matching_engine::order_book.
  *
  * The production book links caller-owned order_node objects. The local
  * fixture owns those nodes and calls the real place(order_node*) /

@@ -11,11 +11,11 @@
 
 namespace market_data::runtime {
 
-struct csv_encoder_config
+struct json_encoder_config
 {
 };
 
-using encoder_config = std::variant<csv_encoder_config>;
+using encoder_config = std::variant<json_encoder_config>;
 
 struct spdlog_sink_config
 {
@@ -25,7 +25,7 @@ using sink_config = std::variant<spdlog_sink_config>;
 
 struct publisher_config
 {
-  encoder_config encoder{csv_encoder_config{}};
+  encoder_config encoder{json_encoder_config{}};
   sink_config sink{spdlog_sink_config{}};
 };
 

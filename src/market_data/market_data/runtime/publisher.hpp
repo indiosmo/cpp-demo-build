@@ -1,13 +1,12 @@
 #ifndef MARKET_DATA_RUNTIME_PUBLISHER_HPP
 #define MARKET_DATA_RUNTIME_PUBLISHER_HPP
 
+#include "lab/result.hpp"
 #include "market_data/encoder.hpp"
 #include "market_data/messages.hpp"
 #include "market_data/publisher.hpp"
 #include "market_data/runtime/publisher_config.hpp"
 #include "market_data/sink.hpp"
-
-#include "lab/result.hpp"
 
 #include <memory>
 #include <optional>
@@ -37,7 +36,7 @@ public:
   void send(const market_data::message& msg);
 
 private:
-  void setup_encoder(const csv_encoder_config& config);
+  void setup_encoder(const json_encoder_config& config);
   void setup_sink(const spdlog_sink_config& config);
 
   // Declared before publisher_ so the inner publisher (which holds references

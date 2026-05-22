@@ -27,7 +27,7 @@ vocabularies directly; the peer domains stay independent.
 
 Designated-initializer construction at every emit site -- e.g. the
 `market_data::trade` built inside
-[`matching_engine::v3::engine::handle(new_order_single)`](../src/matching_engine/src/v3/engine.cpp)
+[`matching_engine::engine::handle(new_order_single)`](../src/matching_engine/src/engine.cpp)
 -- compiles only if every named field receives the correct strong
 type.
 
@@ -40,12 +40,12 @@ formatting.
 
 ## [Compile-time correctness -- exhaustive variants](cpp-design-principles.md#compile-time-correctness)
 
-The CSV encoder visits `market_data::message` with one explicit
+The JSON encoder visits `market_data::message` with one explicit
 branch per alternative
-([`csv_encoder.cpp`](../src/market_data/src/csv_encoder.cpp));
+([`json_encoder.cpp`](../src/market_data/src/json_encoder.cpp));
 adding a new event alternative without an `encode_*` branch fails to
 compile here. The engine's command dispatch in
-[`engine.cpp`](../src/matching_engine/src/v3/engine.cpp)
+[`engine.cpp`](../src/matching_engine/src/engine.cpp)
 (`engine::send` -> `lab::match` -> `handle(...)` overloads) enforces
 the same property through overload resolution.
 
@@ -83,26 +83,22 @@ concern stays behind a small `lab::` utility.
 
 ## [Declarative style](cpp-design-principles.md#declarative-style)
 
-[`engine::handle(new_order_single)`](../src/matching_engine/src/v3/engine.cpp)
+[`engine::handle(new_order_single)`](../src/matching_engine/src/engine.cpp)
 reads as a sequence of named stages -- duplicate check, ack, match,
 residual, top-of-book -- with `removed_liquidity`, `is_market`, and
 `should_place_order` staged before the branching. The named `crosses`
 predicate in
-[`matching.hpp`](../src/matching_engine/matching_engine/v3/matching.hpp)
+[`matching.hpp`](../src/matching_engine/matching_engine/matching.hpp)
 factors out the market-versus-limit cross condition so the matching loop
 reads as stages, not guards.
 
 ## [Performance discipline](cpp-design-principles.md#performance-discipline)
 
-Four order-book variants live in the tree: the vector-backed v1, the
-intrusive-list-plus-per-book-pool v2, and the v3 pair that lifts node
-allocation out of the book itself (`v3::std_order_book` and the
-production `v3::flat_order_book`, exposed through the top-level
-[`matching_engine::order_book`](../src/matching_engine/matching_engine/order_book.hpp)
-alias). A head-to-head
-[benchmark](../benchmarks/order_book/src/matching_engine_order_book_benchmark.cpp)
-parameterises place/cancel/traverse across all four shapes -- the
-production choice is measured, not asserted.
+The order book stores price levels in sorted
+`boost::container::flat_map`s and keeps each level's FIFO in intrusive
+pool-backed nodes. [ADR 0004](adr/0004-use-flat-price-level-maps-with-intrusive-pooled-orders.md)
+captures the current data-structure rationale; fresh benchmarks should
+be added after the reframe stabilizes.
 
 ## [Behaviour-first tests](cpp-design-principles.md#behaviour-first-tests)
 

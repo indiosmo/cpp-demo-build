@@ -1,0 +1,7 @@
+{"message_type":"mbo_book_update","previous_quantity":null,"price":10,"quantity":100,"resting_order_id":0,"security_id":0,"side":"buy","transact_time":0,"update_action":"change"}
+{"message_type":"mbo_book_update","previous_quantity":null,"price":12,"quantity":100,"resting_order_id":0,"security_id":0,"side":"sell","transact_time":0,"update_action":"change"}
+{"message_type":"mbo_book_update","previous_quantity":null,"price":11,"quantity":100,"resting_order_id":0,"security_id":0,"side":"sell","transact_time":0,"update_action":"change"}
+{"buyer":1,"message_type":"trade","price":10,"quantity":100,"security_id":0,"seller":103,"trade_condition":"regular","trade_date":"20260522","trade_id":1,"trade_sub_type":null,"transact_time":0}
+{"aggressor_side":"sell","aggressor_time":0,"cancel_qty":null,"fill_qty":100,"last_px":10,"message_type":"execution_summary","security_id":0,"traded_hidden_qty":null,"transact_time":0}
+{"message_type":"mbo_book_update","previous_quantity":null,"price":null,"quantity":null,"resting_order_id":0,"security_id":0,"side":"buy","transact_time":0,"update_action":"delete_order"}
+{"message_type":"mbo_book_update","previous_quantity":null,"price":10,"quantity":100,"resting_order_id":0,"security_id":0,"side":"buy","transact_time":0,"update_action":"change"}
