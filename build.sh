@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Purpose: Configures, builds, and tests the project using a CMake preset.
 # Usage:   build.sh [preset] [target] [cmake_option ...]
-#          Example: build.sh release matching_engine_lab_server
+#          Example: build.sh release server
 # Notes:   Sources scripts/setenv.sh automatically so CMake sees the local
 #          GCC 16 toolchain without requiring shell startup changes.
 set -euo pipefail

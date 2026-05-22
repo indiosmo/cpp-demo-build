@@ -94,11 +94,11 @@ and sinks. Current anchors:
 - [`order_routing::runtime::session`](../../src/order_routing/order_routing/runtime/session.hpp)
 - [`matching_engine::runtime::engine`](../../src/matching_engine/matching_engine/runtime/engine.hpp)
 - [`market_data::runtime::publisher`](../../src/market_data/market_data/runtime/publisher.hpp)
-- [`matching_engine_lab_server::application`](../../src/matching_engine_lab_server/matching_engine_lab_server/application.hpp),
-  which becomes the `matching_engine_lab_server` wiring shell.
+- [`server::application`](../../src/server/server/application.hpp), the
+  `server` wiring shell.
 
-The future client should follow the same split: a synchronous order-client
-library for command encoding and a thin runtime app for UDP sending.
+The client follows the same split: a synchronous `order_client` library for
+command encoding and UDP sending, plus a thin CLI app for files and stdin.
 
 ## Pipelines and callback wiring
 

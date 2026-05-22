@@ -9,7 +9,7 @@ practice.
 
 No domain library includes asio, `std::thread`, or `std::mutex`. All
 I/O and threading sit in
-[`matching_engine_lab_server::application`](../src/matching_engine_lab_server/src/application.cpp)
+[`server::application`](../src/server/src/application.cpp)
 -- the receiver, the three loops, and the stdout sink are owned by
 that class.
 
@@ -52,7 +52,7 @@ the same property through overload resolution.
 ## [Error handling](cpp-design-principles.md#error-handling)
 
 The result-aware startup chain in
-[`application::start`](../src/matching_engine_lab_server/src/application.cpp)
+[`application::start`](../src/server/src/application.cpp)
 uses `LAB_LEAF_CHECK` for the socket bind and each loop's
 `start()`. The matching engine's public `send` / `handle` overloads
 return `void`: their `lab::result`-bearing helpers
@@ -75,7 +75,7 @@ locations, route through one configurable logger, and default to
 stderr so stdout remains the market-data stream.
 
 The runtime shell configures the logger once in
-[`application::configure_logger`](../src/matching_engine_lab_server/src/application.cpp).
+[`application::configure_logger`](../src/server/src/application.cpp).
 Runtime components use the same facade for lifecycle, rejection, and
 queue-overflow messages. The domain stages keep their own message
 vocabularies focused on trading events, while the cross-cutting

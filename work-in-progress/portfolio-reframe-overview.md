@@ -47,8 +47,8 @@ of the take-home. That frame should be removed or rewritten.
 - A client library and command-line app that can send orders to the server.
 - An optional compose stack that runs the client and server as the complete
   local demo environment.
-- Scenario fixtures and integration tests that demonstrate behavior without
-  reading like an assessment harness.
+- Unit tests and local demo commands that demonstrate behavior without reading
+  like an assessment harness.
 - Documentation that explains the design, trade-offs, and extension points as
   portfolio material.
 
@@ -68,8 +68,8 @@ Every implementation plan for this reframe should pass these checks:
 - It makes the project easier for an outside engineer to clone, build, run,
   inspect, and discuss.
 - It favors ordinary project workflows over assessment workflows.
-- It treats examples, fixtures, and integration tests as demonstration assets,
-  not as hidden-test preparation.
+- It treats examples and tests as demonstration assets, not as hidden-test
+  preparation.
 - It keeps changes staged so the repo can be built and tested between phases.
 
 ## Non-Goals

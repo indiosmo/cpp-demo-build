@@ -14,7 +14,7 @@ The order-routing stage receives one UDP datagram and turns it into one typed
 request: new order, cancel, or flush. The sample wire protocol defines three
 record markers, each with a fixed field count.
 
-The scenario fixtures use well-formed command rows. Malformed data is still
+Command rows are well-formed at this boundary. Malformed data is still
 represented as a domain rejection at the session boundary, but the CSV decoder
 itself should optimize for the documented protocol rather than arbitrary CSV
 input.

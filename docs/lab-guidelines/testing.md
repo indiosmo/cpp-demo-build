@@ -3,7 +3,7 @@
 Lab-side mapping for
 [`cpp-guidelines/cpp-testing-principles/`](../cpp-guidelines/cpp-testing-principles/).
 The shared guide owns rules and rationale. This file names the local test
-layout, fixtures, result helpers, and integration shapes for
+layout, test data, result helpers, and scenario-shaped tests for
 `matching-engine-lab`.
 
 Symbol-to-header lookups live in the
@@ -24,13 +24,13 @@ are under [`test/`](../../test/).
 
 Tag convention:
 
-- module first: `[matching_engine]`, `[order_routing]`, `[market_data]`,
-  `[lab]`;
+- module first: `[matching_engine]`, `[order_routing]`, `[order_client]`,
+  `[market_data]`, `[lab]`;
 - then test type or feature: `[unit]`, `[integration]`, `[codec]`,
   `[runtime]`, `[error]`, `[benchmark-support]`.
 
-Tests that boot threads, sockets, or the future client/server pair are
-integration tests and should live in their own files.
+Process-level client/server runs are local workflow checks rather than a CTest
+surface in this repo.
 
 ## Result-aware assertions
 
@@ -47,7 +47,7 @@ The target lab surface should provide:
 Add these helpers before broadening error-path tests; otherwise each test file
 will grow its own local LEAF handling.
 
-## Factories and fixtures
+## Factories and test data
 
 Production factories live beside the domain they construct. Current anchors:
 
@@ -71,21 +71,11 @@ Add a `wire_noop_callbacks` helper when a component exposes several callbacks
 or inherits callbacks from a base stage. Keep that helper in the test fixture
 area for the owning module.
 
-## Scenario and integration tests
+## Scenario-shaped tests
 
-The `test/` directory holds current CSV scenarios. The portfolio version should
-keep useful scenarios as demonstration fixtures.
-
-Target shape:
-
-- scenario CSV inputs and expected market-data outputs under
-  `test/integration/fixtures/` or `examples/scenarios/`;
-- a client/server integration test that starts `matching_engine_lab_server`,
-  sends commands through `matching_engine_lab_client`, and compares stdout;
-- focused unit tests that still drive synchronous domain stages directly.
-
-Integration tests should wait on observed output or process state, not fixed
-sleep durations. Use predicate-based waits once the lab helper layer has them.
+Keep focused unit tests driving synchronous domain stages directly. Broad
+scenario-shaped coverage belongs in module tests with typed values and local
+helpers, not CSV fixture directories.
 
 ## Codec tests
 
@@ -96,12 +86,12 @@ contracts. Current anchors:
 - [`csv_decoder_test.cpp`](../../test/order_routing/src/csv_decoder_test.cpp)
 - [`csv_encoder_test.cpp`](../../test/market_data/src/csv_encoder_test.cpp)
 
-When the client library lands, add encoder tests for outbound order commands
-there instead of testing the CLI process for every CSV shape.
+The `order_client` encoder tests cover outbound order commands. The CLI process
+is kept thin; exercise command shapes through the library and parser tests.
 
 ## Benchmark support
 
-Benchmarks are portfolio evidence only when their fixtures are readable and
+Benchmarks are portfolio evidence only when their workloads are readable and
 repeatable. Keep microbenchmarks under `benchmarks/<module>/`, with scenario
 builders named in domain vocabulary. Avoid generated benchmark bodies that are
 hard to audit.

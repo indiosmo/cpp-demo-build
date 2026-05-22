@@ -122,8 +122,8 @@ std::cout << "rejecting new_order: unknown symbol " << request.instrument << '\n
 
 ## Scenario Tests
 
-Scenario fixtures are demonstration assets. Keep broad end-to-end coverage in
-integration tests and detailed behavior in synchronous unit tests.
+Scenario-shaped examples are demonstration assets. Keep detailed behavior in
+synchronous unit tests.
 
 Good -- unit test drives the domain directly:
 

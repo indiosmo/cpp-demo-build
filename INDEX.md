@@ -2,7 +2,7 @@
 
 ## System overview
 
-Multi-threaded UDP-driven order book matching engine. The server binary, `matching_engine_lab_server`, ingests CSV commands over UDP, matches them against per-symbol books, and publishes the resulting market data records to stdout. The codebase is organised as five static libraries (a shared vocabulary layer, two boundary domains, the matching engine, and a wiring shell) plus Catch2 unit tests and Google Benchmark microbenchmarks.
+Multi-threaded UDP-driven order book matching engine. The `server` binary ingests CSV commands over UDP, matches them against per-symbol books, and publishes the resulting market data records to stdout. The `client` binary sends typed order commands from files or stdin to the server. The codebase is organised as static libraries for shared vocabulary, order routing, order clients, market data, matching, and runtime wiring, plus Catch2 unit tests and Google Benchmark microbenchmarks.
 
 ## Tech stack
 
@@ -27,16 +27,18 @@ matching-engine-lab/
 |   |-- adr/                              architecture decision records (numbered, dated)
 |   `-- performance/                      benchmark results and raw data
 |-- scripts/                              developer scripts (formatting, pre-commit, vendor sync)
-|-- src/                                  library sources and server executable
+|-- src/                                  library sources and client/server executables
 |   |-- lab/                              general-purpose vocabulary helpers
 |   |   |-- lab/                          public headers
 |   |   |-- libs/                         network adapter sub-library (asio + ef_vi UDP receivers)
 |   |   `-- src/                          reserved for utility translation units
-|   |-- matching_engine_lab_server/       wiring shell + main; the matching_engine_lab_server executable target
+|   |-- client/                          CLI sender; the client executable target
 |   |-- market_data/                      outbound domain: typed events to CSV records to stdout
 |   |-- matching_engine/                  composition domain: per-symbol books and the matching loop (v1, v2, v3)
-|   `-- order_routing/                    inbound domain: UDP CSV bytes to typed routing requests
-|-- test/                                 module Catch2 tests plus CSV scenario fixtures
+|   |-- order_client/                     typed client API: routing requests to UDP CSV datagrams
+|   |-- order_routing/                    inbound domain: UDP CSV bytes to typed routing requests
+|   `-- server/                           wiring shell + main; the server executable target
+|-- test/                                 module Catch2 tests
 |-- benchmarks/                           Google Benchmark microbenchmarks
 |   |-- lab/                              vocabulary-layer benchmarks
 |   |-- matching_engine/                  engine throughput / latency benchmarks
@@ -97,6 +99,18 @@ Headers:
 - (P) runtime/session.hpp        -- Threaded composer owning UDP receiver, decoder, and inner session; lifecycle `setup`/`start`/`poll`/`stop`.
 - (P) runtime/session_config.hpp -- Variant-typed config selecting the UDP receiver backend (asio or ef_vi) and the decoder.
 
+### order_client
+
+Base path: `src/order_client/order_client/`
+
+Typed client library for driving the server from examples and local tools. It keeps callers on the same `order_routing` request vocabulary as the server boundary, encodes each request to the inbound CSV command protocol, and sends each command as a UDP datagram through a Boost.Asio-backed sender.
+
+Headers:
+
+- (P) client.hpp      -- Public typed API: `connect()` plus `send(new_order)`, `send(cancel_order)`, `send(flush)`, and `send(request)`.
+- (I) csv_encoder.hpp -- Encodes typed routing requests into outbound CSV command records.
+- (I) udp_sender.hpp  -- Boost.Asio UDP sender with configurable endpoint.
+
 ### market_data
 
 Base path: `src/market_data/market_data/`
@@ -143,12 +157,18 @@ Headers:
 - (P) runtime/engine.hpp        -- Composer holding `optional<engine>`; exposes `setup` / `send` / `on_event` for the wiring shell.
 - (P) runtime/engine_config.hpp -- Deployment-default mirror of `engine_config` (defaults: chunk 32, expected 1024).
 
-### matching_engine_lab_server
+### server
 
-Base path: `src/matching_engine_lab_server/matching_engine_lab_server/`
+Base path: `src/server/server/`
 
-Wiring shell that composes the project's domain runtimes into a three-thread application (input loop, processing loop, output loop) pinned to named threads, with cross-thread hops implemented as `post` closures and the receiver driven by a poller registered on the input loop. Owns the three `lab::event_loop` instances, the three runtime composers, and the optional `boost::asio::io_context` the asio receiver backend borrows. Brings the pipeline up outbound-to-inbound so each consumer is live before its producer can post, and tears it down in reverse; backend selection is a config-time choice rather than a wiring change. Provides the `matching_engine_lab_server` executable entry point, which translates `SIGINT` / `SIGTERM` into application lifecycle.
+Wiring shell that composes the project's domain runtimes into a three-thread application (input loop, processing loop, output loop) pinned to named threads, with cross-thread hops implemented as `post` closures and the receiver driven by a poller registered on the input loop. Owns the three `lab::event_loop` instances, the three runtime composers, and the optional `boost::asio::io_context` the asio receiver backend borrows. Brings the pipeline up outbound-to-inbound so each consumer is live before its producer can post, and tears it down in reverse; backend selection is a config-time choice rather than a wiring change. Provides the `server` executable entry point, which translates `SIGINT` / `SIGTERM` into application lifecycle.
 
 Headers:
 
 - (I) application.hpp -- `config` selecting backends and per-loop thread names; `application` owning the loops, runtimes, and `start`/`run`/`stop` lifecycle.
+
+### client
+
+Base path: `src/client/`
+
+Thin command-line sender over `order_client::client`. It reads CSV commands from `--input` or stdin, decodes them to typed `order_routing::request` values, and sends each one to the configured UDP endpoint. CLI options are `--host`, `--port`, and `--input`.

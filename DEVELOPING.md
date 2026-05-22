@@ -55,7 +55,8 @@ workflow is a single command:
 ```bash
 ./build.sh                       # debug preset, all targets, run tests
 ./build.sh release               # release preset
-./build.sh asan matching_engine_lab_server # named preset and target
+./build.sh asan server           # named preset and target
+./build.sh asan client           # named preset and target
 ./build.sh debug -DLAB_BUILD_BENCHMARKS=OFF  # forward extra cmake options
 ```
 
@@ -90,9 +91,8 @@ ctest --test-dir _build/debug --output-on-failure
 
 ## Project layout
 
-- `src/` -- libraries and the `matching_engine_lab_server` application.
-- `test/` -- module unit tests, CSV scenario fixtures, and the current
-  scenario runner.
+- `src/` -- libraries and the `client` and `server` applications.
+- `test/` -- module unit tests.
 - `benchmarks/` -- Google Benchmark microbenchmarks.
 - `vendor/` -- copy-vendored third-party utilities.
 - `cmake/` -- shared CMake modules (compiler flags, sanitizer wiring).
@@ -178,11 +178,14 @@ not re-run benchmarks:
 
 ## Running the server
 
-Build the server target, then run the binary from the selected preset:
+Build the server and client targets, then run the binaries from the selected
+preset:
 
 ```bash
-./build.sh debug matching_engine_lab_server
-./_build/debug/matching_engine_lab_server
+./build.sh debug server
+./build.sh debug client
+./_build/debug/server --host 127.0.0.1 --port 1234
+printf 'N, 1, IBM, 10, 100, B, 1\nF\n' | ./_build/debug/client --host 127.0.0.1 --port 1234
 ```
 
 The process listens for UDP order commands and writes market data records to

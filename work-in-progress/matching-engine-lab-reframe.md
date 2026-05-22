@@ -25,9 +25,9 @@ Decision matrix:
   - Utility namespace/library: legacy utility layer -> `lab`
   - CMake aliases: `lab::lab` -> `lab::core`
   - Build options/macros: legacy project prefix -> `LAB_*`
-  - Server executable: legacy server name -> `matching_engine_lab_server`
-  - Client executable: `matching_engine_lab_client`
-  - Runtime namespace: server namespace -> `matching_engine_lab_server`
+  - Server executable: legacy server name -> `server`
+  - Client executable: `client`
+  - Runtime namespace: server namespace -> `server`
   - Thread names: `lab-input`, `lab-engine`, `lab-output`
 - Keep domain names `order_routing`, `matching_engine`, and `market_data`;
   they are domain vocabulary, not employer branding.
@@ -55,13 +55,12 @@ Phase 1 moved the implementation into the root project layout and completed
 the identity rename:
 
 - moved library sources to `src/`;
-- merged module unit tests into root `test/` while preserving the current CSV
-  scenario fixtures and `test/run_tests.sh`;
+- merged module unit tests into root `test/`;
 - moved Google Benchmark targets to `benchmarks/`;
 - moved copy-vendored dependencies to `vendor/`;
 - renamed the utility module, headers, namespace, macros, and CMake alias to
   `lab` / `lab::core` / `LAB_*`;
-- renamed the wiring shell and executable to `matching_engine_lab_server`;
+- renamed the wiring shell and executable to `server`;
 - updated thread names to `lab-input`, `lab-engine`, and `lab-output`;
 - rewired root CMake to add `vendor`, `src`, `test`, and `benchmarks`
   directly;
@@ -105,19 +104,26 @@ Verification completed:
 - Focused searches over touched durable surfaces found no remaining Docker
   wrapper or grading workflow references.
 
-Important handoff: `test/run_tests.sh` remains in place. The phase plan says to
-delete it only once phase 3 replaces its role with the real client/server
-integration path. Until then it is the current scenario runner.
-
 ### Phase 3 Handoff
 
-Status: pending.
+Status: completed.
 
-Phase 3 should replace `test/run_tests.sh` before deleting it. The replacement
-needs a first-class UDP client library and executable, plus integration tests
-that start the server, send scenario commands, and compare market-data output.
-Once that path exists, remove `test/run_tests.sh` and move useful scenario
-fixtures into their target location.
+Phase 3 replaced the shell scenario runner with a first-class UDP client path:
+
+- added `src/order_client/` with typed send APIs for
+  `order_routing::new_order`, `cancel_order`, `flush`, and `request`;
+- added CSV command encoding for outbound order commands;
+- added a Boost.Asio-backed UDP sender with configurable endpoint,
+  defaulting to `127.0.0.1:1234`;
+- added the `client` executable with `--host`, `--port`, and `--input`;
+- added `--host` and `--port` to the `server` executable;
+- removed the CSV scenario fixture tree from `test/`;
+- deleted `test/run_tests.sh`.
+
+Verification completed:
+
+- `ctest --test-dir _build/debug --output-on-failure` passed with the
+  remaining unit-test suite.
 
 Phase 3.1 should reintroduce Docker as a compose stack for the complete local
 environment. This is a project-owned demo and development workflow, not a
@@ -142,12 +148,11 @@ matching-engine boundary rather than shared message structs.
   - `.dockerignore`
   - `run_submission.sh`
   - `run_local_submission.sh`
-  - `test/run_tests.sh` once phase 3 replaces its role
 - Update `README.md` and `DEVELOPING.md` to document regular local workflows:
   - `./build.sh`
   - direct `cmake --preset=debug`
   - `ctest --test-dir _build/debug --output-on-failure`
-  - running `./_build/debug/matching_engine_lab_server`
+  - running `./_build/debug/server`
 - Remove Docker/grading/package assumptions from `DEPENDENCIES.md`; keep
   package inventory as developer setup context only.
 
@@ -160,19 +165,14 @@ matching-engine boundary rather than shared message structs.
   - CSV encoding for outbound order commands
   - UDP sender backed by Boost.Asio
   - configurable endpoint, defaulting to `127.0.0.1:1234`
-- Add `src/matching_engine_lab_client/` executable:
+- Add `src/client/` executable:
   - sends commands from a file or stdin
   - supports a simple CLI: `--host`, `--port`, `--input`
   - exits nonzero on file/socket/config errors
-- Keep `matching_engine_lab_server` as the matching-engine server that listens
+- Keep `server` as the matching-engine server that listens
   on UDP and writes market data CSV to stdout.
-- Convert old scenario files into non-grading examples or integration fixtures:
-  - move useful CSV inputs under `examples/scenarios/` or
-    `test/integration/fixtures/`
-  - remove "expected even outputs" and assessment language
-  - add integration tests that start `matching_engine_lab_server`, run
-    `matching_engine_lab_client`, and compare stdout for representative
-    scenarios.
+- Remove the old scenario files and shell-runner workflow from `test/`.
+- Keep scenario-shaped coverage in focused unit tests and local demo commands.
 
 ### Phase 3.1: Compose Stack
 
@@ -185,8 +185,8 @@ repos:
   subtree, then include them from the root compose file.
 - Use shared env-file anchors for image versions and local overrides.
 - Use a named bridge network for the matching-engine lab stack.
-- Define one service for `matching_engine_lab_server` and one service for
-  `matching_engine_lab_client`; the client should target the server by service
+- Define one service for `server` and one service for
+  `client`; the client should target the server by service
   name inside the compose network.
 - Treat health checks, startup ordering, and one-shot client runs as part of
   the compose contract so the stack can demonstrate a full scenario.
@@ -287,7 +287,7 @@ style later.
 
 - After phase 1:
   - `./build.sh debug`
-  - `./build.sh release matching_engine_lab_server`
+  - `./build.sh release server`
   - focused search for legacy branding, `submission/` paths, and assessment
     vocabulary in durable project surfaces
 - After phase 2:
@@ -296,8 +296,8 @@ style later.
 - After phase 3:
   - unit tests for client CSV encoding
   - unit tests for client config validation
-  - integration test: start `matching_engine_lab_server`, send fixture
-    commands with `matching_engine_lab_client`, compare market-data output
+  - integration test: start `server`, send fixture
+    commands with `client`, compare market-data output
   - sanitizer pass with `./build.sh asan`
 - After phase 4:
   - unit tests for order-entry lifecycle mapping:
@@ -308,7 +308,7 @@ style later.
     and `mbo_book_update`
   - regression tests proving order-entry types and market-data types are not
     interchangeable at API boundaries
-  - integration tests updated from legacy CSV records to the new event model
+  - scenario-shaped tests updated from legacy CSV records to the new event model
     or its chosen wire encoding
 
 ## Assumptions

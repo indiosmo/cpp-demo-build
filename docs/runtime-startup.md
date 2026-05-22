@@ -22,8 +22,8 @@ background.
 
 ## Composition
 
-`main` constructs one [`matching_engine_lab_server::application`](../src/matching_engine_lab_server/matching_engine_lab_server/application.hpp)
-from a static [`config`](../src/matching_engine_lab_server/matching_engine_lab_server/application.hpp).
+`main` constructs one [`server::application`](../src/server/server/application.hpp)
+from a static [`config`](../src/server/server/application.hpp).
 The application owns the three event loops and the three runtime
 composers. Each composer owns the concrete backends its config
 variant selects -- a UDP receiver, a decoder, an encoder, a sink --
@@ -33,7 +33,7 @@ and exposes the stage as a `send` / `on_*` boundary.
 flowchart TB
   main([main])
 
-  subgraph application[matching_engine_lab_server::application]
+  subgraph application[server::application]
     direction TB
 
     subgraph loops[event loops]
@@ -160,7 +160,7 @@ The loops then start outbound-to-inbound -- output, processing,
 input -- so each consumer is live before its producer can post to
 it. `application::stop` walks the chain backwards: stop the receiver,
 drain input, drain processing, drain output, flush the publisher.
-[`run`](../src/matching_engine_lab_server/src/application.cpp) joins
+[`run`](../src/server/src/application.cpp) joins
 the three threads after the signal handler asks them to stop.
 
 ## See also

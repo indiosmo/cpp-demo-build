@@ -19,7 +19,7 @@ live in the performance docs.
   [`cmake/CompilerFlags.cmake`](../cmake/CompilerFlags.cmake) for the
   list.
 - Per-library Catch2 unit tests exercise each domain in isolation.
-  Scenario fixtures under [`test/`](../test/) drive the binary end to end.
+  The client and server binaries can be run together over localhost UDP.
 
 ## Modular
 

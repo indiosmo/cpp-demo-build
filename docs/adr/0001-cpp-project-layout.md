@@ -15,7 +15,7 @@ shape of a normal C++ repository: source and build entry points at the
 repository root, with modules grouped by project role.
 
 The layout should stay comfortable as the project grows from the current server
-and core domains to a client library, more integration tests, and additional
+and core domains to a client library, more unit tests, and additional
 benchmarks.
 
 ## Decision Drivers
@@ -39,7 +39,7 @@ benchmarks.
 2. **Module-colocated tests and benchmarks.** Put each module under
    `src/<module>/` and place that module's tests and benchmarks beneath it.
 3. **Root-level aggregated trees.** Use sibling top-level trees: `src/` for
-   libraries and applications, `test/` for unit and integration tests,
+   libraries and applications, `test/` for unit tests,
    `benchmarks/` for microbenchmarks, and `vendor/` for copied third-party
    utility sources.
 
@@ -75,17 +75,19 @@ matching-engine-lab/
     order_routing/
       order_routing/*.hpp
       src/*.cpp
+    order_client/
+      order_client/*.hpp
+      src/*.cpp
     matching_engine/
       matching_engine/*.hpp
       src/*.cpp
     market_data/
       market_data/*.hpp
       src/*.cpp
-    matching_engine_lab_server/
-      matching_engine_lab_server/*.hpp
+    server/
+      server/*.hpp
       src/main.cpp
-    matching_engine_lab_client/
-      matching_engine_lab_client/*.hpp
+    client/
       src/main.cpp
   test/
     <module>/
@@ -123,7 +125,7 @@ runtime orchestration; `main.cpp` translates process concerns into that library.
 The decision is in effect when:
 
 - Production code lives under `src/`.
-- Unit and integration tests live under `test/`.
+- Unit tests live under `test/`.
 - Microbenchmarks live under `benchmarks/`.
 - Third-party copied utility sources live under `vendor/`.
 - `CMakeLists.txt` at the repository root owns the project declaration, shared

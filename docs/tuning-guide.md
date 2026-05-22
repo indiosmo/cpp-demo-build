@@ -278,7 +278,7 @@ stays portable -- it still calls `socket()`, `recvfrom()`, `send()`
 kernel-bypass path. The change is the launcher and a profile file:
 
 ```bash
-onload --profile=/path/to/latency.opf ./matching_engine_lab_server ./config.json
+onload --profile=/path/to/latency.opf ./server --host 0.0.0.0 --port 1234
 ```
 
 The profile is a list of `onload_set` directives that tune the
@@ -394,7 +394,7 @@ cores.
   binding wastes most of what the earlier layers buy.
 - **`ulimit -c unlimited`** for production: a core file from a once-
   in-a-quarter crash is worth far more than the memory it took.
-- **Real-time priority.** `chrt -f 50 ./matching_engine_lab_server ...` runs
+- **Real-time priority.** `chrt -f 50 ./server ...` runs
   the process under SCHED_FIFO. With cores isolated and ticks off
   there is rarely anything else runnable, but the FIFO priority
   guarantees the busy-spin loop wins if anything ever migrates onto

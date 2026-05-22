@@ -16,10 +16,11 @@
  * this file keeps one in-process scenario for fast iteration through the
  * synchronous callback channel.
  *
- * The scenario mirrors test/2: a few resting orders, an aggressing sell that
+ * The scenario uses a few resting orders, an aggressing sell that
  * crosses the only resting buy, the resulting top-of-book elimination, and a
  * fresh resting buy after the elimination. The expected emissions come from
- * test/2/out.csv -- the contract that produces them is documented in
+ * a cancelled best bid and a fresh resting buy. The contract that produces
+ * the events is documented in
  * docs/engine-specs.md.
  */
 
@@ -78,7 +79,7 @@ TEST_CASE("matching_engine - cross, eliminate, fresh rest", "[matching_engine][e
 {
   recorder r;
 
-  // Seed (mirrors the first three lines of test/2/in.csv):
+  // Seed a bid, an ask, and a lower bid:
   //   alice 1 buys 100 @ 10  -> new best bid
   //   alice 2 sells 100 @ 12 -> new best ask
   //   bob   102 sells 100 @ 11 -> tightens the ask side

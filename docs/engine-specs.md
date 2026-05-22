@@ -84,9 +84,8 @@ Drains every book and emits nothing. The book map keeps its
 configured symbols alive so later commands keep finding their
 books -- only the contents are discarded.
 
-`F` is a session reset. The fixtures use it as the final command in
-each scenario, and no top-of-book record follows a flush. Downstream
-consumers observe the reset through the absence of further records.
+`F` is a session reset, and no top-of-book record follows a flush.
+Downstream consumers observe the reset through the absence of further records.
 
 ## Behaviour
 

@@ -33,7 +33,7 @@ The target assert macro is `LAB_ASSERT`. Current anchor:
 
 Use assertions for internal invariants the parser or type system has already
 established. Use result errors at runtime boundaries where the caller can
-respond, such as configuration, socket setup, and future client input.
+respond, such as configuration, socket setup, and client input.
 
 ## Rich result details
 
@@ -77,7 +77,7 @@ burying their invocation in README prose.
 The server composition layer is the right place to trace cross-thread flow:
 UDP receive, decode, session dispatch, engine event emission, encode, and
 publish. Current anchor:
-[`application.cpp`](../../src/matching_engine_lab_server/src/application.cpp).
+[`application.cpp`](../../src/server/src/application.cpp).
 
 For matching defects, trace from the emitted market-data record backward to the
 matching-engine request and then into the book operation. Avoid adding
@@ -99,7 +99,7 @@ the performance doc together.
 
 ## Client/server failures
 
-Phase 3 adds a UDP client. Debug client/server failures by separating:
+Debug client/server failures by separating:
 
 - command encoding in the client library;
 - socket send/receive at the runtime edge;

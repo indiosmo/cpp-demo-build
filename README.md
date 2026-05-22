@@ -87,7 +87,7 @@ its own thread.
 Each loop's idle behaviour -- what the consumer does when both the
 task queue and the pollers are empty -- is selected per loop through
 `lab::event_loop_config::idle_strategy`. The server is an HFT-style
-pipeline, so `matching_engine_lab_server::config` defaults all three loops to
+pipeline, so `server::config` defaults all three loops to
 `lab::busy_spin_idle`: the consumer never sleeps, never wakes, and
 the next iteration starts as soon as the previous one ends. The
 loop primitive itself defaults to `lab::timed_wait_idle` for
@@ -111,9 +111,11 @@ statement and the pointers to the ADRs that explain its shape.
 |---------|------|
 | [`lab`](src/lab/) | General-purpose utilities ("our internal Boost"). |
 | [`order_routing`](src/order_routing/) | Inbound domain. UDP bytes to typed routing requests. |
+| [`order_client`](src/order_client/) | Typed client library. Routing requests to UDP CSV datagrams. |
 | [`matching_engine`](src/matching_engine/) | The main trading domain. Per-symbol order books and the matching loop. |
 | [`market_data`](src/market_data/) | Outbound domain. Typed messages to CSV records on stdout. |
-| [`matching_engine_lab_server`](src/matching_engine_lab_server/) | Wiring shell. Owns the three event loops and the executable. |
+| [`server`](src/server/) | Wiring shell. Owns the three event loops and the executable. |
+| [`client`](src/client/) | CLI sender for scenario files or stdin. |
 
 Where it helps to see a library used in isolation, a runnable example
 program lives alongside it (under the library's own `examples/`
@@ -141,13 +143,15 @@ Build the project and run the unit tests:
 
 ```bash
 ./build.sh                                # debug preset, all targets, run tests
-./build.sh release matching_engine_lab_server  # optimized server binary
+./build.sh release server                 # optimized server binary
+./build.sh release client                 # optimized client binary
 ```
 
-Run the UDP server directly:
+Run the UDP server and send commands:
 
 ```bash
-./_build/debug/matching_engine_lab_server
+./_build/debug/server --host 127.0.0.1 --port 1234
+printf 'N, 1, IBM, 10, 100, B, 1\nF\n' | ./_build/debug/client --host 127.0.0.1 --port 1234
 ```
 
 The server listens for CSV order commands over UDP and writes market data
@@ -161,7 +165,8 @@ when you want to rerun the test suite without rebuilding.
 ```bash
 ./build.sh                                # debug preset, all targets, run tests
 ./build.sh release                        # optimized build
-./build.sh asan matching_engine_lab_server     # named preset and target
+./build.sh asan server                    # named preset and target
+./build.sh asan client                    # named preset and target
 ```
 
 See [`DEVELOPING.md`](DEVELOPING.md) for setup, available presets, and
@@ -171,8 +176,8 @@ project conventions.
 
 ```
 .
-|-- src/               Libraries and server application
-|-- test/              Unit tests, CSV scenario fixtures, and current scenario runner
+|-- src/               Libraries and client/server applications
+|-- test/              Unit tests
 |-- benchmarks/        Google Benchmark microbenchmarks
 |-- vendor/            Copy-vendored third-party utilities
 |-- cmake/             Shared CMake modules
