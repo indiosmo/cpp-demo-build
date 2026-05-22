@@ -20,7 +20,7 @@ records why dependencies are copy-vendored.
 | Library | Description |
 |---|---|
 | `result` / `error` | Structured error carrier over `boost::leaf`. Per-domain `error_code` enums plug into `std::error_code` via a single macro, and typed payloads are recovered in handlers via `data<T>()` / `is_type<T>()`. |
-| `expected` | C++20 backport of `std::expected` for boundary APIs that cross out of a domain. |
+| `expected` | `std::expected` alias for boundary APIs that cross out of a domain. |
 | `strong_type` | Nominal typedefs over `NamedType` with project conventions baked in: call-through, comparison, same-type arithmetic that preserves the strong type, hashing, streaming, and a `from(...)` factory for `fixed_string`-backed types. |
 | `fixed_string` | Bounded inline string with a configurable truncation policy. Used for short identifiers on the hot path so message types stay allocation free. |
 | `inplace_function` | Type-erased callable with fixed inline storage. Pipeline-stage `on_*` callbacks are typed as `inplace_function`, so emission and posting onto event loops never allocate and capture-size regressions surface as compile errors. |

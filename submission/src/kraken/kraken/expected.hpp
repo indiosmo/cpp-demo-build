@@ -1,25 +1,31 @@
 #ifndef KRAKEN_EXPECTED_HPP
 #define KRAKEN_EXPECTED_HPP
 
-#include "tl/expected.hpp"
+#include <expected>
+#include <type_traits>
+#include <utility>
 
 /*
- * Aliased from tl::expected (C++20 backport of std::expected) so the alias
- * collapses to std::expected when the project moves to C++23.
+ * Project vocabulary for value-or-error boundary APIs.
  */
 
 namespace kraken {
 
 template <typename T, typename E>
-using expected = tl::expected<T, E>;
+using expected = std::expected<T, E>;
 
 template <typename E>
-using unexpected = tl::unexpected<E>;
+using unexpected = std::unexpected<E>;
 
-using tl::bad_expected_access;
-using tl::make_unexpected;
-using tl::unexpect;
-using tl::unexpect_t;
+using std::bad_expected_access;
+using std::unexpect;
+using std::unexpect_t;
+
+template <typename E>
+constexpr auto make_unexpected(E&& error)
+{
+  return std::unexpected<std::decay_t<E>>{std::forward<E>(error)};
+}
 
 } // namespace kraken
 

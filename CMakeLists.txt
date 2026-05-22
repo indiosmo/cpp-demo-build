@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 4.0)
 
 project(kraken
   VERSION 0.1.0
@@ -7,6 +7,10 @@ project(kraken
 )
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
+set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(KRAKEN_RELEASE          "Build with release flags and optimizations"  OFF)
 option(KRAKEN_DEBUG            "Build with debug-friendly settings"          OFF)

@@ -25,7 +25,6 @@ target_link_libraries(kraken
   INTERFACE
     Boost::headers
     fmt::fmt-header-only
-    kraken::vendor::expected
     kraken::vendor::inplace_function
     kraken::vendor::NamedType
     kraken::vendor::readerwriterqueue

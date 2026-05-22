@@ -8,10 +8,15 @@ crossing orders, and publishes market data records. The implementation already
 goes beyond the narrow exercise by presenting production-shaped architecture,
 documentation, tests, benchmarks, and design rationale.
 
-The next direction is to turn that work into `matching-engine-lab`: a C++
+The next direction is to turn that work into `matching-engine-lab`: a C++26
 portfolio demonstrator. The project should read as a deliberate engineering
 showcase, not as an interview artifact. Future implementation plans should be
 validated against this goal before they are accepted.
+
+The local mapping for those C++ conventions lives in
+`docs/lab-guidelines/`. Future implementation plans should consult it when
+choosing helper names, result handling shape, test layout, and debugging
+tooling.
 
 ## Starting Point
 
@@ -29,6 +34,8 @@ take-home. That frame should be removed or rewritten.
 
 `matching-engine-lab` should present a self-contained C++ systems project:
 
+- A modern C++26 codebase that uses new language and library features where
+  they make the code clearer, safer, or easier to maintain.
 - A clear README that introduces the matching engine, runtime pipeline, and
   learning value of the repo.
 - A normal root project layout with source, tests, benchmarks, vendor code,
@@ -52,6 +59,10 @@ Every implementation plan for this reframe should pass these checks:
 - It preserves the technical strengths already present: matching semantics,
   typed boundaries, domain/runtime split, benchmark story, and design
   rationale.
+- It moves the project toward modern C++26 without using new features for
+  novelty alone.
+- It follows `docs/lab-guidelines/` when choosing helper names, result
+  handling shape, test layout, and debugging tooling.
 - It makes the project easier for an outside engineer to clone, build, run,
   inspect, and discuss.
 - It favors ordinary project workflows over assessment workflows.

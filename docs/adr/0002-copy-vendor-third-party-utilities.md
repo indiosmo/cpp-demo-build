@@ -8,7 +8,7 @@
 
 ## Context and Problem Statement
 
-The submission needs four small header-only utilities -- a strong-typedef helper, a fixed-capacity callable, an SPSC queue, and an `expected` vocabulary type -- to satisfy the project design principles (see [`DEPENDENCIES.md`](../../DEPENDENCIES.md) for the per-utility rationale). How those utilities reach the build is a separate question with several plausible answers: copy the sources into the tree, reference them as git submodules, fetch them at configure time with CMake `FetchContent`, or stand up an `ExternalProject` superproject.
+The submission needs small header-only utilities -- a strong-typedef helper, a fixed-capacity callable, and an SPSC queue -- to satisfy the project design principles (see [`DEPENDENCIES.md`](../../DEPENDENCIES.md) for the per-utility rationale). How those utilities reach the build is a separate question with several plausible answers: copy the sources into the tree, reference them as git submodules, fetch them at configure time with CMake `FetchContent`, or stand up an `ExternalProject` superproject.
 
 Two constraints from the grading environment shape the choice. First, the graded harness runs `docker build` then `docker run` against the submission; the Dockerfile copies the `submission/` directory into the image and builds from there, and a transient network failure during that one-shot build is an outright loss. Second, delivery is by `git bundle` per [`EXERCISE.md`](../../EXERCISE.md), and a `git bundle` packs only the parent repo's history -- anything tracked outside that history (submodule contents, for instance) does not travel.
 

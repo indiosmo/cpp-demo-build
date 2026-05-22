@@ -14,7 +14,15 @@ the `kraken::` alias rule and the full vocabulary catalogue live in
 | `kraken::strong_type<T, Tag>` | [NamedType](https://github.com/joboccara/NamedType) | MIT | [Compile-time correctness](docs/cpp-design-principles.md#compile-time-correctness): tagged primitives the compiler rejects when swapped. |
 | `kraken::inplace_function<Sig, Cap>` | [SG14 `inplace_function`](https://github.com/WG21-SG14/SG14) | BSL-1.0 | Pipeline-stage `on_*` callbacks: no capture allocation, inline-visible call sites, capture-size regressions caught at compile time. |
 | `kraken::concurrent_queue<T>` | [moodycamel::ReaderWriterQueue](https://github.com/cameron314/readerwriterqueue) | BSD-2-Clause | Lock-free SPSC edges between the three pipeline threads. |
-| `kraken::expected<T, E>` | [TartanLlama `expected`](https://github.com/TartanLlama/expected) | CC0-1.0 | C++20 value-or-error vocabulary at domain boundaries; collapses to `std::expected` once the project moves to C++23. |
+| `kraken::expected<T, E>` | Standard library `<expected>` | Toolchain-provided | C++26 value-or-error vocabulary at domain boundaries. |
+
+## Local toolchain
+
+Local development uses the setup flow documented in
+[`DEVELOPING.md`](DEVELOPING.md): GCC 16.1.0, CMake 4.3.2, LLVM/Clang 23 tools,
+and Boost 1.91.0 installed under `$WORKSPACE_ROOT` (default:
+`~/cpp_workspace`). The CMake presets consume `BOOST_ROOT`, `GCC_ROOT`, and
+the related paths from `scripts/setenv.sh`.
 
 ## System packages
 

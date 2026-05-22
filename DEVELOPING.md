@@ -11,13 +11,33 @@ Run the setup script once after cloning:
 ./setup.sh
 ```
 
-This installs `uv`, then installs the
-[prek](https://github.com/j178/prek)-managed pre-commit hook that runs
-`clang-format` on staged C++ files. If `uv` or `prek` are missing, the script
-offers to install them. The hook configuration lives in `.pre-commit-config.yaml`.
+This initializes submodules, installs the shared local C++ toolchain, installs
+`uv`, installs the [prek](https://github.com/j178/prek)-managed pre-commit hook
+that runs `clang-format` on staged C++ files, and writes
+`CMakeUserPresets.json` for editor integrations.
+
+The local C++ toolchain installs under `$WORKSPACE_ROOT` (default:
+`~/cpp_workspace`):
+
+- GCC 16.1.0
+- CMake 4.3.2
+- LLVM/Clang 23 tools
+- binutils 2.46.0, mold 2.41.0, ccache 4.13.5, lcov 2.3.2
+- Boost 1.91.0 built with the custom GCC
+
+If `uv` or `prek` are missing, the script offers to install them. The hook
+configuration lives in `.pre-commit-config.yaml`.
 
 `uv` is shared by developer scripts such as `scripts/render_performance_charts.py`;
 run `./scripts/install_uv.sh` directly when you only need that toolchain.
+
+Source the toolchain environment before running CMake directly:
+
+```bash
+source scripts/setenv.sh
+```
+
+`build.sh` sources that environment automatically.
 
 ## Building and testing
 
@@ -44,7 +64,7 @@ The repo ships several CMake presets covering different compilers and
 sanitizers (Address/Leak/UB, Thread, Clang+ASan, plus plain debug and
 release). The authoritative list is `CMakePresets.json`; pass the preset name
 as the first argument to `build.sh`, or invoke `cmake --preset=<name>`
-directly.
+directly after sourcing `scripts/setenv.sh`.
 
 Use the sanitizer presets when chasing memory or threading bugs locally and
 before submitting changes -- they catch issues the default debug build misses.
@@ -54,6 +74,7 @@ before submitting changes -- they catch issues the default debug build misses.
 If you prefer not to use `build.sh`:
 
 ```bash
+source scripts/setenv.sh
 cmake --preset=debug
 cmake --build _build/debug
 ctest --test-dir _build/debug --output-on-failure

@@ -1,30 +1,31 @@
 #!/usr/bin/env bash
-# Configure, build, and test the submission using a CMake preset.
-#
-# Usage:
-#   build.sh [preset] [target] [cmake_option ...]
-#
-# Examples:
-#   build.sh                                            # debug preset, all targets
-#   build.sh asan                                       # asan preset, all targets
-#   build.sh release kraken_submission                  # build a single target
-#   build.sh debug -DKRAKEN_BUILD_BENCHMARKS=ON         # extra configure options
-#   build.sh release kraken_submission -DKRAKEN_BUILD_BENCHMARKS=ON -DKRAKEN_FOO=OFF
-#
-# Anything after the (optional) target that begins with '-' is forwarded to the
-# configure step. Tests always run after a successful build.
-#
-# Available presets: debug (default), release, asan, tsan, clang.
-
+# Purpose: Configures, builds, and tests the submission using a CMake preset.
+# Usage:   build.sh [preset] [target] [cmake_option ...]
+#          Example: build.sh release kraken_submission
+# Notes:   Sources scripts/setenv.sh automatically so CMake sees the local
+#          GCC 16 toolchain without requiring shell startup changes.
 set -euo pipefail
 shopt -s inherit_errexit
 
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 usage() {
-  echo "usage: build.sh [debug|release|asan|tsan|clang] [target] [cmake_option ...]"
-  echo "       default preset: debug"
+  printf '%s\n' "usage: build.sh [debug|release|asan|tsan|clang] [target] [cmake_option ...]"
+  printf '%s\n' "       default preset: debug"
+}
+
+activate_environment() {
+  if [[ -n "${KRAKEN_ENV_SOURCED:-}" ]]; then
+    return
+  fi
+
+  # shellcheck source=scripts/setenv.sh
+  source "$SCRIPT_DIR/scripts/setenv.sh"
 }
 
 main() {
+  activate_environment
+
   local preset="debug"
   local target=""
   local -a cmake_options=()
@@ -46,23 +47,20 @@ main() {
   # Everything else is forwarded verbatim to the cmake configure step.
   cmake_options=("$@")
 
-  local script_dir
-  script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-
   local num_cores
   num_cores=$(grep -c '^processor' /proc/cpuinfo)
 
-  cmake --preset="$preset" -S "$script_dir" "${cmake_options[@]}"
-  cmake --build "$script_dir/_build/$preset" --target "${target:-all}" --parallel "$num_cores"
+  cmake --fresh --preset="$preset" -S "$SCRIPT_DIR" "${cmake_options[@]}"
+  cmake --build "$SCRIPT_DIR/_build/$preset" --target "${target:-all}" --parallel "$num_cores"
 
-  ctest --test-dir "$script_dir/_build/$preset" --parallel "$num_cores" --output-on-failure
+  ctest --test-dir "$SCRIPT_DIR/_build/$preset" --parallel "$num_cores" --output-on-failure
 
-  cp "$script_dir/_build/$preset/compile_commands.json" "$script_dir/compile_commands.json" 2>/dev/null || true
+  cp "$SCRIPT_DIR/_build/$preset/compile_commands.json" "$SCRIPT_DIR/compile_commands.json" 2>/dev/null || true
 
   # Keep _build/clang's compile DB fresh so clangd (which reads from there per
   # .clangd) sees current targets and includes without a separate build.
   if [[ "$preset" != "clang" ]]; then
-    cmake --preset=clang -S "$script_dir" >/dev/null
+    cmake --fresh --preset=clang -S "$SCRIPT_DIR" >/dev/null
   fi
 }
 

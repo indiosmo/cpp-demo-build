@@ -6,7 +6,7 @@ Senior C++ interview submission implementing a multi-threaded UDP-driven order b
 
 ## Tech stack
 
-- C++23
+- C++26
 - CMake (presets: debug, release, asan, tsan, clang)
 - Ninja generator
 - Boost (header-only) -- https://www.boost.org -- LEAF, container_hash, pfr, algorithm, stacktrace, asio, intrusive, pool, unordered
@@ -17,12 +17,11 @@ Senior C++ interview submission implementing a multi-threaded UDP-driven order b
 - NamedType (vendored, MIT) -- https://github.com/joboccara/NamedType
 - SG14 inplace_function (vendored, BSL-1.0) -- https://github.com/WG21-SG14/SG14
 - moodycamel ReaderWriterQueue (vendored, BSD-2-Clause) -- https://github.com/cameron314/readerwriterqueue
-- TartanLlama expected (vendored, CC0-1.0) -- https://github.com/TartanLlama/expected
 
 ## Directory structure
 
 ```
-assessment-cpp-senior/
+cpp-demo/
 |-- cmake/                                shared CMake modules (compiler flags, sanitizers)
 |-- docs/                                 ADRs, C++ design principles, engine spec, runtime docs, performance data
 |   |-- adr/                              architecture decision records (numbered, dated)
@@ -44,7 +43,7 @@ assessment-cpp-senior/
 |   |   |-- matching_engine/              composition domain: per-symbol books and the matching loop (v1, v2, v3)
 |   |   `-- order_routing/                inbound domain: UDP CSV bytes to typed routing requests
 |   |-- test/                             per-module Catch2 unit tests (mirrors src/ layout; not expanded)
-|   `-- vendor/                           copy-vendored third-party utilities (NamedType, expected, inplace_function, readerwriterqueue)
+  |   `-- vendor/                           copy-vendored third-party utilities (NamedType, inplace_function, readerwriterqueue)
 |-- test/                                 Docker-based black-box scenarios 1-16 (do not modify; not expanded)
 `-- work-in-progress/                     working notes not yet promoted to docs/
 ```
@@ -68,7 +67,7 @@ Headers:
 - (P) error_macros.hpp     -- `KRAKEN_DEFINE_ERROR_CATEGORY(NS)`: turns any domain's `error_code` enum into a usable `std::error_code` domain
 - (I) errors.hpp           -- `kraken::errors::generic_error` catch-all payload: an `error_code` plus optional free-form text
 - (P) event_loop.hpp       -- Pinned `jthread` running a blocking SPSC task queue plus pollers, with timed-wait or busy-spin idle strategies
-- (P) expected.hpp         -- Re-exports `tl::expected` as `kraken::expected` so the alias collapses to `std::expected` on C++23
+- (P) expected.hpp         -- Aliases `std::expected` as `kraken::expected` for boundary value-or-error APIs
 - (P) fixed_string.hpp     -- Bounded inline string templated on capacity and a strict / auto-truncate policy, with hash, fmt, and ostream support
 - (P) fmt.hpp              -- Project-wide aggregate include of the upstream fmt headers behind one entry point
 - (P) hash.hpp             -- `auto_hash<T>` reflective hasher via `boost::pfr`, plus the `KRAKEN_STD_HASH` and `KRAKEN_HASH_VALUE` macros

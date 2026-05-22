@@ -8,6 +8,5 @@
 # PATHS.txt files and run scripts/vendor.sh sync.
 
 add_subdirectory(NamedType)
-add_subdirectory(expected)
 add_subdirectory(inplace_function)
 add_subdirectory(readerwriterqueue)

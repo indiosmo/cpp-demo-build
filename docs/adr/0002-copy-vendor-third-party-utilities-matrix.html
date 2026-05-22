@@ -89,8 +89,8 @@
 
 <h1>kraken: dependency management <span class="sub">decision matrix</span></h1>
 <p class="lede">
-  The submission needs four small header-only utilities (strong-typedef helper,
-  fixed-capacity callable, SPSC queue, <code>expected</code> vocabulary type -- see
+  The submission needs three small header-only utilities (strong-typedef helper,
+  fixed-capacity callable, SPSC queue -- see
   <code>DEPENDENCIES.md</code>). How do we bring them into the build? Constraints
   in play: the graded harness runs
   <code>docker build</code> then <code>docker run</code> against the submission, delivery
@@ -101,7 +101,7 @@
 <div class="premises">
   <h2>Assumptions</h2>
   <ul>
-    <li><b>All four utilities are header-only.</b> No upstream build systems to plug in;
+    <li><b>All three utilities are header-only.</b> No upstream build systems to plug in;
         the integration is "add to the include path".</li>
     <li><b>Delivery is a <code>git bundle</code>.</b> Per <code>EXERCISE.md</code>, the
         submission is shipped as a single pack file. Whatever isn't in the parent
@@ -117,10 +117,10 @@
     <li><b><code>fixed_string</code> and <code>match</code> / <code>match_partial</code>
         are not vendored.</b> Both are small enough to be written in-house under
         <code>submission/src/kraken/kraken/</code>, so they drop out of the vendored
-        list and the count goes from six to four.</li>
-    <li><b>All four remaining upstream licenses are permissive.</b> MIT (NamedType),
-        BSL-1.0 (SG14 <code>inplace_function</code>), BSD-2-Clause
-        (<code>readerwriterqueue</code>), and CC0-1.0 (TartanLlama <code>expected</code>).
+        list and the count goes from five to three.</li>
+    <li><b>All three remaining upstream licenses are permissive.</b> MIT (NamedType),
+        BSL-1.0 (SG14 <code>inplace_function</code>), and BSD-2-Clause
+        (<code>readerwriterqueue</code>).
         Attribution requirements are satisfied by shipping each upstream's
         <code>LICENSE</code> inside <code>submission/vendor/&lt;name&gt;/</code>.</li>
   </ul>

@@ -1,6 +1,7 @@
 # Kraken Order Book -- Senior Submission
 
-Multi-threaded UDP order book matching engine.
+Multi-threaded UDP order book matching engine, built as C++26 with the local
+GCC 16 toolchain documented in [`DEVELOPING.md`](DEVELOPING.md).
 
 Core matching logic lives in the `matching_engine/v3` module.
 

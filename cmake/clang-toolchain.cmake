@@ -1,0 +1,13 @@
+if(DEFINED ENV{LLVM_VERSION})
+  set(_clang_suffix "-$ENV{LLVM_VERSION}")
+else()
+  set(_clang_suffix "")
+endif()
+
+if(DEFINED ENV{LLVM_ROOT})
+  find_program(CMAKE_C_COMPILER NAMES "clang${_clang_suffix}" clang HINTS "$ENV{LLVM_ROOT}/bin" NO_DEFAULT_PATH REQUIRED)
+  find_program(CMAKE_CXX_COMPILER NAMES "clang++${_clang_suffix}" clang++ HINTS "$ENV{LLVM_ROOT}/bin" NO_DEFAULT_PATH REQUIRED)
+else()
+  find_program(CMAKE_C_COMPILER NAMES "clang${_clang_suffix}" clang REQUIRED)
+  find_program(CMAKE_CXX_COMPILER NAMES "clang++${_clang_suffix}" clang++ REQUIRED)
+endif()

@@ -1,8 +1,8 @@
 {
   "version": 6,
   "cmakeMinimumRequired": {
-    "major": 3,
-    "minor": 22,
+    "major": 4,
+    "minor": 0,
     "patch": 0
   },
   "configurePresets": [
@@ -11,8 +11,32 @@
       "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/_build/${presetName}",
+      "toolchainFile": "${sourceDir}/cmake/gcc-toolchain.cmake",
+      "environment": {
+        "WORKSPACE_ROOT": "$penv{WORKSPACE_ROOT}",
+        "LLVM_VERSION": "$penv{LLVM_VERSION}",
+        "LLVM_ROOT": "$penv{LLVM_ROOT}",
+        "GCC_VERSION": "$penv{GCC_VERSION}",
+        "GCC_ROOT": "$penv{GCC_ROOT}",
+        "BINUTILS_VERSION": "$penv{BINUTILS_VERSION}",
+        "BINUTILS_ROOT": "$penv{BINUTILS_ROOT}",
+        "LIBBACKTRACE_ROOT": "$penv{LIBBACKTRACE_ROOT}",
+        "CMAKE_ROOT": "$penv{CMAKE_ROOT}",
+        "CCACHE_ROOT": "$penv{CCACHE_ROOT}",
+        "MOLD_ROOT": "$penv{MOLD_ROOT}",
+        "LCOV_ROOT": "$penv{LCOV_ROOT}",
+        "BOOST_ROOT": "$penv{BOOST_ROOT}",
+        "PATH": "$penv{PATH}",
+        "LD_LIBRARY_PATH": "$penv{LD_LIBRARY_PATH}",
+        "CPATH": "$penv{CPATH}",
+        "LIBRARY_PATH": "$penv{LIBRARY_PATH}"
+      },
       "cacheVariables": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_CXX_SCAN_FOR_MODULES": "OFF",
+        "CMAKE_OPTIMIZE_DEPENDENCIES": "ON",
+        "BOOST_ROOT": "$env{BOOST_ROOT}",
+        "Boost_ROOT": "$env{BOOST_ROOT}"
       }
     },
     {
@@ -60,19 +84,19 @@
       "inherits": "debug",
       "displayName": "Clang",
       "description": "Debug build with Clang + Address/UB sanitizers",
+      "toolchainFile": "${sourceDir}/cmake/clang-toolchain.cmake",
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_CXX_FLAGS": "--gcc-toolchain=$env{GCC_ROOT}",
         "KRAKEN_ASAN": "ON"
       }
     }
   ],
   "buildPresets": [
-    { "name": "debug",   "configurePreset": "debug"   },
+    { "name": "debug", "configurePreset": "debug" },
     { "name": "release", "configurePreset": "release" },
-    { "name": "asan",    "configurePreset": "asan"    },
-    { "name": "tsan",    "configurePreset": "tsan"    },
-    { "name": "clang",   "configurePreset": "clang"   }
+    { "name": "asan", "configurePreset": "asan" },
+    { "name": "tsan", "configurePreset": "tsan" },
+    { "name": "clang", "configurePreset": "clang" }
   ],
   "testPresets": [
     {
@@ -81,10 +105,10 @@
       "output": { "outputOnFailure": true },
       "execution": { "noTestsAction": "error", "stopOnFailure": false }
     },
-    { "name": "debug",   "inherits": "base", "configurePreset": "debug"   },
+    { "name": "debug", "inherits": "base", "configurePreset": "debug" },
     { "name": "release", "inherits": "base", "configurePreset": "release" },
-    { "name": "asan",    "inherits": "base", "configurePreset": "asan"    },
-    { "name": "tsan",    "inherits": "base", "configurePreset": "tsan"    },
-    { "name": "clang",   "inherits": "base", "configurePreset": "clang"   }
+    { "name": "asan", "inherits": "base", "configurePreset": "asan" },
+    { "name": "tsan", "inherits": "base", "configurePreset": "tsan" },
+    { "name": "clang", "inherits": "base", "configurePreset": "clang" }
   ]
 }
