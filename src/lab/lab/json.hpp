@@ -1,6 +1,7 @@
 #ifndef LAB_JSON_HPP
 #define LAB_JSON_HPP
 
+#include "lab/defaulted_field.hpp"
 #include "lab/error.hpp"
 #include "lab/error_code.hpp"
 #include "lab/fixed_string.hpp"
@@ -121,6 +122,20 @@ void write_field(nlohmann::json& json_object, std::string_view key, const T& fie
   json_object[std::string{key}] = field;
 }
 
+template <DefaultedField T>
+void read_field(const nlohmann::json& json_object, std::string_view key, T& field)
+{
+  if (auto it = json_object.find(std::string{key}); it != json_object.end()) {
+    it->get_to(field.value);
+  }
+}
+
+template <DefaultedField T>
+void write_field(nlohmann::json& json_object, std::string_view key, const T& field)
+{
+  json_object[std::string{key}] = field.value;
+}
+
 template <typename T>
 void read_field(const nlohmann::json& json_object, std::string_view key, std::optional<T>& field)
 {
@@ -202,6 +217,22 @@ struct adl_serializer<lab::strong_type<T, Parameter, Skills...>>
   static void from_json(const json& from, value_type& to)
   {
     to = value_type{from.get<typename value_type::UnderlyingType>()};
+  }
+};
+
+template <typename T, typename DefaultHolder>
+struct adl_serializer<lab::defaulted_field<T, DefaultHolder>>
+{
+  using value_type = lab::defaulted_field<T, DefaultHolder>;
+
+  static void to_json(json& to, const value_type& from)
+  {
+    to = from.value;
+  }
+
+  static void from_json(const json& from, value_type& to)
+  {
+    from.get_to(to.value);
   }
 };
 

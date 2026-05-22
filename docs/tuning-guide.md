@@ -278,7 +278,7 @@ stays portable -- it still calls `socket()`, `recvfrom()`, `send()`
 kernel-bypass path. The change is the launcher and a profile file:
 
 ```bash
-onload --profile=/path/to/latency.opf ./server --host 0.0.0.0 --port 1234
+onload --profile=/path/to/latency.opf ./server examples/configs/server.json
 ```
 
 The profile is a list of `onload_set` directives that tune the

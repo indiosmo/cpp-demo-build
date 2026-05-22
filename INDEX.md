@@ -26,9 +26,10 @@ matching-engine-lab/
 |-- b3-entrypoint-messages-8.4.2.xml      B3 entrypoint reference protocol file for codec scaffolds
 |-- b3-market-data-messages-2.2.0.xml     B3 market-data reference protocol file for codec scaffolds
 |-- cmake/                                shared CMake modules (compiler flags, sanitizers)
-|-- docs/                                 ADRs, C++ design principles, engine spec, runtime docs
+|-- docs/                                 ADRs, runbooks, C++ design principles, engine spec, runtime docs
 |   |-- adr/                              architecture decision records (numbered, dated)
-|-- examples/                             JSONL demo scenarios and expected market-data output
+|   `-- runbooks/                         step-by-step local and operational procedures
+|-- examples/                             JSON configs, demo scenarios, and expected market-data output
 |-- scripts/                              developer scripts (formatting, pre-commit, toolchain install)
 |-- src/                                  library sources and client/server executables
 |   |-- lab/                              general-purpose vocabulary helpers
@@ -68,6 +69,7 @@ Headers:
 - (P) assert.hpp           -- `LAB_ASSERT(expr)` macro: prints expression, location, and a `boost::stacktrace` dump, then aborts
 - (P) charconv.hpp         -- `from_chars<T>` returning `lab::result`, with exact / partial modes and overloads for strong types and fixed strings
 - (I) concurrent_queue.hpp -- Aliases `moodycamel::ReaderWriterQueue` (and its blocking variant) as the project's SPSC lock-free queues
+- (P) defaulted_field.hpp  -- Transparent config-field wrapper carrying a compile-time default plus `LAB_DEFAULTED_FIELD`
 - (P) error.hpp            -- Type-erased `lab::error` value carrying any payload with `error_code()` / `what()`, plus leaf predicate adapters and `make_leaf_error`
 - (P) error_code.hpp       -- `lab::error_code` enum (generic, invalid_argument, out_of_bounds, ...) wired into `std::error_code` via the category macro
 - (P) error_macros.hpp     -- `LAB_DEFINE_ERROR_CATEGORY(NS)`: turns any domain's `error_code` enum into a usable `std::error_code` domain
@@ -295,4 +297,4 @@ Headers:
 
 Base path: `src/client/`
 
-Thin command-line sender over `order_client::client`. It reads JSON commands from `--input` or stdin, decodes them to typed `order_entry::request` values, and sends each one to the configured UDP endpoint. CLI options are `--host`, `--port`, and `--input`.
+Thin command-line sender over `order_client::client`. It loads its target endpoint and input source from a JSON config file, reads JSON commands from a file or stdin, decodes them to typed `order_entry::request` values, and sends each one to the configured UDP endpoint.

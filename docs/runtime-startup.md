@@ -22,12 +22,12 @@ background.
 
 ## Composition
 
-`main` constructs one [`server::application`](../src/server/server/application.hpp)
-from a static [`config`](../src/server/server/application.hpp).
-The application owns the three event loops and the three runtime
-composers. Each composer owns the concrete backends its config
-variant selects -- a UDP receiver, a decoder, an encoder, a sink --
-and exposes the stage as a `send` / `on_*` boundary.
+`main` reads a JSON app config and constructs one
+[`server::application`](../src/server/server/application.hpp) from the parsed
+[`config`](../src/server/server/application.hpp). The application owns the
+three event loops and the three runtime composers. Each composer owns the
+concrete backends its config variant selects -- a UDP receiver, a decoder, an
+encoder, a sink -- and exposes the stage as a `send` / `on_*` boundary.
 
 ```mermaid
 flowchart TB
@@ -91,6 +91,7 @@ sequenceDiagram
   participant processing as processing loop
   participant output as output loop
 
+  main->>main: read JSON config file
   main->>app: construct(config)
   Note over app,output: ctor builds the three event loops in member init
 

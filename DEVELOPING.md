@@ -94,7 +94,7 @@ ctest --test-dir _build/debug --output-on-failure
 - `src/` -- libraries and the `client` and `server` applications.
 - `test/` -- module unit tests.
 - `vendor/` -- CMake `FetchContent` dependency declarations.
-- `examples/` -- local demo inputs and expected market-data records.
+- `examples/` -- local demo configs, inputs, and expected market-data records.
 - `cmake/` -- shared CMake modules (compiler flags, sanitizer wiring).
 - `scripts/` -- developer scripts invoked by `setup.sh` and the pre-commit
   hook.
@@ -154,10 +154,11 @@ preset:
 ```bash
 ./build.sh debug server
 ./build.sh debug client
-./_build/debug/server --host 127.0.0.1 --port 1234
-./_build/debug/client --host 127.0.0.1 --port 1234 --input examples/scenarios/crossing-orders.jsonl
+./_build/debug/server examples/configs/server.json
+./_build/debug/client examples/configs/client.json
 ```
 
 The process listens for UDP JSON order commands and writes market data records to
-stdout. Use `ctest --test-dir _build/debug --output-on-failure` to rerun the
-unit tests for an existing build tree.
+stdout. The config files select the endpoint, thread settings, logger, matching
+symbols, and scenario input. Use `ctest --test-dir _build/debug --output-on-failure`
+to rerun the unit tests for an existing build tree.

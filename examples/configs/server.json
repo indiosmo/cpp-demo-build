@@ -1,0 +1,57 @@
+{
+  "order_entry": {
+    "receiver": {
+      "type": "asio_udp",
+      "endpoint": {
+        "address": "0.0.0.0",
+        "port": 1234
+      }
+    },
+    "decoder": {
+      "type": "json"
+    }
+  },
+  "matching_engine": {
+    "valid_symbols": [
+      "IBM",
+      "AAPL",
+      "VAL"
+    ],
+    "expected_resting_orders": 1024,
+    "node_pool_chunk_size": 32
+  },
+  "market_data": {
+    "encoder": {
+      "type": "json"
+    },
+    "sink": {
+      "type": "spdlog"
+    }
+  },
+  "logger": {
+    "type": "console"
+  },
+  "threads": {
+    "input": {
+      "thread_name": "lab-input",
+      "queue_capacity": 1024,
+      "idle_strategy": {
+        "type": "busy_spin"
+      }
+    },
+    "processing": {
+      "thread_name": "lab-engine",
+      "queue_capacity": 1024,
+      "idle_strategy": {
+        "type": "busy_spin"
+      }
+    },
+    "output": {
+      "thread_name": "lab-output",
+      "queue_capacity": 1024,
+      "idle_strategy": {
+        "type": "busy_spin"
+      }
+    }
+  }
+}

@@ -133,6 +133,7 @@ directory). The per-library README points at its examples.
 | You want... | Open... |
 |-------------|---------|
 | The matching engine behavior | [`docs/engine-specs.md`](docs/engine-specs.md) |
+| How to run a local server/client smoke test | [`docs/runbooks/run-local-matching-engine.md`](docs/runbooks/run-local-matching-engine.md) |
 | The technical pitch in one page | [`docs/highlights.md`](docs/highlights.md) |
 | How the project thinks about C++ | [`docs/cpp-design-principles.md`](docs/cpp-design-principles.md) |
 | Showcase of applied principles in code | [`docs/showcase.md`](docs/showcase.md) |
@@ -158,13 +159,14 @@ Build the project and run the unit tests:
 Run the UDP server and send commands:
 
 ```bash
-./_build/debug/server --host 127.0.0.1 --port 1234
-./_build/debug/client --host 127.0.0.1 --port 1234 --input examples/scenarios/crossing-orders.jsonl
+./_build/debug/server examples/configs/server.json
+./_build/debug/client examples/configs/client.json
 ```
 
 The server listens for JSON order commands over UDP and writes market data
-records to stdout. Use `ctest --test-dir _build/debug --output-on-failure`
-when you want to rerun the test suite without rebuilding.
+records to stdout. The bundled config files preserve the demo endpoint and
+scenario path. Use `ctest --test-dir _build/debug --output-on-failure` when
+you want to rerun the test suite without rebuilding.
 
 ## Local Development
 
@@ -184,14 +186,14 @@ project conventions.
 
 ```
 .
-|-- examples/           Demo scenario inputs and expected market-data output
+|-- examples/           Demo configs, scenario inputs, and expected market-data output
 |-- b3-*.xml            B3 reference protocol files for codec scaffolds
 |-- src/               Libraries and client/server applications
 |-- test/              Unit tests
 |-- vendor/            CMake FetchContent dependency declarations
 |-- cmake/             Shared CMake modules
 |-- scripts/           Developer scripts (formatting, pre-commit)
-|-- docs/              ADRs, C++ design principles, engine spec, runtime and event-loop docs
+|-- docs/              ADRs, runbooks, C++ design principles, engine spec, runtime and event-loop docs
 |-- build.sh           CMake configure + build + ctest wrapper
 `-- setup.sh           Local toolchain and hook setup
 ```

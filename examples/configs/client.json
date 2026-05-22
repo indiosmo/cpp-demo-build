@@ -1,0 +1,12 @@
+{
+  "order_client": {
+    "endpoint": {
+      "address": "127.0.0.1",
+      "port": 1234
+    }
+  },
+  "input": {
+    "type": "file",
+    "path": "examples/scenarios/crossing-orders.jsonl"
+  }
+}

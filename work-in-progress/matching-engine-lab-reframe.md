@@ -53,6 +53,11 @@ Decision matrix:
   client/server loop, using the Abacus `aor` / `aorfix` /
   `aorfix_onixs_fix` layering as the reference shape and a package-free
   QuickFIX-compatible boundary for this portfolio repo.
+- Phase 8 makes components, runtime stages, and the `server` and `client`
+  applications JSON configurable. Functional layers carry strict required-only
+  configs; runtime layers compose those configs and add defaults; the top-level
+  app config is loaded from a JSON file at startup, mirroring the Abacus
+  `aogw/src/main.cpp` shape.
 
 ## Phase Handoffs
 
@@ -310,6 +315,58 @@ Verification completed:
   `ctest --test-dir _build/debug -R "^(quickfix_fix|morfix|ospec|morfix_quickfix)/" --output-on-failure`
   passed with 20/20 tests;
 - `./build.sh debug` passed with 104/104 tests;
+- `git diff --check` passed.
+
+### Phase 8 Handoff
+
+Status: in progress, first slice completed.
+
+The first phase-8 slice established the JSON-configurable application boundary
+and the lab default-field helper without yet moving every runtime default into
+typed config structs:
+
+- ported Abacus-style `defaulted_field` into `lab`, exposed through
+  `LAB_DEFAULTED_FIELD`, with JSON missing-key behavior that leaves wrapped
+  fields at their holder defaults;
+- added lab tests covering holder defaults, transparent wrapped-value use,
+  formatting, JSON missing-key behavior, and explicit JSON round trips;
+- changed `server` and `client` executables to accept one positional JSON
+  config path instead of `--host`, `--port`, and `--input`;
+- added explicit JSON parsing in `server/main.cpp` for order-entry receiver,
+  decoder, matching-engine, market-data publisher, logger, and event-loop
+  config;
+- added explicit JSON parsing in `client/main.cpp` for endpoint and input
+  source config;
+- added `examples/configs/server.json`, `client.json`, and
+  `server-with-fix.json`;
+- updated README, DEVELOPING, INDEX, runtime docs, tuning docs, client README,
+  and the local runbook for the JSON-config workflow.
+
+Deferred to the next slice:
+
+- implement the full typed config tree from `server/main.cpp` and
+  `client/main.cpp` down to the functional leaf components;
+- add per-library functional config structs where fields are currently
+  implicit, starting with `order_client::udp_sender_config` and
+  `order_entry::json_decoder_config`;
+- keep functional leaf configs strict: required fields only, no defaults;
+- use auto JSON binding for config structs instead of the temporary hand-written
+  readers in `server/main.cpp` and `client/main.cpp`;
+- apply `LAB_DEFAULTED_FIELD` at runtime and app config layers so JSON files can
+  omit defaulted values while functional leaves still receive explicit values;
+- add the ADR for the layered JSON config decision once the per-library split
+  has landed.
+
+Verification completed:
+
+- `ctest --test-dir _build/debug -R '^lab/' --output-on-failure` passed with
+  57/57 lab tests in the porting worker;
+- `./build.sh debug client` built the client and passed 108/108 tests;
+- `cmake --build _build/debug --target server --parallel 18` passed;
+- configured smoke test passed with
+  `server examples/configs/server.json` plus
+  `client examples/configs/client.json`, producing the expected seven
+  market-data records for the crossing-orders scenario;
 - `git diff --check` passed.
 
 ## Phase 2: Legacy Harness Removal
@@ -629,6 +686,228 @@ After the working path is verified:
 - update `docs/lab-guidelines/design.md` and `testing.md` with the local
   phase-7 codec/session testing pattern.
 
+## Phase 8: JSON Configurability
+
+Phase 8 makes components, runtime stages, and the `server` and `client`
+applications JSON configurable. The reference shape is `abacus/src/aogw`:
+a layered config model where functional libraries declare strict typed config
+structs, runtime wrappers compose those into broader configs and add defaults,
+and `main.cpp` defines an app-level config struct loaded from a single JSON
+file at startup.
+
+The goal is to remove ad-hoc CLI plumbing (`--host`, `--port`, `--input`) as
+the primary configuration surface and replace it with versionable JSON files
+under `examples/configs/`. CLI flags survive only as a `--config <path>`
+pointer.
+
+### Decision Matrix
+
+| Option | Complexity | Composability | Testability | Maintenance | Result |
+|---|---:|---:|---:|---:|---|
+| Flat app-level config struct, single JSON file | Low | Poor | Medium | Poor | Couples top-level config to library internals; defaults leak everywhere. |
+| Layered functional + runtime + app configs, single JSON file | Medium | High | High | Good | Chosen: mirrors Abacus `aogw` and keeps functional configs strict and reusable. |
+| External include/import directives in JSON | High | High | Medium | Medium | Adds a config language before the layering pattern is in place. Premature. |
+| CLI flags only, no JSON | Low | Poor | Low | Poor | Does not scale past the current `server`/`client` knobs and blocks future stages from declaring their own config. |
+
+### Config Layers
+
+Three layers, modeled on Abacus:
+
+- Functional config (per library, in its own header): only fields the library
+  truly requires. No defaults. Lives next to the library code it configures.
+  Examples: `matching_engine::engine_config`, `order_entry::json_decoder_config`,
+  `order_client::udp_sender_config`, `quickfix_fix::session_pair_config`,
+  `morfix_quickfix::b3_codec_config`.
+- Runtime config (under `src/<module>/runtime/` or equivalent): composes one or
+  more functional configs, exposes optional subsystems as `std::optional<...>`,
+  and supplies defaults for fields the runtime layer can reasonably default.
+  The runtime `setup` builds the functional config from its own fields rather
+  than passing the runtime config straight through.
+- App config (in `src/server/main.cpp` and `src/client/main.cpp`): the top-level
+  struct loaded from the JSON file. Composes runtime configs, names threads,
+  selects logger and telemetry, and wires the rest of the application together.
+
+### Default Field Helper
+
+Add a small helper analogous to Abacus `MIL_DEFAULTED_FIELD`. The lab utility
+module already owns the JSON adapter; extend it:
+
+- `lab::defaulted<T>` -- a wrapper type that records a default value at the
+  type level and behaves like `T` otherwise, or
+- `LAB_DEFAULTED_FIELD(type, name, default_value)` -- a macro that emits a
+  member with an inline default initializer and an opt-in JSON binding that
+  treats absent fields as the default.
+
+Either approach is acceptable. The first composes better with `lab::json`'s
+existing strong-type bindings; pick during implementation. The runtime layer
+uses this to express "the user may omit this; the runtime supplies a sensible
+default", while functional configs keep all fields required.
+
+### JSON Binding
+
+Reuse `lab::json` from phase 5. Bindings are declared next to each config
+struct using a single macro per struct, analogous to `MIL_AUTO_JSON_PFR`:
+
+- `LAB_AUTO_JSON(struct_name)` for individual structs;
+- `LAB_AUTO_JSON_NAMESPACE(ns)` for namespace-wide registration.
+
+Implementation detail: the existing `lab::json` adapter already covers strong
+types, optionals, fixed strings, and chrono durations. The new requirement is
+PFR-style reflection over plain aggregate config structs. If pulling Boost.PFR
+is too heavy for this portfolio repo, an explicit `from_json` / `to_json`
+specialization per config struct is acceptable and may be simpler.
+
+### Module Responsibilities
+
+`lab`:
+
+- add `lab::defaulted<T>` or `LAB_DEFAULTED_FIELD` for runtime-layer defaults;
+- add config-struct reflection helpers in `lab::json` so config structs need
+  one line of binding per struct;
+- keep these helpers free of any domain vocabulary.
+
+`order_entry`:
+
+- add `order_entry::json_decoder_config` (functional). Required fields only:
+  socket buffer size, max datagram size.
+- the runtime wrapper that owns the decoder builds this config from its own
+  runtime fields.
+
+`order_client`:
+
+- add `order_client::udp_sender_config` (functional): host, port,
+  max datagram size.
+- add `order_client::client_config` (runtime): composes the sender config and
+  exposes the input file path and any future send-side knobs with defaults.
+
+`matching_engine`:
+
+- add `matching_engine::engine_config` (functional): order book reserve sizes,
+  any matching tunables that are not currently hard coded.
+- the runtime wrapper builds this from its own runtime config.
+
+`market_data`:
+
+- add `market_data::publisher_config` (functional): output sink selector
+  (stdout for now) and any encoder options.
+- the runtime publisher builds this from its runtime config.
+
+`mor`, `morfix`, `ospec::b3`:
+
+- no functional config until the codec stack grows runtime-tunable behavior.
+  Phase 8 leaves these untouched unless a config naturally falls out.
+
+`quickfix_fix`:
+
+- add `quickfix_fix::session_pair_config` (functional): initiator and
+  acceptor session identifiers; in-memory delivery flag.
+- keep optional, only consumed if FIX is enabled in the app config.
+
+`morfix_quickfix`:
+
+- add `morfix_quickfix::b3_codec_config` (functional): venue identity and any
+  field-policy knobs that are not derived from `ospec::b3` directly.
+- add a runtime wrapper that composes session config and codec config.
+
+`server` runtime:
+
+- add `server::runtime::engine_config` that composes
+  `matching_engine::engine_config`, `order_entry::json_decoder_config`,
+  `market_data::publisher_config`, and optional FIX sub-configs.
+- `setup(const engine_config&, evl::thread_group&)` builds each functional
+  config from its own fields before calling the corresponding subsystem.
+
+`client` runtime:
+
+- add `client::runtime::client_config` that composes
+  `order_client::client_config` with input source selection (file, stdin) and
+  any future scenario-replay knobs.
+
+### App Config
+
+In `src/server/main.cpp`:
+
+```cpp
+namespace server::config {
+
+struct app
+{
+  std::string instance_name;
+  std::string log_file;
+
+  std::vector<lab::thread_config> threads;
+  lab::thread_name clock_thread;
+
+  server::runtime::engine_config engine;
+
+  std::optional<lab::telemetry_config> telemetry{};
+};
+
+} // namespace server::config
+
+LAB_AUTO_JSON_NAMESPACE(server::config)
+```
+
+The same shape in `src/client/main.cpp` for the client app config.
+
+`main` becomes:
+
+1. read the path to the JSON config from `argv[1]`;
+2. parse it into `app` via `lab::json::read_from_file<app>`;
+3. construct threads, logger, telemetry from the parsed config;
+4. call each subsystem's `setup(...)` with its slice of the config;
+5. run until SIGINT/SIGTERM.
+
+### Example Config Files
+
+Add JSON config files for the existing demo scenarios:
+
+- `examples/configs/server.json` -- listens on the same UDP port the demo
+  already uses, with stdout market-data publishing;
+- `examples/configs/client.json` -- targets the demo server and replays
+  `examples/scenarios/crossing-orders.jsonl`;
+- `examples/configs/server-with-fix.json` -- enables the optional FIX engine
+  for future phases that wire it into the runtime.
+
+Reference these from `README.md` and `DEVELOPING.md` so the documented demo
+workflow becomes:
+
+```sh
+./_build/debug/server examples/configs/server.json
+./_build/debug/client examples/configs/client.json
+```
+
+### CLI Surface
+
+`server` and `client` accept a single positional argument: the path to the
+JSON config file. The current `--host`, `--port`, and `--input` flags are
+removed because the JSON file is now the configuration surface; printing a
+short usage line on argc mismatch is enough.
+
+### Migration Shape
+
+- land `lab::defaulted` / `LAB_DEFAULTED_FIELD` and the config-struct JSON
+  binding helpers first, with unit tests against synthetic config structs;
+- introduce functional configs per library bottom up, starting with
+  `order_client::udp_sender_config` and `order_entry::json_decoder_config`
+  because their fields are already implicit in today's code;
+- add runtime configs and route the current hard coded values through them
+  while keeping the existing behavior;
+- introduce the app config in `server/main.cpp` and `client/main.cpp`, replace
+  the CLI flags with the JSON path, and add the example config files;
+- update `README.md`, `DEVELOPING.md`, `INDEX.md`, module READMEs, and
+  `docs/engine-specs.md` to describe the JSON-driven workflow;
+- add an ADR recording the layered config decision and its mapping to the
+  Abacus reference shape.
+
+### Out Of Scope For Phase 8
+
+- live config reload;
+- per-environment config overlays or include/import directives;
+- a schema validator beyond what typed parsing provides;
+- exposing FIX in the runtime; the FIX engine stays library-level until a
+  later phase decides to expose it.
+
 ## Test Plan
 
 - After phase 1:
@@ -692,6 +971,24 @@ After the working path is verified:
   - local loop test: initiator request -> FIX message -> acceptor request,
     then acceptor event -> FIX message -> initiator event
   - focused build for the touched codec targets
+  - `./build.sh debug`
+- After phase 8:
+  - unit tests for `lab::defaulted` / `LAB_DEFAULTED_FIELD` covering present,
+    absent, and explicitly-null JSON fields
+  - unit tests for config-struct JSON binding helpers against representative
+    functional and runtime configs
+  - per-library config parse tests: `order_client::udp_sender_config`,
+    `order_entry::json_decoder_config`, `matching_engine::engine_config`,
+    `market_data::publisher_config`, and the optional FIX configs
+  - runtime-to-functional translation tests proving each runtime `setup`
+    produces the expected functional config from a given runtime config
+  - app-config parse tests for `server::config::app` and `client::config::app`
+    against the files under `examples/configs/`
+  - integration test: launch `server examples/configs/server.json` and
+    `client examples/configs/client.json` and compare market-data output
+    against the existing expected JSONL fixture
+  - error-path tests: missing required field, malformed JSON, unknown field,
+    and config file not found
   - `./build.sh debug`
 
 ## Assumptions
