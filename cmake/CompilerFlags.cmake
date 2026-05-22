@@ -1,6 +1,6 @@
-# Compiler flags for the kraken submission project.
+# Compiler flags for matching-engine-lab.
 #
-# Provides the kraken::compiler_flags INTERFACE library which carries the
+# Provides the lab::compiler_flags INTERFACE library which carries the
 # warnings and sanitizer options used across the project. Targets are linked
 # against it automatically via link_libraries() below.
 
@@ -119,7 +119,7 @@ set(GCC_WARNINGS
   # Boost.Asio and readerwriterqueue both use it internally, so keep TSan
   # instrumentation enabled but do not promote that third-party limitation to a
   # build failure.
-  $<$<BOOL:${KRAKEN_TSAN}>:-Wno-tsan>
+  $<$<BOOL:${LAB_TSAN}>:-Wno-tsan>
 )
 
 set(GCC_OPTIONS
@@ -132,16 +132,16 @@ set(GCC_OPTIONS
   # Preserve frame pointers so profilers and sanitizers get accurate stack traces
   -fno-omit-frame-pointer
 
-  $<$<BOOL:${KRAKEN_RELEASE}>:-O2>
+  $<$<BOOL:${LAB_RELEASE}>:-O2>
   
   # Address Sanitizer flags
-  $<$<BOOL:${KRAKEN_ASAN}>:-fsanitize=address>
-  $<$<BOOL:${KRAKEN_ASAN}>:-fsanitize=leak>
-  $<$<BOOL:${KRAKEN_ASAN}>:-fsanitize=undefined>
-  $<$<BOOL:${KRAKEN_ASAN}>:-fsanitize-address-use-after-scope>
+  $<$<BOOL:${LAB_ASAN}>:-fsanitize=address>
+  $<$<BOOL:${LAB_ASAN}>:-fsanitize=leak>
+  $<$<BOOL:${LAB_ASAN}>:-fsanitize=undefined>
+  $<$<BOOL:${LAB_ASAN}>:-fsanitize-address-use-after-scope>
 
   # ThreadSanitizer flags
-  $<$<BOOL:${KRAKEN_TSAN}>:-fsanitize=thread>
+  $<$<BOOL:${LAB_TSAN}>:-fsanitize=thread>
 )
 
 set(CLANG_WARNINGS
@@ -225,38 +225,38 @@ set(CLANG_COMPILE_OPTIONS
   -ggdb
   -fno-omit-frame-pointer
 
-  $<$<BOOL:${KRAKEN_RELEASE}>:-O2>
+  $<$<BOOL:${LAB_RELEASE}>:-O2>
 
-  $<$<BOOL:${KRAKEN_ASAN}>:-fsanitize=address>
-  $<$<BOOL:${KRAKEN_ASAN}>:-fsanitize=leak>
-  $<$<BOOL:${KRAKEN_ASAN}>:-fsanitize=undefined>
-  $<$<BOOL:${KRAKEN_ASAN}>:-fsanitize-address-use-after-scope>
+  $<$<BOOL:${LAB_ASAN}>:-fsanitize=address>
+  $<$<BOOL:${LAB_ASAN}>:-fsanitize=leak>
+  $<$<BOOL:${LAB_ASAN}>:-fsanitize=undefined>
+  $<$<BOOL:${LAB_ASAN}>:-fsanitize-address-use-after-scope>
 
-  $<$<BOOL:${KRAKEN_TSAN}>:-fsanitize=thread>
+  $<$<BOOL:${LAB_TSAN}>:-fsanitize=thread>
 )
 
-add_library(kraken_compiler_flags INTERFACE)
-add_library(kraken::compiler_flags ALIAS kraken_compiler_flags)
+add_library(lab_compiler_flags INTERFACE)
+add_library(lab::compiler_flags ALIAS lab_compiler_flags)
 
-target_compile_options(kraken_compiler_flags BEFORE INTERFACE
+target_compile_options(lab_compiler_flags BEFORE INTERFACE
   $<$<CXX_COMPILER_ID:GNU>:${GCC_OPTIONS}>
   $<$<CXX_COMPILER_ID:GNU>:${GCC_WARNINGS}>
   $<$<CXX_COMPILER_ID:Clang>:${CLANG_COMPILE_OPTIONS}>
   $<$<CXX_COMPILER_ID:Clang>:${CLANG_WARNINGS}>
 )
 
-target_compile_definitions(kraken_compiler_flags INTERFACE
-  $<$<BOOL:${KRAKEN_DEBUG}>:_GLIBCXX_ASSERTIONS>
+target_compile_definitions(lab_compiler_flags INTERFACE
+  $<$<BOOL:${LAB_DEBUG}>:_GLIBCXX_ASSERTIONS>
 )
 
-target_link_libraries(kraken_compiler_flags INTERFACE
-  $<$<BOOL:${KRAKEN_ASAN}>:-fsanitize=address>
-  $<$<BOOL:${KRAKEN_ASAN}>:-fsanitize=leak>
-  $<$<BOOL:${KRAKEN_ASAN}>:-fsanitize=undefined>
-  $<$<BOOL:${KRAKEN_ASAN}>:-fsanitize-address-use-after-scope>
-  $<$<BOOL:${KRAKEN_TSAN}>:-fsanitize=thread>
+target_link_libraries(lab_compiler_flags INTERFACE
+  $<$<BOOL:${LAB_ASAN}>:-fsanitize=address>
+  $<$<BOOL:${LAB_ASAN}>:-fsanitize=leak>
+  $<$<BOOL:${LAB_ASAN}>:-fsanitize=undefined>
+  $<$<BOOL:${LAB_ASAN}>:-fsanitize-address-use-after-scope>
+  $<$<BOOL:${LAB_TSAN}>:-fsanitize=thread>
 )
 
-# All targets added after this point inherit kraken::compiler_flags so the
+# All targets added after this point inherit lab::compiler_flags so the
 # warning/sanitizer configuration is applied uniformly across the project.
-link_libraries(kraken::compiler_flags)
+link_libraries(lab::compiler_flags)

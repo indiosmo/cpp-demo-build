@@ -2,447 +2,133 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>ADR-0001 companion: C++ project layout -- decision matrices</title>
+<title>ADR-0001 companion: C++ project layout decision matrix</title>
 <style>
   :root {
     --bg: #fafaf7;
     --fg: #1a1a1a;
-    --muted: #6b6b6b;
+    --muted: #5f6368;
     --rule: #d8d6cf;
-    --accent: #6b5b3a;
-    --highlight: #fff6d6;
-
+    --accent: #4d6470;
     --good-bg: #d8ebd2;
     --good-fg: #1f4a26;
-    --ok-bg:   #f4ecc6;
-    --ok-fg:   #5a4a10;
-    --bad-bg:  #f0c8bc;
-    --bad-fg:  #6a1d12;
-    --na-bg:   #ececec;
-    --na-fg:   #555;
+    --ok-bg: #f4ecc6;
+    --ok-fg: #5a4a10;
+    --bad-bg: #f0c8bc;
+    --bad-fg: #6a1d12;
   }
   html, body { background: var(--bg); color: var(--fg); }
   body {
     font: 15px/1.55 -apple-system, "Segoe UI", system-ui, sans-serif;
     margin: 0;
     padding: 32px 40px 80px;
-    max-width: 1320px;
+    max-width: 1280px;
   }
-  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
   h1 .sub { font-weight: 400; color: var(--muted); font-size: 15px; margin-left: 8px; }
   h2 {
-    font-size: 16px;
-    margin: 36px 0 10px;
     color: var(--accent);
+    font-size: 16px;
     letter-spacing: 0.02em;
+    margin: 28px 0 10px;
     text-transform: uppercase;
   }
-  h2.subdecision {
-    font-size: 18px;
-    margin-top: 44px;
-    color: var(--fg);
-    text-transform: none;
-    letter-spacing: 0;
-    border-top: 2px solid var(--rule);
-    padding-top: 20px;
-  }
-  p.lede { color: var(--muted); margin: 0 0 24px; max-width: 82ch; }
-  p.context { color: var(--muted); margin: 4px 0 14px; max-width: 82ch; font-size: 14px; }
-
-  table { width: 100%; border-collapse: collapse; background: white; font-size: 13.5px; margin-bottom: 8px; }
-  th, td {
-    border: 1px solid var(--rule);
-    padding: 10px 12px;
-    text-align: left;
-    vertical-align: top;
-  }
+  p.lede, .decision-body { max-width: 82ch; }
+  p.lede { color: var(--muted); margin: 0 0 24px; }
+  table { width: 100%; border-collapse: collapse; background: white; font-size: 13.5px; }
+  th, td { border: 1px solid var(--rule); padding: 10px 12px; text-align: left; vertical-align: top; }
   th { background: #f3f1ea; font-weight: 600; }
-  th .opt-sub {
-    display: block;
-    font-weight: 400;
-    color: var(--muted);
-    font-size: 12px;
-    margin-top: 3px;
-    line-height: 1.4;
-  }
-
-  td.criterion { width: 16%; font-weight: 600; background: #faf8f1; }
-  td.weight { width: 4%; text-align: center; font-family: ui-monospace, Menlo, Consolas, monospace; background: #faf8f1; color: var(--muted); }
-  th.weight { width: 4%; text-align: center; }
-
+  th .opt-sub { display: block; font-weight: 400; color: var(--muted); font-size: 12px; margin-top: 3px; }
+  td.criterion { width: 15%; font-weight: 600; background: #faf8f1; }
   td.good { background: var(--good-bg); color: var(--good-fg); }
-  td.ok   { background: var(--ok-bg);   color: var(--ok-fg); }
-  td.bad  { background: var(--bad-bg);  color: var(--bad-fg); }
-  td.na   { background: var(--na-bg);   color: var(--na-fg); font-style: italic; }
-
-  td .score {
-    display: inline-block;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    font-weight: 600;
-    font-size: 11px;
-    padding: 1px 6px;
-    border-radius: 3px;
-    background: rgba(0,0,0,0.08);
-    margin-right: 6px;
-    vertical-align: 1px;
+  td.ok { background: var(--ok-bg); color: var(--ok-fg); }
+  td.bad { background: var(--bad-bg); color: var(--bad-fg); }
+  .premises {
+    margin: 8px 0 24px;
+    padding: 16px 20px;
+    background: white;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
   }
-
-  tfoot td {
-    background: #f3f1ea;
-    font-weight: 600;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-  }
-  tfoot td.label { font-family: inherit; }
-  tfoot td .hint { display: block; font-weight: 400; color: var(--muted); font-size: 11px; margin-top: 2px; font-family: -apple-system, "Segoe UI", system-ui, sans-serif; }
-
-  .assumptions { margin: 18px 0 28px; padding: 16px 20px; background: white; border: 1px solid var(--rule); border-radius: 6px; }
-  .assumptions h2 { margin-top: 0; }
-  .assumptions ul { margin: 0; padding-left: 20px; }
-  .assumptions li { margin: 6px 0; }
-  .assumptions li b { color: var(--accent); }
-
+  .premises ul { margin: 0; padding-left: 20px; }
+  .premises li { margin: 4px 0; }
+  .premises li b { color: var(--accent); }
   code { background: #f3f1ea; padding: 1px 5px; border-radius: 3px; font-size: 12.5px; }
-
-  .decision { margin-top: 24px; }
-  .decision h2 { color: var(--fg); text-transform: none; letter-spacing: 0; font-size: 18px; margin: 16px 0 8px; }
-  .decision p { margin: 8px 0; max-width: 82ch; }
-
-  footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 12px; }
 </style>
 </head>
 <body>
-
-<h1>ADR-0001: C++ project layout <span class="sub">decision matrices</span></h1>
+<h1>ADR-0001: C++ project layout <span class="sub">decision matrix</span></h1>
 <p class="lede">
-  Companion to ADR-0001. Four coupled sub-decisions: source-tree shape, where the
-  tooling and build-configuration files live, how the Docker copy boundary is handled,
-  and how <code>project()</code> calls are organized once a repo-root CMake exists.
-  Decisions are sequenced -- each one constrains the next.
+  Companion to ADR-0001. The decision compares three repository shapes for
+  <code>matching-engine-lab</code>: a flat executable, module-colocated tests and
+  benchmarks, and root-level aggregated trees.
 </p>
 
-<div class="assumptions">
+<div class="premises">
   <h2>Assumptions</h2>
   <ul>
-    <li><b>Library and application count:</b> at least four libraries (a utils library
-        plus order routing, market data, and matching engine) and one application.</li>
-    <li><b>Docker pipeline stability:</b> the grader copies only
-        <code>submission/</code> and will continue to.</li>
-    <li><b>Test and benchmark tooling:</b> Catch2 and Google Benchmark are the
-        committed choices.</li>
-    <li><b>No second C/C++ consumer at the workspace root:</b> the repository is
-        self-contained, and nothing outside <code>submission/</code> is or will be
-        C/C++.</li>
-    <li><b>Zero-warning build policy:</b> the team treats configure warnings as
-        defects and builds to zero warnings.</li>
+    <li><b>Project identity:</b> the repository is a C++26 matching-engine lab with its project root at the repository root.</li>
+    <li><b>Modules:</b> the project has utility, order-routing, matching-engine, market-data, server, and client surfaces.</li>
+    <li><b>Tooling:</b> Catch2, Google Benchmark, CTest, formatting, and static-analysis workflows should have stable top-level paths.</li>
+    <li><b>Growth path:</b> adding a module, executable, benchmark, or integration test should be additive.</li>
   </ul>
 </div>
 
-<h2 class="subdecision">1. Source-tree layout</h2>
-<p class="context">
-  The starting point (initial commit) is a six-line <code>submission/CMakeLists.txt</code>
-  with one <code>add_executable</code> over <code>src/main.cpp</code> and nothing else.
-  The brief asks for a production-style layout, so the comparison is between staying flat
-  and one of two structured shapes that grow naturally.
-</p>
-
 <table>
   <thead>
     <tr>
       <th>Criterion</th>
-      <th>A. Flat single-target <span class="opt-sub">Status quo: one <code>project()</code>, one <code>add_executable()</code>.</span></th>
-      <th>B. Module-colocated <span class="opt-sub">Per-module <code>&lt;lib&gt;/{src,test,benchmarks}</code>; tests and benchmarks live next to the code they exercise.</span></th>
-      <th>C. Aggregated <span class="opt-sub">Sibling <code>src/</code>, <code>test/</code>, <code>benchmarks/</code> roots; each tree mirrors module names beneath it.</span></th>
+      <th>A. Flat single-target <span class="opt-sub">One executable target owns the behavior.</span></th>
+      <th>B. Module-colocated <span class="opt-sub">Each module owns its source, tests, and benchmarks beneath one directory.</span></th>
+      <th>C. Root-level aggregated <span class="opt-sub">Sibling <code>src/</code>, <code>test/</code>, <code>benchmarks/</code>, and <code>vendor/</code> trees.</span></th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td class="criterion">Production-style organization (brief requirement)</td>
-      <td class="bad">Single flat target. Reads as a throwaway sample, not a codebase intended to grow.</td>
-      <td class="good">Clear library boundaries, dedicated test and benchmark trees.</td>
-      <td class="good">Clear library boundaries, dedicated test and benchmark trees.</td>
+      <td class="criterion">Growth</td>
+      <td class="bad">A second library or executable forces a restructure.</td>
+      <td class="good">New modules are additive.</td>
+      <td class="good">New modules, tests, benchmarks, and applications are additive.</td>
     </tr>
     <tr>
-      <td class="criterion">Place for unit tests</td>
-      <td class="bad">No path at all. Adding tests forces a structural pivot to B or C.</td>
-      <td>Under each module's own <code>test/</code> directory.</td>
-      <td>Under the top-level <code>test/</code> tree, mirroring module names.</td>
+      <td class="criterion">Tooling scope</td>
+      <td class="ok">Simple only while the project is tiny.</td>
+      <td class="bad">Production-only tools need per-module exclusions for nested tests and benchmarks.</td>
+      <td class="good">Tools target <code>src/</code>, <code>test/</code>, <code>benchmarks/</code>, or <code>vendor/</code> directly.</td>
     </tr>
     <tr>
-      <td class="criterion">Module locality (one directory per change)</td>
-      <td>Trivially local because only one directory exists; the property is vacuous, not earned.</td>
-      <td class="good">One module = one directory. A change to <code>foo</code> stays under <code>src/foo/</code>.</td>
-      <td class="ok">A module's source, tests, and benchmarks span up to three sibling directories.</td>
+      <td class="criterion">CMake reuse</td>
+      <td class="bad">No durable place for shared test or benchmark setup.</td>
+      <td class="ok">Each module repeats some dependency setup.</td>
+      <td class="good">Test and benchmark dependencies are found once per tree.</td>
     </tr>
     <tr>
-      <td class="criterion">CMake DRY-ness for test and benchmark dependencies</td>
-      <td class="na">No tests or benchmarks exist.</td>
-      <td class="bad">Each module repeats <code>find_package(Catch2)</code> and <code>find_package(benchmark)</code>. Cost grows with module count.</td>
-      <td class="good">One <code>find_package(Catch2)</code> at <code>test/CMakeLists.txt</code>, one <code>find_package(benchmark)</code> at <code>benchmarks/CMakeLists.txt</code>. Per-module CMake is just the executable.</td>
+      <td class="criterion">Module locality</td>
+      <td class="ok">Local because there is only one target.</td>
+      <td class="good">A module's artifacts live together.</td>
+      <td class="ok">A module can span sibling trees.</td>
     </tr>
     <tr>
-      <td class="criterion">Tooling-scope simplicity (linter, formatter, coverage globs)</td>
-      <td>One directory, no carve-outs needed; the property is vacuous, not earned.</td>
-      <td class="bad">Production-only globs must exclude each module's nested test and benchmark trees individually. Every new module updates the exclusion list.</td>
-      <td class="good"><code>submission/src/</code> is the stable target for production-code tooling; tests and benchmarks have their own top-level paths.</td>
+      <td class="criterion">Portfolio readability</td>
+      <td class="bad">Reads as a prototype.</td>
+      <td class="ok">Readable, but less aligned with common root-level C++ lab structure.</td>
+      <td class="good">Makes the main project surfaces visible at the repository root.</td>
     </tr>
     <tr>
-      <td class="criterion">Per-subtree on/off gating (build options)</td>
-      <td class="na">Nothing to gate.</td>
-      <td class="ok">Gating tests or benchmarks needs a conditional in every module's CMakeLists.</td>
-      <td class="good">One option at the root of each subtree skips the whole subtree.</td>
-    </tr>
-    <tr>
-      <td class="criterion">Cost of adding a second library</td>
-      <td class="bad">Forces a full restructure: introduce a library target, split <code>main.cpp</code> from library code, decide where headers live. None of it additive.</td>
-      <td class="good">Additive: new <code>src/&lt;lib&gt;/</code> directory with its own <code>{src,test,benchmarks}</code> children.</td>
-      <td class="good">Additive: new <code>src/&lt;lib&gt;/</code>, optionally mirrored under <code>test/&lt;lib&gt;/</code> and <code>benchmarks/&lt;lib&gt;/</code>.</td>
+      <td class="criterion">Install-ready headers</td>
+      <td class="bad">No library header convention.</td>
+      <td class="good">Can use stuttering public header trees per module.</td>
+      <td class="good">Can use stuttering public header trees per module and map them to an install prefix.</td>
     </tr>
   </tbody>
 </table>
 
-<div class="decision">
-  <h2>Decision -- Matrix 1</h2>
-  <p>
-    <b>Decision: C. Aggregated.</b> The brief rules out the flat status quo, and
-    between the two structured shapes, the DRY-ness and tooling-scope rows decide it.
-    Module-colocated repeats the <code>find_package</code> dance for Catch2 and
-    Benchmark in every module and turns every linter or formatter script into a
-    per-module exclusion list; with at least four libraries on the way, both costs
-    compound rather than amortize.
-  </p>
-</div>
-
-<h2 class="subdecision">2. Tooling and build configuration location</h2>
-<p class="context">
-  Workspace-level files -- <code>CMakeLists.txt</code>, <code>CMakePresets.json</code>,
-  <code>.clangd</code>, <code>.clang-format</code>, <code>cmake/</code>,
-  <code>build.sh</code> -- can live inside <code>submission/</code> or at the repository
-  root, or be split between the two. None of these existed at the initial commit, so this
-  is purely about where to introduce them.
+<h2>Decision</h2>
+<p class="decision-body">
+  <b>Decision: C. Root-level aggregated.</b> The project uses root
+  <code>src/</code>, <code>test/</code>, <code>benchmarks/</code>, and
+  <code>vendor/</code> trees. The small locality cost is accepted because the
+  build, tooling, and portfolio orientation are clearer.
 </p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Criterion</th>
-      <th>A. Submission-owned <span class="opt-sub">All configs under <code>submission/</code>; repo root has no CMakeLists.</span></th>
-      <th>B. Repo-root-owned <span class="opt-sub">All configs at the repo root; the repo-root CMake delegates into <code>submission/</code> via <code>add_subdirectory()</code>.</span></th>
-      <th>C. Split <span class="opt-sub">Editor configs (<code>.clangd</code>, <code>.clang-format</code>) at the root; CMake stays inside <code>submission/</code>.</span></th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td class="criterion">IDE auto-detection when repo root is opened</td>
-      <td class="bad">Editor sees no <code>.clangd</code> or <code>.clang-format</code> at the opened folder. Each user reconfigures.</td>
-      <td class="good">Configs are at the opened folder; pick-up is automatic.</td>
-      <td class="good">Editor configs are at the opened folder; pick-up is automatic.</td>
-    </tr>
-    <tr>
-      <td class="criterion">clangd <code>compile_commands.json</code> reach across the repo (root-level scripts, harness, future tooling)</td>
-      <td class="na">Moot under the no-second-consumer assumption (see Assumptions above).</td>
-      <td class="na">Moot under the no-second-consumer assumption (see Assumptions above).</td>
-      <td class="na">Moot under the no-second-consumer assumption (see Assumptions above).</td>
-    </tr>
-    <tr>
-      <td class="criterion">CMake invocation ergonomics (<code>cmake -S .</code>, presets)</td>
-      <td>Requires explicitly pointing at <code>submission/</code>; presets live one level down.</td>
-      <td class="good"><code>cmake -S .</code> and <code>cmake --preset=...</code> work directly from the repo root.</td>
-      <td>Same as Submission-owned for CMake -- the build root is one level down.</td>
-    </tr>
-    <tr>
-      <td class="criterion">Decoupling from the Docker copy boundary</td>
-      <td class="bad">Tooling configs ride inside the Docker context. Editor preferences leak into the graded build environment.</td>
-      <td class="good">Docker still copies only <code>submission/</code>; the root-level tooling configs stay out of the image.</td>
-      <td class="good">Editor configs at the root stay out of the image.</td>
-    </tr>
-    <tr>
-      <td class="criterion">Coordination cost between root and <code>submission/</code> CMake files</td>
-      <td class="good">One CMakeLists, no coordination.</td>
-      <td class="ok">Two CMakeLists must agree on language standard, CMake minimum version, and project metadata. This is the price that Matrix 4 then has to manage.</td>
-      <td class="good">One CMakeLists (root has no CMake), no coordination.</td>
-    </tr>
-    <tr>
-      <td class="criterion">Compatibility with the root-level test harness already present (<code>test/run_tests.sh</code>, <code>Dockerfile</code>)</td>
-      <td>Workable, but the workspace-level helpers (e.g. <code>build.sh</code>) end up either inside the Docker context or at an awkward depth from the harness.</td>
-      <td class="good">The harness, Dockerfile, and <code>build.sh</code> all sit at the same level; no awkward depth.</td>
-      <td class="good">Same level for the harness; CMake invocation is the only one-level-down step.</td>
-    </tr>
-  </tbody>
-</table>
-
-<div class="decision">
-  <h2>Decision -- Matrix 2</h2>
-  <p>
-    <b>Decision: B. Repo-root-owned.</b> With the no-second-consumer assumption in
-    place, the clangd-reach row no longer separates B from C; B's remaining edge over
-    Split is CMake invocation ergonomics -- <code>cmake -S .</code> and
-    <code>cmake --preset=...</code> run from the repo root rather than from a source
-    path one level down.
-  </p>
-  <p>
-    The call stands but by a narrower margin than the matrix originally framed. B's
-    coordination cost is real: two <code>project()</code> calls and two
-    language-standard declarations have to stay in sync. Matrix 4 manages this cost.
-    Split is the clean fallback if that coordination ever becomes a problem.
-  </p>
-</div>
-
-<h2 class="subdecision">3. Docker pipeline handling</h2>
-<p class="context">
-  The graded build copies <code>submission/</code> and builds it. The development build
-  wants warnings, sanitizers, and other hardening flags that are intentionally not in the
-  graded environment. The question is whether to honor the Docker boundary as-is (keep
-  <code>submission/</code> independently buildable) or expand it (have Docker copy the
-  whole repo and build from there with the same flags as local).
-</p>
-
-<table>
-  <thead>
-    <tr>
-      <th class="weight">Wt</th>
-      <th>Criterion</th>
-      <th>A. Pipeline-rooted <span class="opt-sub">Dockerfile copies the repo root and builds from there with the same project root as local development.</span></th>
-      <th>B. Submission-standalone <span class="opt-sub"><code>submission/CMakeLists.txt</code> is dual-mode (<code>if(NOT PROJECT_NAME)</code>); Docker still copies only <code>submission/</code>.</span></th>
-      <th>C. Single-tree (drop the submission/ boundary) <span class="opt-sub">Collapse the split: move everything to the repo root and adjust the Dockerfile to copy the relevant subset.</span></th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td class="weight">5</td>
-      <td class="criterion">Preserves the intended flag separation (development flags locally, original assignment flags in Docker)</td>
-      <td class="bad"><span class="score">2</span>Same build root means the same CMake reaches the graded environment. Holding the line requires explicit flag-stripping logic.</td>
-      <td class="good"><span class="score">5</span>The Docker copy boundary is the wall: dev-only includes (<code>CompilerFlags.cmake</code>) live outside <code>submission/</code> and never enter the image.</td>
-      <td class="bad"><span class="score">2</span>No boundary at all. Every dev-time concern is one careless include away from the graded build.</td>
-    </tr>
-    <tr>
-      <td class="weight">3</td>
-      <td class="criterion">Dockerfile changes required</td>
-      <td><span class="score">3</span>Modest: change the copy target and the build root.</td>
-      <td class="good"><span class="score">5</span>None. The existing Dockerfile keeps working untouched.</td>
-      <td class="ok"><span class="score">3</span>Has to be rewritten to enumerate what to copy (or to copy everything and ignore via <code>.dockerignore</code>).</td>
-    </tr>
-    <tr>
-      <td class="weight">3</td>
-      <td class="criterion">CMake structural simplicity (no dual-mode shim)</td>
-      <td class="good"><span class="score">5</span>One project root, one mode. No <code>if(NOT PROJECT_NAME)</code> branch.</td>
-      <td class="ok"><span class="score">3</span>Carries a small dual-mode shim: when called as a sub-project, the if-branch is skipped; when called standalone, it sets up its own project.</td>
-      <td class="good"><span class="score">5</span>One root, one CMake, no shim.</td>
-    </tr>
-    <tr>
-      <td class="weight">2</td>
-      <td class="criterion">Resistance to drift in shared concerns (CMake version, language standard, project metadata)</td>
-      <td class="good"><span class="score">5</span>One CMake owns the shared values; nothing to drift against.</td>
-      <td class="ok"><span class="score">3</span>Two declarations of CMake version and language standard live in two files; can drift if one is updated without the other.</td>
-      <td class="good"><span class="score">5</span>One CMake, no duplication.</td>
-    </tr>
-    <tr>
-      <td class="weight">3</td>
-      <td class="criterion">Faithfulness to what the grader actually runs</td>
-      <td><span class="score">3</span>The grader's pipeline runs the Docker image; building from a different root locally is fine as long as the image stays accurate.</td>
-      <td class="good"><span class="score">5</span><code>submission/</code> is the build root locally and in Docker. The grader's view and a developer's <code>cmake submission/</code> are the same.</td>
-      <td><span class="score">3</span>Faithful, but only because the boundary disappeared. The grader's copy step has to be rewritten to match.</td>
-    </tr>
-  </tbody>
-  <tfoot>
-    <tr>
-      <td class="label" colspan="2">Weighted score
-        <span class="hint">sum(score * weight) -- tune weights to taste</span>
-      </td>
-      <td>2*5 + 3*3 + 5*3 + 5*2 + 3*3 = <b>53</b></td>
-      <td><b>5*5 + 5*3 + 3*3 + 3*2 + 5*3 = 70</b></td>
-      <td>2*5 + 3*3 + 5*3 + 5*2 + 3*3 = <b>53</b></td>
-    </tr>
-  </tfoot>
-</table>
-
-<div class="decision">
-  <h2>Decision -- Matrix 3</h2>
-  <p>
-    <b>Decision: B. Submission-standalone.</b> This is the only sub-decision where the
-    call is close on raw axes, so the weights are on and the criterion that decides it
-    gets to say so. Flag separation is the heaviest criterion because it is the entire
-    reason the development build is configured differently from the graded build; an
-    option that does not preserve that separation is a different design, not just a
-    different organization. B's faithfulness to the grader holds because the pipeline
-    copies only <code>submission/</code> -- under that premise, a developer's
-    <code>cmake submission/</code> and the grader's view coincide exactly.
-  </p>
-  <p>
-    The runner-up is Pipeline-rooted, and what would flip the call is a graded
-    environment that ran the same flags as development -- then the boundary serves no
-    purpose and collapsing it is the simpler design. Single-tree scores well on CMake
-    simplicity but throws away the flag separation for nothing in return.
-  </p>
-  <p>
-    Cost paid: <code>submission/CMakeLists.txt</code> carries an
-    <code>if(NOT PROJECT_NAME)</code> shim, and a few values (CMake minimum version,
-    language standard) are declared in both root and <code>submission/</code>. Matrix 4
-    manages that duplication.
-  </p>
-</div>
-
-<h2 class="subdecision">4. <code>project()</code> placement</h2>
-<p class="context">
-  With Matrix 2 putting CMake at the root and Matrix 3 keeping <code>submission/</code>
-  independently buildable, <code>project()</code> must be callable from
-  <code>submission/CMakeLists.txt</code> when it is the top level. Three ways to organize
-  the <code>project()</code> calls.
-</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Criterion</th>
-      <th>A. Dual-mode <span class="opt-sub">Two <code>project()</code> calls: one at the repo root, one inside the <code>if(NOT PROJECT_NAME)</code> branch in <code>submission/</code>.</span></th>
-      <th>B. Submission-only <span class="opt-sub">One unconditional <code>project()</code> in <code>submission/CMakeLists.txt</code>; the repo-root CMake has none.</span></th>
-      <th>C. Submission-only + workspace stub <span class="opt-sub">Real <code>project()</code> in <code>submission/</code>; a dummy <code>project(workspace)</code> at the root suppresses the warning.</span></th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td class="criterion">CMake configure warnings on the root build</td>
-      <td class="good">Silent: a real <code>project()</code> sits at the configured root.</td>
-      <td class="bad">Configure prints "No project() command in top-level CMakeLists.txt"; the warning will be raised on every run.</td>
-      <td class="good">Silent, because the stub claims the role.</td>
-    </tr>
-    <tr>
-      <td class="criterion">CMake duplication (lines of repeated <code>project()</code> declaration)</td>
-      <td class="ok">One repeated <code>project()</code> declaration. Names and language settings have to stay aligned by convention.</td>
-      <td class="good">Zero duplication.</td>
-      <td class="ok">A stub plus a real declaration; same line count as A, with one of the two carrying no semantic content.</td>
-    </tr>
-    <tr>
-      <td class="criterion">Semantic correctness at each build root (every entry point is a real project, no dummies)</td>
-      <td class="good">Both build roots declare a real project named after what they actually build.</td>
-      <td>The submission build root is correct; the workspace root is silent because nothing builds when invoked there directly. Defensible but unconventional.</td>
-      <td class="bad">The workspace root pretends to be a project it is not. A reader sees <code>project(workspace)</code> and has to learn that it is a no-op.</td>
-    </tr>
-    <tr>
-      <td class="criterion">Idiomatic ordering of <code>include(CompilerFlags)</code> and <code>include(CTest)</code> relative to <code>project()</code></td>
-      <td class="good">Each CMake calls <code>project()</code> before the includes that need a known language. No special casing.</td>
-      <td class="bad">The root CMake needs <code>CompilerFlags</code> and <code>CTest</code> to act on the submission's languages, but cannot include them at its own scope without a <code>project()</code> call. Forces awkward workarounds (includes inside <code>add_subdirectory</code>'s scope, or after-the-fact propagation).</td>
-      <td class="good">The stub provides the language context; includes work in their natural order.</td>
-    </tr>
-  </tbody>
-</table>
-
-<div class="decision">
-  <h2>Decision -- Matrix 4</h2>
-  <p>
-    <b>Decision: A. Dual-mode.</b> The duplication that B avoids is one line of
-    <code>project()</code> declaration; the cost B pays for that saving is a permanent
-    configure warning -- a defect under the zero-warning policy, not a nuisance to
-    suppress -- and a contorted ordering of <code>CompilerFlags</code> and
-    <code>CTest</code> includes. The workspace-stub option (C) buys silence at the
-    cost of lying about what the root build is, which is the worst trade of the three.
-  </p>
-  <p>
-    The single line of duplication in A is structurally required by the Docker boundary
-    set in Matrix 3 -- it is what makes both build roots semantically honest.
-  </p>
-</div>
-
-<footer>Companion to ADR-0001. Dated 2026-05-14.</footer>
-
 </body>
 </html>

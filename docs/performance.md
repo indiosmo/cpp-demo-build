@@ -8,7 +8,7 @@ representative 200 resting orders.
 The numbers below come from
 [`scripts/collect_performance_data.sh`](../scripts/collect_performance_data.sh)
 on the environment recorded in
-[`submission/benchmarks/README.md`](../submission/benchmarks/README.md#environment).
+[`benchmarks/README.md`](../benchmarks/README.md#environment).
 
 ## Headline
 
@@ -37,7 +37,7 @@ level erase) is amortised across the 200-iteration drain.
 ## Methodology
 
 The chart comes from a single google-benchmark binary
-([`submission/benchmarks/order_book`](../submission/benchmarks/order_book))
+([`benchmarks/order_book`](../benchmarks/order_book))
 running two repeated benchmarks at the 200-order reference depth:
 
 - `BM_PlaceGrowingLevel` -- fills an empty level with 200 orders, one

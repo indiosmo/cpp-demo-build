@@ -19,7 +19,7 @@ readonly SCRIPT_DIR PROJECT_ROOT
 
 BUILD_DIR="${1:-$PROJECT_ROOT/_build/release}"
 DATA_DIR="$PROJECT_ROOT/docs/performance/data"
-BENCH_BINARY="$BUILD_DIR/submission/benchmarks/order_book/matching_engine_order_book_benchmark"
+BENCH_BINARY="$BUILD_DIR/benchmarks/order_book/matching_engine_order_book_benchmark"
 
 MIN_TIME="${MIN_TIME:-0.5s}"
 

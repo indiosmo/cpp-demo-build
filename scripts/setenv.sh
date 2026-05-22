@@ -26,4 +26,4 @@ export ASAN_OPTIONS="${ASAN_OPTIONS:-color=always:print_legend=0:abort_on_error=
 export TSAN_OPTIONS="${TSAN_OPTIONS:-verbosity=1 history_size=7 second_deadlock_stack=1}"
 export UBSAN_OPTIONS="${UBSAN_OPTIONS:-print_stacktrace=1}"
 
-export KRAKEN_ENV_SOURCED=1
+export LAB_ENV_SOURCED=1

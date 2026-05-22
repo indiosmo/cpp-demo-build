@@ -26,7 +26,7 @@ The current shape uses sorted price-level maps over intrusive lists
 of pool-allocated nodes. See
 [ADR 0004](adr/0004-keep-order-book-as-sorted-price-level-maps.md)
 and
-[`matching_engine/v3/order_book.hpp`](../submission/src/matching_engine/matching_engine/v3/order_book.hpp).
+[`matching_engine/v3/order_book.hpp`](../src/matching_engine/matching_engine/v3/order_book.hpp).
 
 ### Identity index
 
@@ -84,13 +84,9 @@ Drains every book and emits nothing. The book map keeps its
 configured symbols alive so later commands keep finding their
 books -- only the contents are discarded.
 
-`EXERCISE.md` defines `F` only as "reset all order books" and is
-silent on the observable consequence. The fixtures settle it: `F`
-appears only as the final command in every scenario, and no
-odd-numbered expected output carries a top-of-book record that
-resting interest at flush time would otherwise produce. The
-downstream consumer treats `F` as a session reset whose effect it
-observes through the absence of further records.
+`F` is a session reset. The fixtures use it as the final command in
+each scenario, and no top-of-book record follows a flush. Downstream
+consumers observe the reset through the absence of further records.
 
 ## Behaviour
 

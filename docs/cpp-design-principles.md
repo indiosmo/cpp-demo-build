@@ -12,7 +12,7 @@ sections here when explaining a specific choice.
   across, peer domains do not.
 - **Compile-time correctness.** Strong types, exhaustive variant and
   enum matching, designated initializers.
-- **Error handling.** Fallible code returns `kraken::result<T>`
+- **Error handling.** Fallible code returns `lab::result<T>`
   internally; public boundaries consume it and return
   `void` / `optional` / `expected`.
 - **Declarative style.** Decompose, name predicates, prefer ranges
@@ -73,14 +73,14 @@ suite. The compiler is the first reviewer.
 
 ## Error handling
 
-The project alias `kraken::result<T>` (wrapping
+The project alias `lab::result<T>` (wrapping
 `boost::leaf::result<T>`) is the **internal** error-carrying
 vocabulary. It travels between helpers inside a domain and lets a
 handler at the boundary match on rich, structured failure payloads.
 Errors live with the domain that produces them in
 `<domain>/error_code.hpp` + `<domain>/errors.hpp`.
 
-`kraken::result<T>` never crosses a public boundary. At the boundary
+`lab::result<T>` never crosses a public boundary. At the boundary
 of a domain or module, code calls `boost::leaf::try_handle_*` to
 consume the result and returns one of:
 
@@ -88,19 +88,19 @@ consume the result and returns one of:
   or surfaced through a callback the caller wired.
 - `std::optional<T>`, when "no value" is a sufficient summary and
   the caller does not need a reason.
-- `kraken::expected<T, E>`, when the caller needs to distinguish
+- `lab::expected<T, E>`, when the caller needs to distinguish
   between different errors. `E` is the consuming domain's own
   error type, not a LEAF carrier.
 
-Returning `kraken::result<T>` from a public function forces every
+Returning `lab::result<T>` from a public function forces every
 caller into the LEAF machinery; the only exception is a utility
 library whose contract *is* "this algorithm can fail" -- e.g. the
-helpers in `kraken/algorithm.hpp` -- where the algorithm itself
+helpers in `lab/algorithm.hpp` -- where the algorithm itself
 is the boundary.
 
 Unrecoverable runtime failures (the SPSC queue's allocation path,
 for instance) are not error-handling territory: they assert and
-abort. `kraken::event_loop::post` is `noexcept` and crashes on
+abort. `lab::event_loop::post` is `noexcept` and crashes on
 queue-allocation failure rather than returning a result the caller
 cannot meaningfully act on.
 
@@ -134,9 +134,9 @@ or a benchmark calls for one. Anything deferred is recorded as an
 
 Committed hot-path idioms:
 
-- `kraken::fixed_string<N>` for bounded text -- no per-value
+- `lab::fixed_string<N>` for bounded text -- no per-value
   allocation.
-- `kraken::inplace_function` for stored callbacks -- callback
+- `lab::inplace_function` for stored callbacks -- callback
   storage inline in the owning stage, no `std::function` heap
   allocation.
 - A shared `boost::pool` owned by the composition stage and used by

@@ -2,10 +2,10 @@
 
 ## Summary
 
-Reframe the repo from a Kraken take-home submission into
-`matching-engine-lab`, a C++ portfolio demonstrator for a multi-threaded UDP
-matching engine. Use the confirmed approach: full `kraken` to `lab` rename
-for internal utility code and normal root project layout.
+Reframe the repo from a take-home submission into `matching-engine-lab`, a
+C++ portfolio demonstrator for a multi-threaded UDP matching engine. Use the
+confirmed approach: full legacy utility rename to `lab` and normal root
+project layout.
 
 Decision matrix:
 
@@ -22,29 +22,113 @@ Decision matrix:
 - Rename project identity:
   - Repo/docs name: `matching-engine-lab`
   - CMake project: `matching_engine_lab`
-  - Utility namespace/library: `kraken` -> `lab`
-  - CMake aliases: `kraken::kraken` -> `lab::core`
-  - Build options/macros: `KRAKEN_*` -> `LAB_*`
-  - Server executable: `kraken_submission` -> `matching_engine_lab_server`
+  - Utility namespace/library: legacy utility layer -> `lab`
+  - CMake aliases: `lab::lab` -> `lab::core`
+  - Build options/macros: legacy project prefix -> `LAB_*`
+  - Server executable: legacy server name -> `matching_engine_lab_server`
   - Client executable: `matching_engine_lab_client`
-  - Runtime namespace: `kraken_submission` -> `matching_engine_lab_server`
-  - Thread names: `kraken-input`, `kraken-engine`, `kraken-output` ->
-    `lab-input`, `lab-engine`, `lab-output`
+  - Runtime namespace: server namespace -> `matching_engine_lab_server`
+  - Thread names: `lab-input`, `lab-engine`, `lab-output`
 - Keep domain names `order_routing`, `matching_engine`, and `market_data`;
   they are domain vocabulary, not employer branding.
 - Rewrite durable docs so they describe a portfolio/demo project:
-  - `README.md`, `DESIGN.md`, `DEPENDENCIES.md`, `DEVELOPING.md`, `INDEX.md`
+  - `README.md`, `DEPENDENCIES.md`, `DEVELOPING.md`, `INDEX.md`
   - `docs/*.md`, ADRs, per-library READMEs
-  - Replace `EXERCISE.md` references with an internal protocol/spec document,
-    likely `docs/protocol.md` or expanded `docs/engine-specs.md`.
+  - Replace prompt references with an internal protocol/spec document, likely
+    `docs/protocol.md` or expanded `docs/engine-specs.md`.
 - Delete interview/submission artifacts:
-  - `EXERCISE.md`
-  - `sample.md`
-  - `submission.html`
+  - assessment prompt
+  - sample runner page
+  - generated submission page
   - generated assessment reports under `reports/`
   - take-home wording in comments, scripts, and docs
 - Preserve the existing matching behavior and CSV protocol unless phase 3
   explicitly extends it.
+
+## Phase Handoffs
+
+### Phase 1 Handoff
+
+Status: completed.
+
+Phase 1 moved the implementation into the root project layout and completed
+the identity rename:
+
+- moved library sources to `src/`;
+- merged module unit tests into root `test/` while preserving the current CSV
+  scenario fixtures and `test/run_tests.sh`;
+- moved Google Benchmark targets to `benchmarks/`;
+- moved copy-vendored dependencies to `vendor/`;
+- renamed the utility module, headers, namespace, macros, and CMake alias to
+  `lab` / `lab::core` / `LAB_*`;
+- renamed the wiring shell and executable to `matching_engine_lab_server`;
+- updated thread names to `lab-input`, `lab-engine`, and `lab-output`;
+- rewired root CMake to add `vendor`, `src`, `test`, and `benchmarks`
+  directly;
+- updated durable docs and scripts for the new layout.
+
+Verification completed:
+
+- `./build.sh debug` passed with 70/70 tests.
+- Focused search found no remaining legacy branding or `submission/` paths in
+  durable project surfaces.
+
+### Phase 2 Handoff
+
+Status: completed.
+
+Phase 2 removed the Docker and generated-report workflow surfaces:
+
+- deleted `Dockerfile`;
+- deleted `.dockerignore`;
+- deleted `run_submission.sh`;
+- deleted `run_local_submission.sh`;
+- deleted tracked generated reports under `reports/`.
+- deleted the root assessment prompt, sample runner page, generated submission
+  page, and stale standalone design summary.
+
+Phase 2 also updated local workflow documentation and stale comments so the
+durable path is the regular local build:
+
+- `README.md` now points at `./build.sh`, `ctest`, and direct server runs;
+- `DEVELOPING.md` documents the local server workflow;
+- `DEPENDENCIES.md` describes system packages as local setup inputs;
+- `INDEX.md`, `docs/highlights.md`, and lab guideline docs no longer describe
+  the Docker or grading harness as the active workflow;
+- CMake and source comments no longer explain behavior in terms of Docker,
+  grading, or report generation.
+
+Verification completed:
+
+- `./build.sh debug` passed with 70/70 tests.
+- `git diff --check` passed.
+- Focused searches over touched durable surfaces found no remaining Docker
+  wrapper or grading workflow references.
+
+Important handoff: `test/run_tests.sh` remains in place. The phase plan says to
+delete it only once phase 3 replaces its role with the real client/server
+integration path. Until then it is the current scenario runner.
+
+### Phase 3 Handoff
+
+Status: pending.
+
+Phase 3 should replace `test/run_tests.sh` before deleting it. The replacement
+needs a first-class UDP client library and executable, plus integration tests
+that start the server, send scenario commands, and compare market-data output.
+Once that path exists, remove `test/run_tests.sh` and move useful scenario
+fixtures into their target location.
+
+### Phase 4 Handoff
+
+Status: pending.
+
+Phase 4 should replace the current exercise-shaped request and market-data
+vocabulary with industry-standard order-entry and market-data message models.
+The important boundary is conceptual: order-entry messages and market-data
+messages are separate domains, even when they share names such as price,
+quantity, side, or security identifier. Use explicit conversions at the
+matching-engine boundary rather than shared message structs.
 
 ## Phase 2: Docker Removal
 
@@ -85,12 +169,100 @@ Decision matrix:
     `matching_engine_lab_client`, and compare stdout for representative
     scenarios.
 
+## Phase 4: Industry Message Vocabulary
+
+Move the domain model from exercise-specific command and output names toward
+the vocabulary used by trading systems. This phase should preserve the matching
+semantics while changing the public domain language and event surfaces.
+
+### Order Entry And Routing
+
+Replace the current routing command and acknowledgement vocabulary with an
+order-entry model:
+
+- `new_order_single` -- submit a new order.
+- `replace_order` -- amend a live order by original client order identifier.
+- `cancel_order` -- request cancellation of a live order.
+- `execution_report` -- report order acceptance, rejection, replacement,
+  cancellation, partial fill, fill, and expiration.
+- `cancel_reject` -- reject a cancel or replace request that cannot be applied.
+
+Use industry field names where they fit:
+
+- client identifiers: `cl_ord_id`, `orig_cl_ord_id`;
+- exchange identifiers: `order_id`, `exec_id`;
+- instrument identity: `security_id`, `symbol`, `security_exchange`;
+- order terms: `side`, `ord_type`, `time_in_force`, `order_qty`, `price`;
+- lifecycle state: `exec_type`, `ord_status`, `cum_qty`, `leaves_qty`,
+  `last_qty`, `last_px`, `avg_px`, `transact_time`;
+- rejection fields: `reject_reason`, `text`.
+
+Keep the matching engine's internal taker/maker vocabulary where it is the
+right domain language. The order-entry edge translates external order
+lifecycle messages into matching requests and translates matching outcomes back
+into `execution_report` or `cancel_reject`.
+
+### Market Data Domain
+
+Split market data completely from order entry. Market-data events should not
+reuse order-entry message structs or lifecycle enums. Model the basic event set
+after B3 UMDF, but keep it as a domain model rather than a wire schema:
+
+- `security_definition` -- instrument reference data.
+- `security_status` -- instrument trading state updates.
+- `execution_summary` -- summary of one matching event that produced one or
+  more trades.
+- `trade` -- one completed trade for an instrument.
+- `mbo_book_update` -- market-by-order book update for one resting order or a
+  delete-through event.
+
+Initial field set:
+
+- `security_definition`: `security_id`, `symbol`, `security_exchange`,
+  `security_group`, `security_type`, optional `security_subtype`,
+  `min_price_increment`, `round_lot`, and `currency`.
+- `security_status`: `security_id`, `security_exchange`,
+  `trading_session_id`, `security_trading_status`,
+  `security_trading_event`, and `transact_time`.
+- `execution_summary`: `security_id`, `aggressor_side`, `last_px`,
+  `fill_qty`, optional `traded_hidden_qty`, optional `cancel_qty`,
+  `aggressor_time`, and `transact_time`.
+- `trade`: `security_id`, `trade_id`, `price`, `quantity`,
+  optional `buyer`, optional `seller`, `trade_condition`,
+  optional `trade_sub_type`, `trade_date`, and `transact_time`.
+- `mbo_book_update`: `security_id`, `update_action`, `side`,
+  `resting_order_id`, `price`, `quantity`, optional `previous_quantity`,
+  and `transact_time`.
+
+Do not model snapshot or incremental feeds as domain-event variants in this
+phase. Snapshot and incremental behavior is a transport or packaging concern:
+the same `security_definition`, `security_status`, `execution_summary`,
+`trade`, and `mbo_book_update` values should be usable by either packaging
+style later.
+
+### Implementation Shape
+
+- Rename or wrap `order_routing` APIs so external naming moves to order-entry
+  vocabulary without leaking old command names into new public headers.
+- Replace `market_data::order_ack`, `cancel_ack`, and `top_of_book` outputs
+  with the market-data event set above.
+- Add narrow conversion functions at the boundaries:
+  - order entry request to matching-engine request;
+  - matching-engine outcome to order-entry `execution_report` /
+    `cancel_reject`;
+  - matching-engine book and trade outcomes to market-data events.
+- Keep order-entry and market-data strong types distinct unless a shared type
+  is truly infrastructure-level, such as a timestamp or raw decimal utility.
+- Document the new message model in `docs/engine-specs.md` or a new
+  `docs/protocol.md`, then point README-level docs at that durable source.
+
 ## Test Plan
 
 - After phase 1:
   - `./build.sh debug`
   - `./build.sh release matching_engine_lab_server`
-  - `rg -n "Kraken|kraken|submission|interview|exercise|grader|grading|recruiter|bundle|kraken_submission|EXERCISE"`
+  - focused search for legacy branding, `submission/` paths, and assessment
+    vocabulary in durable project surfaces
 - After phase 2:
   - `./build.sh debug`
   - confirm no Docker wrapper docs remain
@@ -100,6 +272,17 @@ Decision matrix:
   - integration test: start `matching_engine_lab_server`, send fixture
     commands with `matching_engine_lab_client`, compare market-data output
   - sanitizer pass with `./build.sh asan`
+- After phase 4:
+  - unit tests for order-entry lifecycle mapping:
+    `new_order_single`, `replace_order`, `cancel_order`,
+    `execution_report`, and `cancel_reject`
+  - unit tests for market-data event construction:
+    `security_definition`, `security_status`, `execution_summary`, `trade`,
+    and `mbo_book_update`
+  - regression tests proving order-entry types and market-data types are not
+    interchangeable at API boundaries
+  - integration tests updated from legacy CSV records to the new event model
+    or its chosen wire encoding
 
 ## Assumptions
 
@@ -110,3 +293,19 @@ Decision matrix:
 - The CSV order and market-data protocol remains part of the demo, but it is
   documented as Matching Engine Lab's sample wire protocol rather than an
   interview requirement.
+
+
+## TODO
+
+### Review ADRs
+
+Review vendoring 0002 ADR. Something more like abacus inlined vendors.
+Kind of matches what we already have here.
+
+drop 0003 no longer applies. we need an ADR on the data format we want to handle.
+Maybe use QuickFIX?
+
+0004 reframe as list+pool to match v3 implementation.
+drop v1/v2 and lift v3 to the library directly.
+
+benchmarks should probably be removed and eventually redo interesting ones from scratch.

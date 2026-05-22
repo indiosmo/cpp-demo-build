@@ -2,7 +2,7 @@
   "context": {
     "date": "2026-05-16T12:26:31-03:00",
     "host_name": "DESKTOP-JP2BUFD",
-    "executable": "/home/msi/repos/assessment-cpp-senior/_build/release/submission/benchmarks/order_book/matching_engine_order_book_benchmark",
+    "executable": "/home/msi/repos/matching-engine-lab/_build/release/benchmarks/order_book/matching_engine_order_book_benchmark",
     "num_cpus": 18,
     "mhz_per_cpu": 3793,
     "cpu_scaling_enabled": false,

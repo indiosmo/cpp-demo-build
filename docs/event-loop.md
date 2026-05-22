@@ -1,7 +1,7 @@
 # Event loop
 
-The runtime layer pins one [`kraken::event_loop`](../submission/src/kraken/kraken/event_loop.hpp)
-to each of the three threads in the submission topology. Each loop
+The runtime layer pins one [`lab::event_loop`](../src/lab/lab/event_loop.hpp)
+to each of the three threads in the server topology. Each loop
 is a single consumer thread, an SPSC blocking queue of posted
 closures, and an optional vector of pollers. Stages attached to a
 loop see single-thread execution, ordered cross-thread delivery, and
@@ -42,8 +42,8 @@ the lifetime of the loop:
 
 | Strategy | Behaviour when idle | When to pick it |
 |----------|---------------------|-----------------|
-| `kraken::timed_wait_idle` | `wait_dequeue_timed` parks the thread on the task queue for up to `duration` (default 1 ms). Wakes early if a producer posts. | The kinder default; one core is not burned per idle loop. Fine for control planes, tests, and non-HFT consumers. |
-| `kraken::busy_spin_idle` | The loop loops. No sleep, no condition variable, no syscall. The thread sits at 100% CPU. | The HFT default in `kraken_submission::config`. Removes wake-up latency from the cross-thread hop and from poller-driven UDP ingestion. |
+| `lab::timed_wait_idle` | `wait_dequeue_timed` parks the thread on the task queue for up to `duration` (default 1 ms). Wakes early if a producer posts. | The kinder default; one core is not burned per idle loop. Fine for control planes, tests, and non-HFT consumers. |
+| `lab::busy_spin_idle` | The loop loops. No sleep, no condition variable, no syscall. The thread sits at 100% CPU. | The HFT default in `matching_engine_lab_server::config`. Removes wake-up latency from the cross-thread hop and from poller-driven UDP ingestion. |
 
 The full iteration under either strategy:
 

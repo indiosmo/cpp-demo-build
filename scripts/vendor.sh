@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Vendor management tool. Each library under submission/vendor/<name>/ is
+# Vendor management tool. Each library under vendor/<name>/ is
 # pinned by two text files (and optionally a third):
 #
 #   ORIGIN.txt    upstream git URL (one line)
@@ -14,8 +14,8 @@
 # directory under upstream/ to its INTERFACE include path.
 #
 # Network is only touched by 'sync', 'check', and 'status'. Once a sync has
-# run and the results are committed, the graded docker build and any cold
-# clone build from bytes already in the tree (per ADR 0002).
+# run and the results are committed, normal builds consume bytes already in
+# the tree (per ADR 0002).
 #
 # Usage:
 #   scripts/vendor.sh list                    list known vendored libraries
@@ -32,7 +32,7 @@ shopt -s inherit_errexit
 
 readonly script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 readonly repo_root=$(cd "${script_dir}/.." && pwd)
-readonly vendor_dir="${repo_root}/submission/vendor"
+readonly vendor_dir="${repo_root}/vendor"
 
 log()  { printf '%s\n' "$*" >&2; }
 fail() { log "vendor.sh: $*"; exit 1; }
@@ -44,7 +44,7 @@ usage() {
 # Echo non-blank, non-comment lines from $1.
 nonblank_lines() { awk 'NF && !/^[[:space:]]*#/' "$1"; }
 
-# Library names that have an ORIGIN.txt under submission/vendor/, sorted.
+# Library names that have an ORIGIN.txt under vendor/, sorted.
 discover_libraries() {
   [[ -d ${vendor_dir} ]] || return 0
   find "${vendor_dir}" -mindepth 2 -maxdepth 2 -name ORIGIN.txt -print \

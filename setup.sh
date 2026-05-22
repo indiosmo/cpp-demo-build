@@ -32,7 +32,7 @@ main() {
     esac
   done
 
-  printf '%s\n' "Setting up kraken-submission development environment..."
+  printf '%s\n' "Setting up matching-engine-lab development environment..."
 
   git -C "$SCRIPT_DIR" submodule update --init --recursive
   "$SCRIPT_DIR/scripts/install_dependencies.sh" "${dependency_args[@]}"

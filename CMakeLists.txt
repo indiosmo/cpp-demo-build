@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 4.0)
 
-project(kraken
+project(matching_engine_lab
   VERSION 0.1.0
-  DESCRIPTION "Kraken senior order book submission"
+  DESCRIPTION "C++ matching engine laboratory"
   LANGUAGES CXX
 )
 
@@ -12,11 +12,12 @@ set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(KRAKEN_RELEASE          "Build with release flags and optimizations"  OFF)
-option(KRAKEN_DEBUG            "Build with debug-friendly settings"          OFF)
-option(KRAKEN_ASAN             "Build with Address/Leak/UB Sanitizer"        OFF)
-option(KRAKEN_TSAN             "Build with Thread Sanitizer"                 OFF)
-option(KRAKEN_BUILD_BENCHMARKS "Build google-benchmark microbenchmarks"      ON)
+option(LAB_RELEASE          "Build with release flags and optimizations"  OFF)
+option(LAB_DEBUG            "Build with debug-friendly settings"          OFF)
+option(LAB_ASAN             "Build with Address/Leak/UB Sanitizer"        OFF)
+option(LAB_TSAN             "Build with Thread Sanitizer"                 OFF)
+option(LAB_BUILD_BENCHMARKS "Build google-benchmark microbenchmarks"      ON)
+option(LAB_BUILD_EXAMPLES   "Build illustrative example binaries"         OFF)
 
 include(CompilerFlags)
 
@@ -24,4 +25,13 @@ include(CompilerFlags)
 # top level so add_test() in subdirectories is picked up.
 include(CTest)
 
-add_subdirectory(submission)
+add_subdirectory(vendor)
+add_subdirectory(src)
+
+if(BUILD_TESTING)
+  add_subdirectory(test)
+endif()
+
+if(LAB_BUILD_BENCHMARKS)
+  add_subdirectory(benchmarks)
+endif()

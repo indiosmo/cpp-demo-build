@@ -23,8 +23,7 @@ the current C++20 implementation.
 
 ## Component layout
 
-The target layout keeps the boost-stuttering shape but removes the
-`submission/` wrapper:
+The project layout keeps the boost-stuttering shape at module scope:
 
 ```text
 src/<module>/
@@ -38,12 +37,11 @@ test/<module>/src/         Catch2 cases mirroring src/<module>/<module>/
 benchmarks/<module>/src/   Google Benchmark targets
 ```
 
-The current anchors are under `submission/src/`; phase 1 of the reframe moves
-them to the root layout.
+The current anchors are under `src/`.
 
 ## Utility layer
 
-`lab` replaces the current `kraken` utility layer. The core utility headers
+`lab` is the core utility layer. The core utility headers
 are the matching-engine lab vocabulary layer: result handling, strong types,
 bounded strings, variant matching, logging, assertions, hashing, event-loop
 primitives, and network adapters.
@@ -65,15 +63,15 @@ piece its technical shape.
 
 Domain primitive aliases live in each domain's nested `types` namespace. The
 canonical anchors are
-[`order_routing/types.hpp`](../../submission/src/order_routing/order_routing/types.hpp)
+[`order_routing/types.hpp`](../../src/order_routing/order_routing/types.hpp)
 and
-[`market_data/types.hpp`](../../submission/src/market_data/market_data/types.hpp).
+[`market_data/types.hpp`](../../src/market_data/market_data/types.hpp).
 During the C++26 pass, keep bounded wire fields on `lab::fixed_string<N>` or a
 standard bounded-string equivalent if one is available and fits.
 
 ## Error handling
 
-The current project uses `kraken::result<T>` internally and consumes it at
+The current project uses `lab::result<T>` internally and consumes it at
 module boundaries. The target shape is result-oriented helper ergonomics with
 lab names:
 
@@ -84,7 +82,7 @@ lab names:
 - catch-all boundary handlers use `LAB_CATCH_AND_LOG`.
 
 The first local candidate for container lookup helpers is
-[`matching_engine::v3::engine`](../../submission/src/matching_engine/src/v3/engine.cpp):
+[`matching_engine::v3::engine`](../../src/matching_engine/src/v3/engine.cpp):
 duplicate-order checks, book lookup, cancel lookup, and error mapping already
 show the shape.
 
@@ -93,10 +91,10 @@ show the shape.
 Runtime modules wrap the synchronous core with event loops, queues, receivers,
 and sinks. Current anchors:
 
-- [`order_routing::runtime::session`](../../submission/src/order_routing/order_routing/runtime/session.hpp)
-- [`matching_engine::runtime::engine`](../../submission/src/matching_engine/matching_engine/runtime/engine.hpp)
-- [`market_data::runtime::publisher`](../../submission/src/market_data/market_data/runtime/publisher.hpp)
-- [`kraken_submission::application`](../../submission/src/kraken_submission/kraken_submission/application.hpp),
+- [`order_routing::runtime::session`](../../src/order_routing/order_routing/runtime/session.hpp)
+- [`matching_engine::runtime::engine`](../../src/matching_engine/matching_engine/runtime/engine.hpp)
+- [`market_data::runtime::publisher`](../../src/market_data/market_data/runtime/publisher.hpp)
+- [`matching_engine_lab_server::application`](../../src/matching_engine_lab_server/matching_engine_lab_server/application.hpp),
   which becomes the `matching_engine_lab_server` wiring shell.
 
 The future client should follow the same split: a synchronous order-client
@@ -116,7 +114,7 @@ application composition layer, not in the domain object constructor.
 ## Matching engine core
 
 The portfolio value is concentrated in
-[`matching_engine::v3`](../../submission/src/matching_engine/matching_engine/v3/).
+[`matching_engine::v3`](../../src/matching_engine/matching_engine/v3/).
 Plans should preserve the price-time semantics, identity index, pool-backed
 intrusive order nodes, and top-of-book emission behavior unless the plan is
 explicitly about changing the engine.
@@ -145,6 +143,6 @@ portfolio cleanup first, not a performance rewrite.
 ## Documentation anchors
 
 `docs/lab-guidelines/` maps generic rules to local symbols. Long-form design
-belongs in `DESIGN.md`, ADRs, and focused docs such as
+belongs in ADRs and focused docs such as
 [`docs/engine-specs.md`](../engine-specs.md). Work-in-progress plans may cite
 these guides, but durable docs should not link to `work-in-progress/`.

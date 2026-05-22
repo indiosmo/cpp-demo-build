@@ -18,14 +18,13 @@ live in the performance docs.
   well beyond `-Wall -Wextra`. See
   [`cmake/CompilerFlags.cmake`](../cmake/CompilerFlags.cmake) for the
   list.
-- Per-library Catch2 unit tests exercise each domain in isolation;
-  a workspace-level black-box harness under [`test/`](../test/)
-  drives the binary end to end.
+- Per-library Catch2 unit tests exercise each domain in isolation.
+  Scenario fixtures under [`test/`](../test/) drive the binary end to end.
 
 ## Modular
 
 Every pipeline stage sits behind a typed interface and plugs in
-through a config field. The submission shows the seam at two scales:
+through a config field. The project shows the seam at two scales:
 
 - **Inside a stage.** The UDP receiver has two implementations in
   tree -- one over Boost.Asio, one over Solarflare's kernel-bypass
@@ -45,7 +44,7 @@ to compile time:
 - Strong types make every primitive identifier distinct.
 - Exhaustive `enum class` switches force every site to handle every
   variant.
-- Structured errors propagate through `kraken::result<T>` and
+- Structured errors propagate through `lab::result<T>` and
   collapse at the boundaries.
 - Hot-path containers are bounded by construction.
 - The domain libraries are pure synchronous code over value types --

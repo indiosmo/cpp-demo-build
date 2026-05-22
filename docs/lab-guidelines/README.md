@@ -7,7 +7,7 @@ names the `matching-engine-lab` symbol, helper, macro, or example that should
 realise each placeholder as the reframe lands.
 
 This folder is written for the target project identity. Some links still point
-at the current implementation anchors under `submission/src/kraken/`; those
+at the current implementation anchors under `src/lab/`; those
 anchors should move to `src/lab/` during the full rename. New helper work
 should follow the `lab::` names here.
 
@@ -27,27 +27,27 @@ below.
 
 | Shared placeholder | Lab symbol | Current anchor / target note |
 |---|---|---|
-| `lib::result<T>` | `lab::result<T>` | [`result.hpp`](../../submission/src/kraken/kraken/result.hpp) |
-| `BOOST_LEAF_ASSIGN` | `LAB_ASSIGN(target, expr[, context...])` | Planned lab helper; current code uses [`KRAKEN_LEAF_CHECK`](../../submission/src/kraken/kraken/result.hpp). |
-| `BOOST_LEAF_CHECK` | `LAB_CHECK(expr[, context...])` | Planned lab helper; current code uses [`KRAKEN_LEAF_CHECK`](../../submission/src/kraken/kraken/result.hpp). |
-| `lib::strong_type<T, Tag>` | `lab::strong_type<T, Tag, Skills...>` | [`strong_type.hpp`](../../submission/src/kraken/kraken/strong_type.hpp) |
-| `lib::fixed_string<N>` | `lab::fixed_string<N>` | [`fixed_string.hpp`](../../submission/src/kraken/kraken/fixed_string.hpp) |
-| `lib::inplace_function<Sig, N>` | `lab::inplace_function<Sig, N>` | [`inplace_function.hpp`](../../submission/src/kraken/kraken/inplace_function.hpp) |
+| `lib::result<T>` | `lab::result<T>` | [`result.hpp`](../../src/lab/lab/result.hpp) |
+| `BOOST_LEAF_ASSIGN` | `LAB_ASSIGN(target, expr[, context...])` | Planned lab helper; current code uses [`LAB_LEAF_CHECK`](../../src/lab/lab/result.hpp). |
+| `BOOST_LEAF_CHECK` | `LAB_CHECK(expr[, context...])` | Planned lab helper; current code uses [`LAB_LEAF_CHECK`](../../src/lab/lab/result.hpp). |
+| `lib::strong_type<T, Tag>` | `lab::strong_type<T, Tag, Skills...>` | [`strong_type.hpp`](../../src/lab/lab/strong_type.hpp) |
+| `lib::fixed_string<N>` | `lab::fixed_string<N>` | [`fixed_string.hpp`](../../src/lab/lab/fixed_string.hpp) |
+| `lib::inplace_function<Sig, N>` | `lab::inplace_function<Sig, N>` | [`inplace_function.hpp`](../../src/lab/lab/inplace_function.hpp) |
 | `lib::scope_exit` | `lab::scope_exit` / `lab::scope_guard` | Planned with the incoming lab helper set. |
-| `lib::match` / `lib::match_partial` | `lab::match` / `lab::match_partial` | [`variant.hpp`](../../submission/src/kraken/kraken/variant.hpp); `match_partial` is planned. |
-| `lib::error` | `lab::error` | [`error.hpp`](../../submission/src/kraken/kraken/error.hpp) |
-| `lib::new_error` / `lib::make_error` | `lab::make_error(...)` | Current equivalent is [`make_leaf_error`](../../submission/src/kraken/kraken/error.hpp); align naming during the rename. |
-| `lib::match_error<E>` | `lab::match_error<E>` / `lab::match_errors<E...>` | [`error.hpp`](../../submission/src/kraken/kraken/error.hpp) |
-| catch-all handler macro | `LAB_CATCH_AND_LOG(code_block)` | Planned lab helper; current catch-all pieces live in [`result.hpp`](../../submission/src/kraken/kraken/result.hpp). |
-| logger singleton | `lab::logger` | [`log.hpp`](../../submission/src/kraken/kraken/log.hpp) |
-| logging macros | `LAB_LOG_TRACE` ... `LAB_LOG_CRITICAL` | Current equivalents are [`KRAKEN_LOG_*`](../../submission/src/kraken/kraken/log.hpp). |
-| assert macro | `LAB_ASSERT(expr)` | Current equivalent is [`KRAKEN_ASSERT`](../../submission/src/kraken/kraken/assert.hpp). |
-| event loop | `lab::event_loop` | [`event_loop.hpp`](../../submission/src/kraken/kraken/event_loop.hpp) |
-| SPSC queue | `lab::concurrent_queue<T>` | [`concurrent_queue.hpp`](../../submission/src/kraken/kraken/concurrent_queue.hpp) |
-| testing result unwrap | `LAB_REQUIRE_RESULT(target, expr)` | Current equivalent is [`KRAKEN_REQUIRE_LEAF`](../../submission/src/kraken/kraken/result.hpp). |
-| per-domain `types` namespace | `<domain>::types` in `<domain>/types.hpp` | For example [`order_routing/types.hpp`](../../submission/src/order_routing/order_routing/types.hpp). |
-| per-domain error pair | `error_code.hpp` + `errors.hpp` | For example [`matching_engine/`](../../submission/src/matching_engine/matching_engine/). |
-| boundary result type | `std::expected<T, E>` when C++26 is available | Current backport anchor is [`expected.hpp`](../../submission/src/kraken/kraken/expected.hpp). |
+| `lib::match` / `lib::match_partial` | `lab::match` / `lab::match_partial` | [`variant.hpp`](../../src/lab/lab/variant.hpp); `match_partial` is planned. |
+| `lib::error` | `lab::error` | [`error.hpp`](../../src/lab/lab/error.hpp) |
+| `lib::new_error` / `lib::make_error` | `lab::make_error(...)` | Current equivalent is [`make_leaf_error`](../../src/lab/lab/error.hpp); align naming during the rename. |
+| `lib::match_error<E>` | `lab::match_error<E>` / `lab::match_errors<E...>` | [`error.hpp`](../../src/lab/lab/error.hpp) |
+| catch-all handler macro | `LAB_CATCH_AND_LOG(code_block)` | Planned lab helper; current catch-all pieces live in [`result.hpp`](../../src/lab/lab/result.hpp). |
+| logger singleton | `lab::logger` | [`log.hpp`](../../src/lab/lab/log.hpp) |
+| logging macros | `LAB_LOG_TRACE` ... `LAB_LOG_CRITICAL` | Current equivalents are [`LAB_LOG_*`](../../src/lab/lab/log.hpp). |
+| assert macro | `LAB_ASSERT(expr)` | Current equivalent is [`LAB_ASSERT`](../../src/lab/lab/assert.hpp). |
+| event loop | `lab::event_loop` | [`event_loop.hpp`](../../src/lab/lab/event_loop.hpp) |
+| SPSC queue | `lab::concurrent_queue<T>` | [`concurrent_queue.hpp`](../../src/lab/lab/concurrent_queue.hpp) |
+| testing result unwrap | `LAB_REQUIRE_RESULT(target, expr)` | Current equivalent is [`LAB_REQUIRE_LEAF`](../../src/lab/lab/result.hpp). |
+| per-domain `types` namespace | `<domain>::types` in `<domain>/types.hpp` | For example [`order_routing/types.hpp`](../../src/order_routing/order_routing/types.hpp). |
+| per-domain error pair | `error_code.hpp` + `errors.hpp` | For example [`matching_engine/`](../../src/matching_engine/matching_engine/). |
+| boundary result type | `std::expected<T, E>` when C++26 is available | Current backport anchor is [`expected.hpp`](../../src/lab/lab/expected.hpp). |
 
 Absent or planned:
 

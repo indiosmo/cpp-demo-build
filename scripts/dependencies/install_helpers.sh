@@ -6,14 +6,14 @@
 set -euo pipefail
 shopt -s inherit_errexit
 
-readonly KRAKEN_INSTALL_MARKER=".kraken-install-complete"
-declare -ag KRAKEN_TEMP_DIRS=()
+readonly LAB_INSTALL_MARKER=".lab-install-complete"
+declare -ag LAB_TEMP_DIRS=()
 
 cleanup_install_temps() {
   local exit_code=$?
   local temp_dir
 
-  for temp_dir in "${KRAKEN_TEMP_DIRS[@]:-}"; do
+  for temp_dir in "${LAB_TEMP_DIRS[@]:-}"; do
     if [[ -n "${temp_dir:-}" && -e "$temp_dir" ]]; then
       rm -rf -- "$temp_dir"
     fi
@@ -26,7 +26,7 @@ trap cleanup_install_temps EXIT
 install_marker_path() {
   local target_dir="$1"
 
-  printf '%s/%s\n' "$target_dir" "$KRAKEN_INSTALL_MARKER"
+  printf '%s/%s\n' "$target_dir" "$LAB_INSTALL_MARKER"
 }
 
 mark_install_complete() {
@@ -78,7 +78,7 @@ make_temp_dir_for_target() {
 
   mkdir -p -- "$parent_dir"
   temp_dir="$(mktemp -d "$parent_dir/.${base_name}.tmp.XXXXXX")"
-  KRAKEN_TEMP_DIRS+=("$temp_dir")
+  LAB_TEMP_DIRS+=("$temp_dir")
   printf '%s\n' "$temp_dir"
 }
 

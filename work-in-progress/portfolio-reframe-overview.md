@@ -26,9 +26,9 @@ runtime composition, thread ownership, structured errors, benchmarks, and
 per-library documentation. That material belongs in the portfolio version.
 
 The surrounding frame still belongs to the original delivery channel. Names,
-paths, scripts, generated reports, Docker harnesses, and docs refer to Kraken,
-grading, submission bundles, provided scenarios, and the constraints of the
-take-home. That frame should be removed or rewritten.
+paths, scripts, generated reports, Docker harnesses, and docs refer to legacy
+branding, grading, submission bundles, provided scenarios, and the constraints
+of the take-home. That frame should be removed or rewritten.
 
 ## Target State
 

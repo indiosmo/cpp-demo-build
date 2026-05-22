@@ -69,7 +69,7 @@ install_llvm_keyring() {
   printf '%s\n' "Installing LLVM signing key..."
   temp_root="${TMPDIR:-$WORKSPACE_ROOT/tmp}"
   mkdir -p -- "$temp_root"
-  tmp_keyring="$(mktemp "$temp_root/kraken-llvm-keyring.XXXXXX")"
+  tmp_keyring="$(mktemp "$temp_root/lab-llvm-keyring.XXXXXX")"
   curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor > "$tmp_keyring"
   sudo install -Dm644 "$tmp_keyring" "$LLVM_KEYRING"
   rm -f -- "$tmp_keyring"

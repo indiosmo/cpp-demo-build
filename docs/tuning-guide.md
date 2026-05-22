@@ -8,8 +8,8 @@ prescriptions -- size them to the host and the link.
 
 ## Why this engine needs tuning
 
-The pipeline runs three threads, each driving a `kraken::event_loop`
-with `kraken::busy_spin_idle` (see [`../README.md`](../README.md)). A
+The pipeline runs three threads, each driving a `lab::event_loop`
+with `lab::busy_spin_idle` (see [`../README.md`](../README.md)). A
 busy-spin consumer never sleeps: every cycle the kernel steals --
 timer ticks, RCU callbacks, NIC interrupts, scheduler decisions,
 power-state transitions -- shows up directly as added latency on the
@@ -278,7 +278,7 @@ stays portable -- it still calls `socket()`, `recvfrom()`, `send()`
 kernel-bypass path. The change is the launcher and a profile file:
 
 ```bash
-onload --profile=/path/to/latency.opf ./kraken_submission ./config.json
+onload --profile=/path/to/latency.opf ./matching_engine_lab_server ./config.json
 ```
 
 The profile is a list of `onload_set` directives that tune the
@@ -368,7 +368,7 @@ the messaging layer is a fixed binary protocol (typically UDP
 multicast market data) and the saving over Onload matters more than
 the simplicity of `recvfrom()`.
 
-This submission carries a stub `kraken::network::ef_vi_udp_receiver`
+This project carries a stub `lab::network::ef_vi_udp_receiver`
 behind the same callback shape as the `asio_udp_receiver`, so the
 wiring shell can swap transports without touching the decoder. A
 real implementation allocates a virtual interface, registers an
@@ -385,8 +385,8 @@ cores.
 - **Thread pinning.** Pin each engine thread to a dedicated isolated
   core with `taskset -c <core>` on the launcher, or with `cset shield`
   on a deployment that manages a shielded cpuset. The three loops
-  carry stable thread names (`kraken-input`, `kraken-engine`,
-  `kraken-output`) so per-thread affinity can also be applied from
+  carry stable thread names (`lab-input`, `lab-engine`,
+  `lab-output`) so per-thread affinity can also be applied from
   outside the process via `/proc/<pid>/task/<tid>` once the loops
   are up.
 - **NUMA placement.** `numactl --cpunodebind=0 --membind=0` keeps
@@ -394,7 +394,7 @@ cores.
   binding wastes most of what the earlier layers buy.
 - **`ulimit -c unlimited`** for production: a core file from a once-
   in-a-quarter crash is worth far more than the memory it took.
-- **Real-time priority.** `chrt -f 50 ./kraken_submission ...` runs
+- **Real-time priority.** `chrt -f 50 ./matching_engine_lab_server ...` runs
   the process under SCHED_FIFO. With cores isolated and ticks off
   there is rarely anything else runnable, but the FIFO priority
   guarantees the busy-spin loop wins if anything ever migrates onto
@@ -411,7 +411,7 @@ number that matters.
   `cat /sys/devices/system/cpu/cpu<N>/cpufreq/scaling_governor`,
   `ethtool -c <interface>`, `onload_stackdump lots`.
 - **Moved the number.** Run the engine's microbenchmarks (see
-  `../submission/benchmarks/order_book/`) before and after each
+  `../benchmarks/order_book/`) before and after each
   layer. Track p50 and p99 separately; the tuning that helps p99 the
   most (interrupt steering, idle, NUMA) is often invisible at p50.
 - **Find new jitter.** `perf sched record`, `bcc/runqlat`,
@@ -422,6 +422,6 @@ number that matters.
 
 - Application-level tuning -- allocator choice, container sizing,
   branch hints -- in [`cpp-design-principles.md`](cpp-design-principles.md).
-- Benchmark methodology in `../submission/benchmarks/order_book/`.
+- Benchmark methodology in `../benchmarks/order_book/`.
 - BIOS and firmware (HT disable, P-state ownership, PCIe lane
   layout) live with the hardware runbook.

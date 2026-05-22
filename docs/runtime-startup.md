@@ -22,8 +22,8 @@ background.
 
 ## Composition
 
-`main` constructs one [`kraken_submission::application`](../submission/src/kraken_submission/kraken_submission/application.hpp)
-from a static [`config`](../submission/src/kraken_submission/kraken_submission/application.hpp).
+`main` constructs one [`matching_engine_lab_server::application`](../src/matching_engine_lab_server/matching_engine_lab_server/application.hpp)
+from a static [`config`](../src/matching_engine_lab_server/matching_engine_lab_server/application.hpp).
 The application owns the three event loops and the three runtime
 composers. Each composer owns the concrete backends its config
 variant selects -- a UDP receiver, a decoder, an encoder, a sink --
@@ -33,14 +33,14 @@ and exposes the stage as a `send` / `on_*` boundary.
 flowchart TB
   main([main])
 
-  subgraph application[kraken_submission::application]
+  subgraph application[matching_engine_lab_server::application]
     direction TB
 
     subgraph loops[event loops]
       direction LR
-      input_loop[input event_loop<br/>thread: kraken-input]
-      processing_loop[processing event_loop<br/>thread: kraken-engine]
-      output_loop[output event_loop<br/>thread: kraken-output]
+      input_loop[input event_loop<br/>thread: lab-input]
+      processing_loop[processing event_loop<br/>thread: lab-engine]
+      output_loop[output event_loop<br/>thread: lab-output]
     end
 
     io_context[asio io_context]
@@ -142,7 +142,7 @@ Rebinds `order_routing.on_request` and `engine.on_event` to closures
 that `post(...)` onto the next loop. These two hops -- input to
 processing, and processing to output -- are the only places domain
 values cross thread boundaries. Each `on_*` is a
-`kraken::inplace_function`, so the closure stores inline; see
+`lab::inplace_function`, so the closure stores inline; see
 [Performance discipline](cpp-design-principles.md#performance-discipline).
 
 The same step registers `order_routing_.poll()` on the input loop via
@@ -160,7 +160,7 @@ The loops then start outbound-to-inbound -- output, processing,
 input -- so each consumer is live before its producer can post to
 it. `application::stop` walks the chain backwards: stop the receiver,
 drain input, drain processing, drain output, flush the publisher.
-[`run`](../submission/src/kraken_submission/src/application.cpp) joins
+[`run`](../src/matching_engine_lab_server/src/application.cpp) joins
 the three threads after the signal handler asks them to stop.
 
 ## See also

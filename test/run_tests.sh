@@ -1,11 +1,14 @@
 #!/bin/bash
 
-# Kraken Interview Test Runner
+# Matching Engine Lab Scenario Test Runner
 # Supports multiple input modes: stdin (default) or UDP
 
-BIN="/kraken_submission/build/kraken_submission"
 TEST_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+BIN="$TEST_DIR/../_build/debug/matching_engine_lab_server"
 REPORT="$TEST_DIR/report.xml"
+SCRATCH_ROOT="${TMPDIR:-$TEST_DIR}"
+SCRATCH_DIR=$(mktemp -d "$SCRATCH_ROOT/matching-engine-lab-tests.XXXXXX")
+trap 'rm -rf "$SCRATCH_DIR"' EXIT
 
 # Default configuration
 INPUT_MODE="stdin"
@@ -39,13 +42,13 @@ total_time=0
 test_results=()
 
 echo ""
-echo "🚀 Running Test Suite"
-echo "════════════════════════════════════════════════"
+echo "Running test suite"
+echo "========================================"
 echo "   Mode: $INPUT_MODE"
 if [ "$INPUT_MODE" = "udp" ]; then
     echo "   Port: $UDP_PORT"
 fi
-echo "════════════════════════════════════════════════"
+echo "========================================"
 echo ""
 
 # Start JUnit XML
@@ -53,12 +56,12 @@ start_time=$(date +%s)
 
 # For UDP mode, start binary once and reuse for all tests
 if [ "$INPUT_MODE" = "udp" ]; then
-    mkfifo /tmp/output_fifo 2>/dev/null || true
-    timeout -k 2s 60s "$BIN" 2>/tmp/stderr.txt > /tmp/output_fifo &
+    mkfifo "$SCRATCH_DIR/output_fifo" 2>/dev/null || true
+    timeout -k 2s 60s "$BIN" 2>"$SCRATCH_DIR/stderr.txt" > "$SCRATCH_DIR/output_fifo" &
     BIN_PID=$!
     
     # Read output in background
-    cat /tmp/output_fifo > /tmp/all_output.txt &
+    cat "$SCRATCH_DIR/output_fifo" > "$SCRATCH_DIR/all_output.txt" &
     CAT_PID=$!
     
     # Brief delay for socket binding
@@ -79,14 +82,14 @@ for testcase in "$TEST_DIR"/*; do
     # Run test based on input mode
     if [ "$INPUT_MODE" = "stdin" ]; then
         # Standard stdin mode
-        timeout -k 2s 5s "$BIN" < "$TEST_DIR/$dirname/in.csv" > "$TEST_DIR/test_output.csv" 2>/tmp/stderr.txt
+        timeout -k 2s 5s "$BIN" < "$TEST_DIR/$dirname/in.csv" > "$SCRATCH_DIR/test_output.csv" 2>"$SCRATCH_DIR/stderr.txt"
         exit_code=$?
         
     elif [ "$INPUT_MODE" = "udp" ]; then
         # UDP mode - send to already-running binary
         # Count expected output lines
         expected_lines=$(wc -l < "$TEST_DIR/$dirname/out.csv")
-        before_lines=$(wc -l < /tmp/all_output.txt 2>/dev/null || echo 0)
+        before_lines=$(wc -l < "$SCRATCH_DIR/all_output.txt" 2>/dev/null || echo 0)
         
         # Send test input
         while IFS= read -r line || [ -n "$line" ]; do
@@ -96,7 +99,7 @@ for testcase in "$TEST_DIR"/*; do
         # Wait for expected output lines (with timeout)
         timeout_count=0
         while [ $timeout_count -lt 20 ]; do
-            current_lines=$(wc -l < /tmp/all_output.txt 2>/dev/null || echo 0)
+            current_lines=$(wc -l < "$SCRATCH_DIR/all_output.txt" 2>/dev/null || echo 0)
             received=$((current_lines - before_lines))
             
             if [ $received -ge $expected_lines ]; then
@@ -108,11 +111,11 @@ for testcase in "$TEST_DIR"/*; do
         done
         
         # Extract output for this test
-        tail -n +$((before_lines + 1)) /tmp/all_output.txt | head -n $expected_lines > "$TEST_DIR/test_output.csv"
+        tail -n +$((before_lines + 1)) "$SCRATCH_DIR/all_output.txt" | head -n $expected_lines > "$SCRATCH_DIR/test_output.csv"
         
         exit_code=0
     else
-        echo "  ❌ ERROR - Unknown input mode: $INPUT_MODE"
+        echo "  ERROR - Unknown input mode: $INPUT_MODE"
         exit_code=1
     fi
     
@@ -120,33 +123,33 @@ for testcase in "$TEST_DIR"/*; do
     test_time=$(echo "$test_end - $test_start" | bc)
     
     # Compare output with expected
-    diff "$TEST_DIR/test_output.csv" "$TEST_DIR/$dirname/out.csv" > /tmp/diff.txt 2>&1
+    diff "$SCRATCH_DIR/test_output.csv" "$TEST_DIR/$dirname/out.csv" > "$SCRATCH_DIR/diff.txt" 2>&1
     diff_result=$?
     
     # Store result for JUnit XML
     if [ $exit_code -ne 0 ]; then
-        echo "  ❌ FAILED - Process exited with code $exit_code"
-        if [ -s /tmp/stderr.txt ]; then
+        echo "  FAILED - Process exited with code $exit_code"
+        if [ -s "$SCRATCH_DIR/stderr.txt" ]; then
             echo "  Error output:"
-            cat /tmp/stderr.txt | sed 's/^/    /'
+            cat "$SCRATCH_DIR/stderr.txt" | sed 's/^/    /'
         fi
         test_results+=("FAIL:$dirname:$test_time:Process exited with code $exit_code")
         failed_tests=$((failed_tests+1))
     elif [ $diff_result -ne 0 ]; then
-        echo "  ❌ FAILED - Output does not match expected"
+        echo "  FAILED - Output does not match expected"
         echo "  Differences:"
-        cat /tmp/diff.txt | head -20 | sed 's/^/    /'
+        cat "$SCRATCH_DIR/diff.txt" | head -20 | sed 's/^/    /'
         test_results+=("FAIL:$dirname:$test_time:Output mismatch")
         failed_tests=$((failed_tests+1))
     else
-        echo "  ✅ PASSED (${test_time}s)"
+        echo "  PASSED (${test_time}s)"
         test_results+=("PASS:$dirname:$test_time")
         passed_tests=$((passed_tests+1))
     fi
     echo ""
     
     # Cleanup
-    rm -f "$TEST_DIR/test_output.csv" /tmp/stderr.txt /tmp/nc_stderr.txt
+    rm -f "$SCRATCH_DIR/test_output.csv" "$SCRATCH_DIR/stderr.txt"
 done
 
 # Cleanup UDP mode resources
@@ -157,8 +160,8 @@ if [ "$INPUT_MODE" = "udp" ]; then
     wait $BIN_PID 2>/dev/null || true
     wait $CAT_PID 2>/dev/null || true
     
-    # Clean up
-    rm -f /tmp/output_fifo /tmp/all_output.txt /tmp/udp_send_err.txt
+    # Clean up scratch files for this run.
+    rm -f "$SCRATCH_DIR/output_fifo" "$SCRATCH_DIR/all_output.txt"
 fi
 
 end_time=$(date +%s)
@@ -169,16 +172,16 @@ total_tests=$((passed_tests + failed_tests))
 cat > "$REPORT" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuites>
-  <testsuite name="InterviewTests" tests="$total_tests" failures="$failed_tests" errors="0" time="$total_time" timestamp="$(date -Iseconds)">
+  <testsuite name="ScenarioTests" tests="$total_tests" failures="$failed_tests" errors="0" time="$total_time" timestamp="$(date -Iseconds)">
 EOF
 
 for result in "${test_results[@]}"; do
     IFS=':' read -r status name time message <<< "$result"
     if [ "$status" = "PASS" ]; then
-        echo "    <testcase name=\"test_$name\" classname=\"InterviewTests\" time=\"$time\"/>" >> "$REPORT"
+        echo "    <testcase name=\"test_$name\" classname=\"ScenarioTests\" time=\"$time\"/>" >> "$REPORT"
     else
         cat >> "$REPORT" << TESTCASE
-    <testcase name="test_$name" classname="InterviewTests" time="$time">
+    <testcase name="test_$name" classname="ScenarioTests" time="$time">
       <failure message="Test failed" type="AssertionError">$message</failure>
     </testcase>
 TESTCASE
@@ -197,23 +200,23 @@ if command -v junit2html &> /dev/null; then
 fi
 
 # Print summary
-echo "════════════════════════════════════════════════"
-echo "📊 TEST SUMMARY"
-echo "════════════════════════════════════════════════"
+echo "========================================"
+echo "TEST SUMMARY"
+echo "========================================"
 echo ""
 echo "  Total Tests:  $total_tests"
-echo "  ✅ Passed:     $passed_tests"
-echo "  ❌ Failed:     $failed_tests"
-echo "  ⏱️  Duration:   ${total_time}s"
+echo "  Passed:       $passed_tests"
+echo "  Failed:       $failed_tests"
+echo "  Duration:     ${total_time}s"
 echo ""
 if [ $failed_tests -eq 0 ]; then
-    echo "  🎉 All tests passed! Congratulations!"
+    echo "  All tests passed."
 else
-    echo "  ⚠️  Some tests failed. Please review."
+    echo "  Some tests failed."
 fi
 echo ""
-echo "════════════════════════════════════════════════"
-echo "📄 Reports generated:"
+echo "========================================"
+echo "Reports generated:"
 echo "   - JUnit XML: $REPORT"
 if [ -f "$HTML_REPORT" ]; then
     echo "   - HTML:      $HTML_REPORT"

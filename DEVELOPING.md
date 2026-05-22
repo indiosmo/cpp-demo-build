@@ -55,8 +55,8 @@ workflow is a single command:
 ```bash
 ./build.sh                       # debug preset, all targets, run tests
 ./build.sh release               # release preset
-./build.sh asan kraken_submission # named preset and target
-./build.sh debug -DKRAKEN_BUILD_BENCHMARKS=OFF  # forward extra cmake options
+./build.sh asan matching_engine_lab_server # named preset and target
+./build.sh debug -DLAB_BUILD_BENCHMARKS=OFF  # forward extra cmake options
 ```
 
 Anything after the optional target that starts with `-` is forwarded to the
@@ -90,11 +90,11 @@ ctest --test-dir _build/debug --output-on-failure
 
 ## Project layout
 
-- `submission/` -- the code under development: source, unit tests, and
-  microbenchmarks. The build produces a `kraken_submission` binary plus a
-  Catch2 test runner.
-- `test/` -- the Docker-based black-box test harness used by the assessment
-  (see [README.md](README.md)). Do not modify.
+- `src/` -- libraries and the `matching_engine_lab_server` application.
+- `test/` -- module unit tests, CSV scenario fixtures, and the current
+  scenario runner.
+- `benchmarks/` -- Google Benchmark microbenchmarks.
+- `vendor/` -- copy-vendored third-party utilities.
 - `cmake/` -- shared CMake modules (compiler flags, sanitizer wiring).
 - `scripts/` -- developer scripts invoked by `setup.sh` and the pre-commit
   hook.
@@ -176,8 +176,15 @@ not re-run benchmarks:
    ./scripts/render_performance_charts.py
    ```
 
-## Running the assessment harness
+## Running the server
 
-The Docker-based test harness used by the assessment is documented in
-[README.md](README.md). The convenience wrapper `./run_submission.sh` builds
-the image and runs the tests in one step.
+Build the server target, then run the binary from the selected preset:
+
+```bash
+./build.sh debug matching_engine_lab_server
+./_build/debug/matching_engine_lab_server
+```
+
+The process listens for UDP order commands and writes market data records to
+stdout. Use `ctest --test-dir _build/debug --output-on-failure` to rerun the
+unit tests for an existing build tree.

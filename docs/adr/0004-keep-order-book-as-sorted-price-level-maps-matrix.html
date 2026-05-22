@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>kraken: order-book data structure -- decision matrix</title>
+<title>ADR-0004 companion: order-book data structure decision matrix</title>
 <style>
   :root {
     --bg: #fafaf7;
     --fg: #1a1a1a;
-    --muted: #6b6b6b;
+    --muted: #5f6368;
     --rule: #d8d6cf;
-    --accent: #6b5b3a;
+    --accent: #4d6470;
     --good-bg: #d8ebd2;
     --good-fg: #1f4a26;
     --ok-bg: #f4ecc6;
@@ -22,54 +22,34 @@
     font: 15px/1.55 -apple-system, "Segoe UI", system-ui, sans-serif;
     margin: 0;
     padding: 32px 40px 80px;
-    max-width: 1440px;
+    max-width: 1320px;
   }
   h1 { font-size: 22px; margin: 0 0 4px; }
   h1 .sub { font-weight: 400; color: var(--muted); font-size: 15px; margin-left: 8px; }
   h2 {
+    color: var(--accent);
     font-size: 16px;
+    letter-spacing: 0.02em;
     margin: 28px 0 10px;
-    color: var(--accent);
-    letter-spacing: 0.02em;
     text-transform: uppercase;
   }
-  h3.decision {
-    font-size: 15px;
-    margin: 22px 0 8px;
-    color: var(--accent);
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-  }
-  p.lede, .decision-body { max-width: 78ch; }
+  p.lede, .decision-body { max-width: 82ch; }
   p.lede { color: var(--muted); margin: 0 0 24px; }
-  table { width: 100%; border-collapse: collapse; background: white; font-size: 13.5px; margin-bottom: 8px; }
-  th, td {
-    border: 1px solid var(--rule);
-    padding: 10px 12px;
-    text-align: left;
-    vertical-align: top;
-  }
+  table { width: 100%; border-collapse: collapse; background: white; font-size: 13.5px; }
+  th, td { border: 1px solid var(--rule); padding: 10px 12px; text-align: left; vertical-align: top; }
   th { background: #f3f1ea; font-weight: 600; }
-  th .opt-sub {
-    display: block;
-    font-weight: 400;
-    color: var(--muted);
-    font-size: 12px;
-    margin-top: 3px;
-    line-height: 1.4;
-  }
+  th .opt-sub { display: block; font-weight: 400; color: var(--muted); font-size: 12px; margin-top: 3px; }
   td.criterion { width: 14%; font-weight: 600; background: #faf8f1; }
   td.good { background: var(--good-bg); color: var(--good-fg); }
   td.ok { background: var(--ok-bg); color: var(--ok-fg); }
   td.bad { background: var(--bad-bg); color: var(--bad-fg); }
   .premises {
-    margin-top: 8px;
+    margin: 8px 0 24px;
     padding: 16px 20px;
     background: white;
     border: 1px solid var(--rule);
     border-radius: 6px;
   }
-  .premises h2 { margin-top: 0; }
   .premises ul { margin: 0; padding-left: 20px; }
   .premises li { margin: 4px 0; }
   .premises li b { color: var(--accent); }
@@ -77,27 +57,20 @@
 </style>
 </head>
 <body>
-
-<h1>kraken: order-book data structure <span class="sub">decision matrix</span></h1>
+<h1>ADR-0004: order-book data structure <span class="sub">decision matrix</span></h1>
 <p class="lede">
-  The matching engine needs a per-symbol book that preserves price-time priority, exposes
-  top-of-book aggregates, and supports cancels by <code>(user, user_order_id)</code>. The
-  decision is staged: pick the smallest structure for the first passing implementation, then
-  choose the optimization structure now that behavior is covered by the suite.
+  Companion to ADR-0004. The matching engine needs per-symbol books that preserve
+  price-time priority, expose top-of-book aggregates, and support cancellation by
+  <code>(user, user_order_id)</code>.
 </p>
 
 <div class="premises">
   <h2>Assumptions</h2>
   <ul>
-    <li><b>The first implementation is already passing the suite.</b> The initial target was
-      correctness and clarity under the provided harness.</li>
-    <li><b>The matching engine is the primary review surface.</b> A reader should be able to
-      check price-time priority and event ordering without first auditing custom memory
-      management during behavior bring-up.</li>
-    <li><b>Price levels are sparse and not pre-bounded.</b> The input can introduce new prices
-      without a known tick range or per-level depth distribution.</li>
-    <li><b>The next work is optimization.</b> With the behavior suite green, the next iteration
-      can spend complexity on direct cancellation and avoiding per-order placement allocation.</li>
+    <li><b>Behavior first:</b> the initial structure should make matching semantics easy to verify.</li>
+    <li><b>Optimization next:</b> the optimized structure should target direct cancellation and allocation control.</li>
+    <li><b>Sparse prices:</b> the engine cannot reserve a fixed tick range or depth distribution.</li>
+    <li><b>Local swap:</b> storage changes should stay inside the matching-engine module.</li>
   </ul>
 </div>
 
@@ -105,115 +78,71 @@
   <thead>
     <tr>
       <th>Criterion</th>
-      <th>A. Sorted maps of vectors
-        <span class="opt-sub">Side-specific <code>std::map&lt;price, std::vector&lt;order&gt;&gt;</code>; best price is <code>begin()</code>, arrivals append to the level.</span>
-      </th>
-      <th>B. Intrusive lists + pool
-        <span class="opt-sub">Per-level <code>boost::intrusive::list</code>, preallocated order pool, and direct cancel index.</span>
-      </th>
-      <th>C. Preallocated vectors + tombstones
-        <span class="opt-sub">Bounded contiguous storage per level; cancels mark entries inactive and matching skips them.</span>
-      </th>
-      <th>D. Paged order blocks
-        <span class="opt-sub">Fixed-size order arrays chained per level, allocated from a pool, with tombstones and block reclamation.</span>
-      </th>
+      <th>A. Sorted maps of vectors <span class="opt-sub">Price map to FIFO vector at each level.</span></th>
+      <th>B. Intrusive lists + pool <span class="opt-sub">Price map to intrusive FIFO lists of pool-owned order nodes.</span></th>
+      <th>C. Preallocated vectors + tombstones <span class="opt-sub">Bounded per-level arrays with inactive entries.</span></th>
+      <th>D. Paged order blocks <span class="opt-sub">Pool-owned fixed-size blocks chained per price level.</span></th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td class="criterion">Fit to submission scope</td>
-      <td class="good">Matches the fixed-scenario exercise with the least machinery that preserves the contract.</td>
-      <td class="ok">Production-shaped, but heavier than the current benchmark evidence supports.</td>
-      <td class="bad">Requires capacity assumptions the submission does not have.</td>
-      <td class="bad">Solves a production allocator problem before the submission has proved it needs one.</td>
-    </tr>
-    <tr>
-      <td class="criterion">Fit after suite passes</td>
-      <td class="ok">Still correct, but leaves the known cancel-scan and placement-allocation costs in place.</td>
-      <td class="good">Best next step: it targets direct cancellation and stable pooled order storage with Boost-provided list mechanics.</td>
-      <td class="bad">Still depends on capacity assumptions that the protocol does not give.</td>
-      <td class="ok">A plausible later optimization, but it adds more custom reclamation logic than list + pool.</td>
-    </tr>
-    <tr>
-      <td class="criterion">Price-time semantics</td>
-      <td class="good">Map order gives price priority; vector append gives time priority within a level.</td>
-      <td>Natural fit: list order is arrival order once the side map finds the price.</td>
-      <td>Works if tombstones are skipped consistently.</td>
-      <td>Works, but iteration must correctly cross block boundaries while preserving arrival order.</td>
-    </tr>
-    <tr>
-      <td class="criterion">Implementation and test surface</td>
-      <td class="good">Standard containers keep tests focused on behavior, not allocator and node invariants.</td>
-      <td class="ok">Boost handles list unlinking, but pool sizing, pointer lifetime, and index consistency need focused tests.</td>
-      <td>Simple at first, then grows rules for tombstone cleanup and capacity overflow.</td>
-      <td class="bad">Custom block chaining, reclamation, and iterators create the largest local bug surface.</td>
+      <td class="criterion">Behavior readability</td>
+      <td class="good">Standard containers make price-time priority visible.</td>
+      <td class="ok">Readable, but intrusive hooks and ownership matter.</td>
+      <td class="ok">Readable until tombstone cleanup enters the path.</td>
+      <td class="bad">Storage mechanics dominate the review.</td>
     </tr>
     <tr>
       <td class="criterion">Cancel latency</td>
-      <td class="bad">Scans resting orders across books and sides because the cancel command carries no symbol, side, or price.</td>
-      <td class="good">Direct index lookup plus intrusive unlinking gives true <code>O(1)</code> cancellation.</td>
-      <td class="good">A direct handle can tombstone the entry in <code>O(1)</code>.</td>
-      <td class="ok">A direct handle can tombstone in <code>O(1)</code>, but block-active counts and reclamation add branches.</td>
+      <td class="bad">Scans resting orders.</td>
+      <td class="good">Identity index plus intrusive unlink gives direct cancellation.</td>
+      <td class="good">Direct handle can mark a tombstone.</td>
+      <td class="ok">Direct handle works, with block accounting overhead.</td>
     </tr>
     <tr>
       <td class="criterion">Placement allocation</td>
-      <td class="ok">A new price level or growing vector can allocate. Acceptable under the harness, but not a production hot-path target.</td>
-      <td class="good">A preallocated pool can make order placement allocation-free after startup.</td>
-      <td class="bad">Safe operation depends on reserving enough capacity for every active level; exceeding it reallocates or fails.</td>
-      <td class="good">A preallocated block pool can grow active levels without heap allocation.</td>
+      <td class="ok">New levels or vector growth can allocate.</td>
+      <td class="good">Pool-owned nodes can avoid per-order heap allocation.</td>
+      <td class="bad">Safe operation depends on capacity assumptions.</td>
+      <td class="good">A block pool can bound allocation.</td>
     </tr>
     <tr>
-      <td class="criterion">Sparse and unknown prices</td>
-      <td class="good">New prices create entries only when they appear.</td>
-      <td>Also handles sparse prices; each active level owns a list.</td>
-      <td class="bad">Either reserves too much for prices that never trade or risks resizing when an unexpected level appears.</td>
-      <td>Handles sparse prices if the global block pool is sized for total active orders.</td>
+      <td class="criterion">Sparse prices</td>
+      <td class="good">Creates levels only when prices appear.</td>
+      <td class="good">Creates levels only when prices appear.</td>
+      <td class="bad">Reservation either overallocates or risks overflow.</td>
+      <td class="ok">Works if the block pool is sized for total active depth.</td>
     </tr>
     <tr>
       <td class="criterion">Sweep locality</td>
-      <td>Good enough for scenario-sized levels; vectors are contiguous, but front erasure can move survivors.</td>
-      <td class="ok">Pointer chasing can miss cache during deep sweeps.</td>
-      <td class="good">Best locality: contiguous scans suit hardware prefetch.</td>
-      <td class="good">Mostly contiguous within each block, with occasional pointer jumps.</td>
+      <td class="good">Vectors are contiguous.</td>
+      <td class="ok">Pointer chasing can cost cache locality.</td>
+      <td class="good">Contiguous scans suit hardware prefetch.</td>
+      <td class="good">Mostly contiguous within blocks.</td>
     </tr>
     <tr>
-      <td class="criterion">Reader clarity</td>
-      <td class="good">A reviewer can verify the structure from the type aliases and a small amount of code.</td>
-      <td class="ok">Readable with Boost knowledge, but intrusive hooks and ownership rules become part of the review.</td>
-      <td>Easy to explain until tombstones and compaction enter the path.</td>
-      <td class="bad">The implementation explains storage mechanics more than matching behavior.</td>
+      <td class="criterion">Test surface</td>
+      <td class="good">Mostly behavior tests.</td>
+      <td class="ok">Needs pool, hook, pointer, and index consistency tests.</td>
+      <td class="ok">Needs tombstone and compaction tests.</td>
+      <td class="bad">Needs iterator, block reclamation, and accounting tests.</td>
     </tr>
     <tr>
-      <td class="criterion">Upgrade path</td>
-      <td class="good">Leaves a clean local replacement path: add a cancel index, then swap level storage after benchmarks.</td>
-      <td>Good production fallback once zero-allocation or cancel latency dominates.</td>
-      <td class="bad">Capacity assumptions make it a poor intermediate step for this protocol.</td>
-      <td>Good later option if benchmarks show sweeps dominate and a block pool can be sized safely.</td>
+      <td class="criterion">Iteration fit</td>
+      <td class="good">Best behavior-first step.</td>
+      <td class="good">Best optimized step.</td>
+      <td class="bad">Capacity assumptions make it a poor intermediate step.</td>
+      <td class="ok">A later candidate if sweep locality dominates.</td>
     </tr>
   </tbody>
 </table>
 
-<h3 class="decision">Decision</h3>
+<h2>Decision</h2>
 <p class="decision-body">
-  <b>Decision: sorted maps of vectors for the first iteration; intrusive lists plus pool for
-  the optimization iteration.</b> The submitted behavior-first implementation keeps
-  side-specific <code>std::map&lt;price, std::vector&lt;order&gt;&gt;</code> containers: descending
-  for bids, ascending for asks, and append-only within each price level until matching or
-  cancellation removes entries.
+  <b>Decision: A for the behavior-first iteration, then B for the optimized
+  iteration.</b> Sorted maps of vectors made the matching contract visible. The
+  optimized book uses pool-owned nodes and intrusive per-level lists so
+  cancellation is direct and resting order addresses stay stable.
 </p>
-<p class="decision-body">
-  The first-iteration criteria were submission fit, implementation surface, and reader clarity.
-  The current structure made price-time priority visible and kept tests centered on observable
-  matching behavior. Now that the suite is passing, the optimization criteria move the decision
-  toward intrusive lists plus an object pool.
-</p>
-<p class="decision-body">
-  The list+pool option targets the two costs the map+vector implementation deliberately accepted:
-  cancellation scans and placement allocation. A direct <code>(user, user_order_id) -&gt;
-  order*</code> index plus intrusive unlinking gives direct cancellation, while pool-owned nodes
-  remove per-order heap allocation. Paged blocks stay as a later candidate if sweep locality
-  becomes the dominant measured cost.
-</p>
-
 </body>
 </html>

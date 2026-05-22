@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Purpose: Configures, builds, and tests the submission using a CMake preset.
+# Purpose: Configures, builds, and tests the project using a CMake preset.
 # Usage:   build.sh [preset] [target] [cmake_option ...]
-#          Example: build.sh release kraken_submission
+#          Example: build.sh release matching_engine_lab_server
 # Notes:   Sources scripts/setenv.sh automatically so CMake sees the local
 #          GCC 16 toolchain without requiring shell startup changes.
 set -euo pipefail
@@ -15,7 +15,7 @@ usage() {
 }
 
 activate_environment() {
-  if [[ -n "${KRAKEN_ENV_SOURCED:-}" ]]; then
+  if [[ -n "${LAB_ENV_SOURCED:-}" ]]; then
     return
   fi
 

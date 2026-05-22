@@ -11,7 +11,7 @@ Symbol-to-header lookups live in the
 
 ## Test target layout
 
-The target layout removes the `submission/` wrapper:
+Tests live under the root `test/` tree:
 
 ```text
 test/<module>/
@@ -20,7 +20,7 @@ test/<module>/
 ```
 
 Targets stay module-scoped and use Catch2 with CTest discovery. Current anchors
-are under [`submission/test/`](../../submission/test/).
+are under [`test/`](../../test/).
 
 Tag convention:
 
@@ -34,9 +34,9 @@ integration tests and should live in their own files.
 
 ## Result-aware assertions
 
-Current tests use `KRAKEN_REQUIRE_LEAF` and local helpers such as the
+Current tests use `LAB_REQUIRE_LEAF` and local helpers such as the
 `capture_error_code` function in
-[`fixed_string_test.cpp`](../../submission/test/kraken/src/fixed_string_test.cpp).
+[`fixed_string_test.cpp`](../../test/lab/src/fixed_string_test.cpp).
 The target lab surface should provide:
 
 - `LAB_REQUIRE_RESULT(target, expr)` for success-path unwraps in tests.
@@ -51,11 +51,11 @@ will grow its own local LEAF handling.
 
 Production factories live beside the domain they construct. Current anchors:
 
-- [`order_routing/factories.hpp`](../../submission/src/order_routing/order_routing/factories.hpp)
-- [`matching_engine/factories.hpp`](../../submission/src/matching_engine/matching_engine/factories.hpp)
+- [`order_routing/factories.hpp`](../../src/order_routing/order_routing/factories.hpp)
+- [`matching_engine/factories.hpp`](../../src/matching_engine/matching_engine/factories.hpp)
 
 Test-only defaults currently live in
-[`submission/test/matching_engine/src/factories.hpp`](../../submission/test/matching_engine/src/factories.hpp).
+[`test/matching_engine/src/factories.hpp`](../../test/matching_engine/src/factories.hpp).
 During the layout reframe, move reusable test factories toward
 `<module>/testing/factories.hpp` when they are useful across several test
 files; keep one-off helpers local.
@@ -73,8 +73,8 @@ area for the owning module.
 
 ## Scenario and integration tests
 
-The old `test/` directory is an assessment harness. The portfolio version
-should keep useful scenarios as demonstration fixtures, not grading artifacts.
+The `test/` directory holds current CSV scenarios. The portfolio version should
+keep useful scenarios as demonstration fixtures.
 
 Target shape:
 
@@ -93,8 +93,8 @@ sleep durations. Use predicate-based waits once the lab helper layer has them.
 boundaries. Their tests should stay table-driven and assert wire-visible
 contracts. Current anchors:
 
-- [`csv_decoder_test.cpp`](../../submission/test/order_routing/src/csv_decoder_test.cpp)
-- [`csv_encoder_test.cpp`](../../submission/test/market_data/src/csv_encoder_test.cpp)
+- [`csv_decoder_test.cpp`](../../test/order_routing/src/csv_decoder_test.cpp)
+- [`csv_encoder_test.cpp`](../../test/market_data/src/csv_encoder_test.cpp)
 
 When the client library lands, add encoder tests for outbound order commands
 there instead of testing the CLI process for every CSV shape.

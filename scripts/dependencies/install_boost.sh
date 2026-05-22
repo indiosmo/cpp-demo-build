@@ -17,8 +17,8 @@ main() {
   local archive_path="$WORKSPACE_ROOT/boost_$BOOST_VERSION.tar.bz2"
   local source_dir
 
-  if [[ -z "${KRAKEN_PATHS_SET:-}" ]]; then
-    printf '%s\n' "KRAKEN_PATHS_SET is not set; source scripts/setpath.sh first." >&2
+  if [[ -z "${LAB_PATHS_SET:-}" ]]; then
+    printf '%s\n' "LAB_PATHS_SET is not set; source scripts/setpath.sh first." >&2
     exit 1
   fi
 

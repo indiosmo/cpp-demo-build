@@ -18,8 +18,8 @@ LAB_LOG_TRACE  LAB_LOG_DEBUG  LAB_LOG_INFO
 LAB_LOG_WARN   LAB_LOG_ERROR  LAB_LOG_CRITICAL
 ```
 
-Current anchors are the `KRAKEN_LOG_*` macros in
-[`log.hpp`](../../submission/src/kraken/kraken/log.hpp). Diagnostics must stay
+Current anchors are the `LAB_LOG_*` macros in
+[`log.hpp`](../../src/lab/lab/log.hpp). Diagnostics must stay
 off stdout because stdout is the market-data stream. Keep logs on stderr or a
 configured diagnostic sink.
 
@@ -29,7 +29,7 @@ diagnostics. Preserve that separation when renaming or replacing the sink.
 ## Assertions and preconditions
 
 The target assert macro is `LAB_ASSERT`. Current anchor:
-[`assert.hpp`](../../submission/src/kraken/kraken/assert.hpp).
+[`assert.hpp`](../../src/lab/lab/assert.hpp).
 
 Use assertions for internal invariants the parser or type system has already
 established. Use result errors at runtime boundaries where the caller can
@@ -37,7 +37,7 @@ respond, such as configuration, socket setup, and future client input.
 
 ## Rich result details
 
-Current `kraken::error::full_details()` is the local evidence surface for
+Current `lab::error::full_details()` is the local evidence surface for
 LEAF-carried failures. The lab target should render location, error code,
 payload `what()`, and an optional stack trace in one block when richer error
 tooling lands.
@@ -51,9 +51,9 @@ Current presets live in [`CMakePresets.json`](../../CMakePresets.json):
 
 | Preset | Current option | Lab target |
 |---|---|---|
-| `asan` | `KRAKEN_ASAN=ON` | `LAB_ASAN=ON` |
-| `tsan` | `KRAKEN_TSAN=ON` | `LAB_TSAN=ON` |
-| `clang` | `KRAKEN_ASAN=ON` with Clang | keep as Clang+ASan |
+| `asan` | `LAB_ASAN=ON` | `LAB_ASAN=ON` |
+| `tsan` | `LAB_TSAN=ON` | `LAB_TSAN=ON` |
+| `clang` | `LAB_ASAN=ON` with Clang | keep as Clang+ASan |
 
 Drive them through `./build.sh <preset>`. The helper script sources sanitizer
 environment defaults from [`scripts/setenv.sh`](../../scripts/setenv.sh).
@@ -77,7 +77,7 @@ burying their invocation in README prose.
 The server composition layer is the right place to trace cross-thread flow:
 UDP receive, decode, session dispatch, engine event emission, encode, and
 publish. Current anchor:
-[`application.cpp`](../../submission/src/kraken_submission/src/application.cpp).
+[`application.cpp`](../../src/matching_engine_lab_server/src/application.cpp).
 
 For matching defects, trace from the emitted market-data record backward to the
 matching-engine request and then into the book operation. Avoid adding
@@ -86,11 +86,11 @@ usually less perturbing.
 
 ## Performance evidence
 
-Performance debugging uses the benchmark targets and the committed chart data,
-not the old assessment harness. Current anchors:
+Performance debugging uses the benchmark targets and the committed chart data.
+Current anchors:
 
 - [`docs/performance.md`](../performance.md)
-- [`submission/benchmarks/order_book`](../../submission/benchmarks/order_book/)
+- [`benchmarks/order_book`](../../benchmarks/order_book/)
 - [`scripts/collect_performance_data.sh`](../../scripts/collect_performance_data.sh)
 - [`scripts/render_performance_charts.py`](../../scripts/render_performance_charts.py)
 

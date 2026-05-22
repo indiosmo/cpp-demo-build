@@ -4,92 +4,129 @@
 
 **Date:** 2026-05-14
 
-**Companion:** comparison across fixed-shape splitting, a general tokenizer, and a parser library lives in [`0003-parse-csv-as-fixed-shape-commands-matrix.html`](0003-parse-csv-as-fixed-shape-commands-matrix.html).
+**Companion:** comparison across fixed-shape splitting, a general tokenizer, and
+a parser library lives in
+[`0003-parse-csv-as-fixed-shape-commands-matrix.html`](0003-parse-csv-as-fixed-shape-commands-matrix.html).
 
 ## Context and Problem Statement
 
-The order routing stage receives one UDP datagram and turns it into one typed command: new order, cancel, or flush. `EXERCISE.md` defines three CSV command shapes, each with a marker and a fixed field count, and says hidden tests use the same format as the provided scenarios.
+The order-routing stage receives one UDP datagram and turns it into one typed
+request: new order, cancel, or flush. The sample wire protocol defines three
+record markers, each with a fixed field count.
 
-The provided `test/*/in.csv` files do not contain malformed command rows after ignoring blank trailing lines. That matters: malformed data is not a primary design target for this submission. The session still has a rejection path for defensive handling, but the parser should optimize for the documented exercise grammar rather than arbitrary CSV input.
+The scenario fixtures use well-formed command rows. Malformed data is still
+represented as a domain rejection at the session boundary, but the CSV decoder
+itself should optimize for the documented protocol rather than arbitrary CSV
+input.
 
 ## Decision Drivers
 
 - The input grammar is closed: `N`, `C`, and `F` are the only record types.
 - Each record type has a fixed field count.
-- The exercise does not require quoted fields, escaped commas, multiline records, or recovery from hostile input.
-- The routing stage is on the processing path, so avoidable allocations and broad parser dependencies should be avoided.
-- Parser failures still need to surface as domain rejections when they happen.
-- **Delivery time is constrained.** The submission window is tight; parser complexity that does not pay back inside the exercise scope is deferred. Where a stock library helper short-cuts the implementation, the implementation accepts the helper -- even at a measurable performance cost -- and flags the call site for a perf-driven follow-up.
+- The protocol uses unquoted, comma-separated records with one request per
+  datagram.
+- The routing stage is on the processing path, so avoidable allocation and
+  broad parser dependencies should be avoided.
+- Parser failures need a path to domain rejection when the decoder contract
+  expands.
+- The implementation should be easy to inspect against the protocol.
 
 ## Considered Options
 
-1. **Fixed-shape `std::string_view` split.** Switch on the first byte, split the known field count for that marker, parse fields into strong types.
-2. **General local tokenizer.** Keep a reusable token stream over `std::string_view` and let each message decoder pull fields one by one.
-3. **CSV/parser library.** Use Boost.Tokenizer, a header-only CSV parser, or a parser combinator.
+1. **Fixed-shape `std::string_view` split.** Switch on the first byte, split the
+   known field count for that marker, and parse fields into strong types.
+2. **General local tokenizer.** Keep a reusable token stream over
+   `std::string_view` and let each message decoder pull fields one by one.
+3. **CSV/parser library.** Use Boost.Tokenizer, a header-only CSV parser, or a
+   parser combinator.
 
 ## Decision Outcome
 
 Chosen option: **fixed-shape `std::string_view` split**.
 
-The parser mirrors the protocol: byte zero selects the command type, and the message-specific decoder consumes the exact number of fields that record defines. Numeric fields use `kraken::from_chars`, ported into the local utility library so integer parsing follows the same `kraken::result` error vocabulary as the rest of the code.
+The parser mirrors the protocol: byte zero selects the request type, and the
+message-specific decoder consumes the exact fields that record defines. Numeric
+fields use `lab::from_chars`, so integer parsing follows the same result and
+error vocabulary as the rest of the project.
 
-Inside the chosen shape, the splitter is `boost::algorithm::split` into a `std::vector<std::string_view>` rather than a hand-rolled cursor or a non-allocating `boost::tokenizer`. The trade is one heap allocation per parse against fewer lines, fewer edge cases to argue about, and faster sign-off under the submission deadline. The call site carries an `IMPROVEMENT:` comment so a perf-driven follow-up can swap in `boost::tokenizer` (lazy, non-allocating) or a stack-resident `boost::container::static_vector<N+1>` when -- or if -- benchmarks indicate the alloc matters. This sub-decision is the place the time-pressure driver actually bites; the surrounding shape is unchanged.
+Inside the chosen shape, the splitter uses a standard helper to produce
+`std::string_view` fields rather than a hand-rolled cursor. The trade is one
+small allocation per parse against less local parser code and a decoder that is
+easy to review. A benchmark-driven follow-up can switch the splitter to a lazy
+tokenizer or stack-resident field buffer without changing the record-level
+shape.
 
-Every helper inside `csv_decoder.cpp` treats the well-formed grammar as a precondition. Field count, marker validity, numeric parseability, `B`/`S` side tokens, and symbol length are documented contracts and asserted with `KRAKEN_ASSERT` rather than threaded through `kraken::result`. The decoder boundary keeps its `kraken::result<command>` return so a future non-CSV decoder can still carry richer errors; the CSV implementation simply never produces them under this contract. If the protocol later grows into real CSV with quoting or escaping, this ADR should be superseded and the helpers re-promoted to result-returning forms.
+Helpers inside the CSV decoder treat the well-formed grammar as a precondition.
+Field count, marker validity, side tokens, symbol length, and numeric
+parseability are protocol contracts and are asserted with `LAB_ASSERT`. The
+decoder boundary keeps its `lab::result<request>` return so a future decoder
+can carry structured parse errors without changing the boundary.
 
 ### Consequences
 
-- Good, because fields are `std::string_view` slices into the datagram and integers are parsed through `kraken::from_chars`, so no per-field copying happens.
-- Good, because the code structure matches the exercise grammar directly: dispatch by marker, split by fixed arity, construct the typed command variant.
-- Good, because the helpers return concrete types instead of `kraken::result<T>`; the well-formed precondition removes the per-step error plumbing and the matching parse-error formatting.
-- Good, because no CSV parser dependency is introduced for dialect features the protocol does not use.
-- Bad, because the parser is intentionally not a general CSV implementation.
-- Bad, because adding quoted fields, escaped commas, or variable-width records would require both a new ADR and re-introducing the result-typed helpers the precondition collapsed.
-- Bad, because precondition violations abort in debug (`KRAKEN_ASSERT`) and propagate as undefined behaviour in `NDEBUG`; protocol drift now surfaces as a crash or wrong output rather than a structured rejection. The CSV-only contract pays for this, but the structured rejection path on the session boundary stays in place so a future producer can re-enable structured errors without redesign.
-- Bad, because the splitter heap-allocates a `std::vector<std::string_view>` per parse. Acceptable under the well-formed input and time-constrained delivery assumptions; flagged in code for revisit and listed as an open question below.
+- Good, because fields are `std::string_view` slices into the datagram.
+- Good, because the code structure matches the sample protocol: dispatch by
+  marker, split by fixed arity, construct the typed request variant.
+- Good, because no CSV parser dependency is introduced for dialect features the
+  protocol does not use.
+- Good, because numeric parsing stays inside the project's `lab::from_chars`
+  vocabulary.
+- Bad, because the decoder is intentionally not a general CSV implementation.
+- Bad, because quoted fields, escaped commas, or variable-width records require
+  a new parser decision.
+- Bad, because precondition violations assert in debug builds; the CSV decoder
+  relies on the scenario producer and protocol documentation to keep records
+  well-formed.
+- Bad, because the current splitter allocates a field vector per parse.
 
 ### Confirmation
 
 The decision is in effect when:
 
-- The decoder entry point switches on the first byte of the trimmed payload and dispatches to a message-specific helper for each record type.
-- Each helper splits on the fixed field count declared by its record type and asserts the count against the well-formed precondition. The split goes through a standard library helper rather than a hand-rolled tokenizer, and the call site carries an `IMPROVEMENT:` marker naming the lazy follow-ups.
-- The per-field helpers (numeric parse, side token, symbol token, per-marker decoders) return their domain types directly under the precondition; they do not thread `kraken::result` through every step.
-- Numeric conversion goes through the project's `kraken::from_chars` alias.
-- The provided `test/*/in.csv` scan remains consistent with the documented command shapes.
+- The decoder switches on the first byte of the trimmed payload.
+- Each record helper splits the fixed field count for its marker and asserts
+  the count against the protocol precondition.
+- Field helpers return domain types directly instead of threading
+  `lab::result` through every parse step.
+- Numeric conversion goes through `lab::from_chars`.
+- The decoder boundary keeps a result-returning API for future structured
+  rejection paths.
 
 ### Follow-ups
 
-- Revisit the splitter when end-to-end benchmarks are wired up. If the per-parse allocation shows on the routing-stage hot path, swap `boost::algorithm::split` for `boost::tokenizer` (lazy, non-allocating) or splice tokens into a stack-resident `boost::container::static_vector<N+1>`. Until then, the `IMPROVEMENT:` marker in `csv_decoder.cpp` is the audit trail.
-- If the grammar grows beyond the closed `N`/`C`/`F` set, or if a non-test transport starts feeding the decoder, lift the helpers back to `kraken::result<T>` (or move the result wrapping up to `csv_decoder::decode`) so precondition violations translate into a structured rejection on the session boundary again.
+- Revisit the splitter after end-to-end benchmarks include order-routing cost.
+  If allocation shows on the hot path, replace the field vector with a lazy
+  tokenizer or stack-resident field buffer.
+- If the protocol grows beyond the closed `N`/`C`/`F` set, lift the helper
+  preconditions into structured parse errors.
 
 ## Pros and Cons of the Options
 
 ### Fixed-shape `std::string_view` split
 
-- Good, because it fits the closed exercise grammar exactly.
-- Good, because the shape itself is allocation-free; only the splitter sub-choice introduces an allocation, and the option is open to swap to `boost::tokenizer` or a `static_vector<N+1>` later.
+- Good, because it fits the closed wire grammar exactly.
+- Good, because the record shape is visible in the code.
 - Good, because it avoids parser-library dependency weight.
-- Good, because it is easy to read against `EXERCISE.md`.
 - Bad, because it is not suitable for full CSV dialect support.
 
 ### General local tokenizer
 
 - Good, because it can stay allocation-free.
-- Good, because it keeps parser behavior inside the project.
-- Bad, because it models a token stream for a protocol that is really fixed tuples.
-- Bad, because cursor behavior obscures the record shape more than a fixed split does.
+- Good, because parser behavior stays in the project.
+- Bad, because it models a token stream for a fixed-tuple protocol.
+- Bad, because cursor behavior is harder to read than fixed field extraction.
 
 ### CSV/parser library
 
-- Good, because it would be the right direction if quoting, escaping, or multiline records became required.
+- Good, because it becomes attractive if quoting, escaping, or multiline records
+  become required.
 - Good, because mature parsers handle dialect edge cases better than local code.
-- Bad, because it solves problems outside the exercise contract.
-- Bad, because available tokenizer-style libraries may materialize owned strings or require domain-error translation anyway.
-- Bad, because it broadens the dependency surface for little benefit under the well-formed input assumption.
+- Bad, because it solves problems outside the sample protocol.
+- Bad, because library errors still need translation into domain rejections.
 
 ## More Information
 
-- [`EXERCISE.md`](../../EXERCISE.md) -- input command shapes and the hidden-test format statement.
-- [`DESIGN.md`](../../DESIGN.md) -- routing-stage architecture and parser decision summary.
-- [`0003-parse-csv-as-fixed-shape-commands-matrix.html`](0003-parse-csv-as-fixed-shape-commands-matrix.html) -- comparison of the parser options.
+- [`docs/engine-specs.md`](../engine-specs.md) -- observable matching-engine
+  behavior and sample protocol.
+- [`0003-parse-csv-as-fixed-shape-commands-matrix.html`](0003-parse-csv-as-fixed-shape-commands-matrix.html)
+  -- comparison of the parser options.

@@ -17,7 +17,6 @@ planning new work, and preserve buildability while the rename proceeds.
 Read these first when starting substantive work:
 
 - [`README.md`](README.md) -- current project orientation.
-- [`DESIGN.md`](DESIGN.md) -- design narrative and trade-offs.
 - [`docs/engine-specs.md`](docs/engine-specs.md) -- matching behavior.
 - [`docs/lab-guidelines/README.md`](docs/lab-guidelines/README.md) -- local
   mapping for C++ helpers, layout, tests, and debugging.
@@ -30,7 +29,7 @@ file. Do not load sibling topic files speculatively.
 Walk down the tree on demand from these entry points:
 
 - root [`INDEX.md`](INDEX.md) -- current codebase map.
-- [`submission/src/<module>/README.md`](submission/src/) -- current per-module
+- [`src/<module>/README.md`](src/) -- current per-module
   orientation during the reframe.
 - future `src/<module>/README.md` and `src/<module>/INDEX.md` -- target
   per-module orientation and navigation after the root layout lands.
@@ -76,7 +75,7 @@ edit spans many topics.
 - For any `#include`, go-to-definition on the include line is usually faster
   than grepping for the file by name.
 - Vendor or third-party headers should resolve through clangd first. If they
-  do not, check the current vendored tree under `submission/vendor/` and the
+  do not, check the current vendored tree under `vendor/` and the
   target tree under `vendor/` after the layout reframe.
 - Do not run wide-net searches such as `find ~/`, `find /`, or `rg /` to locate
   dependencies. If clangd, focused repo search, and known vendor locations do

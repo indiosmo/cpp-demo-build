@@ -46,8 +46,8 @@
       "description": "Debug build with assertions and no optimizations",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "KRAKEN_DEBUG": "ON",
-        "KRAKEN_RELEASE": "OFF"
+        "LAB_DEBUG": "ON",
+        "LAB_RELEASE": "OFF"
       }
     },
     {
@@ -57,8 +57,8 @@
       "description": "Optimized release build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "KRAKEN_DEBUG": "OFF",
-        "KRAKEN_RELEASE": "ON"
+        "LAB_DEBUG": "OFF",
+        "LAB_RELEASE": "ON"
       }
     },
     {
@@ -67,7 +67,7 @@
       "displayName": "ASan",
       "description": "Debug build with Address/Leak/UB sanitizers",
       "cacheVariables": {
-        "KRAKEN_ASAN": "ON"
+        "LAB_ASAN": "ON"
       }
     },
     {
@@ -76,7 +76,7 @@
       "displayName": "TSan",
       "description": "Debug build with Thread sanitizer",
       "cacheVariables": {
-        "KRAKEN_TSAN": "ON"
+        "LAB_TSAN": "ON"
       }
     },
     {
@@ -87,7 +87,7 @@
       "toolchainFile": "${sourceDir}/cmake/clang-toolchain.cmake",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS": "--gcc-toolchain=$env{GCC_ROOT}",
-        "KRAKEN_ASAN": "ON"
+        "LAB_ASAN": "ON"
       }
     }
   ],

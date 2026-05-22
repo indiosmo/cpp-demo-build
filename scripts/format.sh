@@ -9,8 +9,8 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$PROJECT_ROOT"
 
-PATHS=(submission/)
-EXCLUDES=(':(exclude)submission/vendor/')
+PATHS=(src/ test/ benchmarks/)
+EXCLUDES=(':(exclude)vendor/')
 
 if [[ "${1:-}" == "--all" ]]; then
   git ls-files "${PATHS[@]}" "${EXCLUDES[@]}" | grep -E "\.(cpp|hpp|h)$"
