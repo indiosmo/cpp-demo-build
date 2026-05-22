@@ -1,4 +1,0 @@
-# SG14 is a monorepo of unrelated proposals and carries no top-level
-# license file -- the Boost Software License sits in the header itself.
-# Narrow the checkout to the one header we want.
-/SG14/inplace_function.h

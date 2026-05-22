@@ -36,7 +36,8 @@
         "CMAKE_CXX_SCAN_FOR_MODULES": "OFF",
         "CMAKE_OPTIMIZE_DEPENDENCIES": "ON",
         "BOOST_ROOT": "$env{BOOST_ROOT}",
-        "Boost_ROOT": "$env{BOOST_ROOT}"
+        "Boost_ROOT": "$env{BOOST_ROOT}",
+        "FETCHCONTENT_BASE_DIR": "${sourceDir}/_build/.fetchcontent"
       }
     },
     {

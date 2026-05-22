@@ -14,8 +14,19 @@ submodules, and `ExternalProject` lives in
 two shapes: header-only utilities used for the lab vocabulary (strong typedefs,
 fixed-capacity callbacks, SPSC queues, decimal types) and compiled libraries
 used by domain code, tests, and benchmarks (`fmt`, `spdlog`, `Catch2`, Google
-Benchmark, and similar). Every third-party dependency in the build is in
-scope; nothing is taken from system packages.
+Benchmark, and similar). Every third-party dependency in this layer is in
+scope; nothing in it is taken from system packages.
+
+Two pieces stand outside that layer and are treated as toolchain-provided:
+the C++26 standard library (`<expected>`, `<format>`, the parallel algorithms,
+etc.) and Boost. Boost is installed under `$WORKSPACE_ROOT` by
+`scripts/dependencies/install_boost.sh` and consumed through `BOOST_ROOT` /
+`Boost_ROOT` path loading from `scripts/setpath.sh` and the CMake presets,
+matching the pattern used by the abacus workspace. Boost is not pulled by
+`FetchContent` because the superproject is large enough that fetching it from
+GitHub at configure time would dominate cold-clone setup; the workspace-install
+path keeps configure fast and matches the rest of the toolchain (GCC, Clang,
+CMake, ninja, ccache, mold, lcov).
 
 The repository should be easy to clone, configure, audit, and build. The
 choice is how third-party code reaches the build. The viable mechanisms differ
@@ -38,11 +49,12 @@ project commits to.
 - Proportional machinery. A single declarative mechanism should handle both
   header-only and compiled libraries without per-tier shell scripts or
   committed upstream trees.
-- Two acceptable sources only: `FetchContent` from public GitHub, and code
-  written inside this repository. No system packages, no binary drops, no
-  tarball downloads, no `ExternalProject_Add`, no git submodules, no raw
-  `file(DOWNLOAD ...)` of source or CMake helpers, no `find_package`
-  fallbacks.
+- Two acceptable sources for third-party code: `FetchContent` from public
+  GitHub, and code written inside this repository. No system packages, no
+  binary drops, no tarball downloads, no `ExternalProject_Add`, no git
+  submodules, no raw `file(DOWNLOAD ...)` of source or CMake helpers, no
+  `find_package` fallbacks. The toolchain (compilers, build tools, Boost,
+  the C++26 stdlib) is a separate layer and is not subject to this rule.
 - Reproducibility. Each dependency is pinned by an explicit, immutable
   reference visible in CMake.
 - Auditable updates. Changing a dependency is a CMake diff against a public
@@ -141,16 +153,19 @@ The decision is in effect when:
 
 - Every third-party dependency is brought in by `FetchContent_Declare`
   with `GIT_REPOSITORY` and `GIT_TAG` in `vendor/CMakeLists.txt`.
-- No dependency is committed under `vendor/<name>/upstream/`, tracked as
-  a git submodule, downloaded via raw `file(DOWNLOAD ...)`, brought in
-  through `ExternalProject_Add`, or resolved through `find_package` as
-  the default acquisition path.
-- No dependency is taken from a system package.
+- No third-party dependency is committed under `vendor/<name>/upstream/`,
+  tracked as a git submodule, downloaded via raw `file(DOWNLOAD ...)`,
+  brought in through `ExternalProject_Add`, or resolved through
+  `find_package` as the default acquisition path.
+- No third-party dependency is taken from a system package.
+- The only `find_package` calls in the build resolve toolchain-provided
+  components: Boost (from `BOOST_ROOT`), `Threads`, and the like.
 - Libraries of types are consumed through a `lab::` re-export header.
   Libraries of functions are consumed through their upstream target
   directly.
 - `DEPENDENCIES.md` lists every dependency with its upstream URL, pin,
-  and consumed target name.
+  and consumed target name, and names Boost and the C++26 stdlib in a
+  separate toolchain-provided section.
 
 ## Pros and Cons of the Options
 

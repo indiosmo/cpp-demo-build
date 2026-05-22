@@ -131,11 +131,7 @@ install_system_packages() {
     clang-tidy-"$LLVM_VERSION" \
     clang-tools-"$LLVM_VERSION" \
     libclang1-"$LLVM_VERSION" \
-    lld-"$LLVM_VERSION" \
-    libfmt-dev \
-    libspdlog-dev \
-    catch2 \
-    libbenchmark-dev
+    lld-"$LLVM_VERSION"
 }
 
 main() {

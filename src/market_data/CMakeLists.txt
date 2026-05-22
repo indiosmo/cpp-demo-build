@@ -1,5 +1,3 @@
-find_package(spdlog REQUIRED)
-
 add_library(market_data STATIC
   src/csv_encoder.cpp
   src/publisher.cpp

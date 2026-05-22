@@ -1,4 +1,0 @@
-# NamedType ships a CMake installer and a test suite that we don't use.
-# Narrow the checkout to the public headers plus license.
-/include/NamedType/
-/LICENSE

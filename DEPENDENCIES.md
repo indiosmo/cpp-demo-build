@@ -1,105 +1,84 @@
 # Dependencies
 
-Inventory of vendored utilities, the system packages the build links
-against, and the procedure for adding a new dependency. The
-copy-vendor mechanism is recorded in
-[ADR 0002](docs/adr/0002-copy-vendor-third-party-utilities.md);
-the `lab::` alias rule and the full vocabulary catalogue live in
+Inventory of third-party libraries the build depends on, how they reach
+CMake, and the procedure for adding a new one. The mechanism is recorded
+in [ADR 0002](docs/adr/0002-copy-vendor-third-party-utilities.md); the
+`lab::` alias rule and the full vocabulary catalogue live in
 [`src/lab/README.md`](src/lab/README.md).
 
-## Vendored
+Every third-party dependency enters the build through CMake `FetchContent`
+from a public GitHub upstream. Boost and the C++26 standard library are
+toolchain-provided and arrive through `BOOST_ROOT` / `Boost_ROOT` path
+loading (see [`DEVELOPING.md`](DEVELOPING.md)).
 
-| `lab::` alias | Upstream | License | Rationale |
+## Third-party (FetchContent)
+
+| Consumed target | Upstream | Pin | Used for |
 |---|---|---|---|
-| `lab::strong_type<T, Tag>` | [NamedType](https://github.com/joboccara/NamedType) | MIT | [Compile-time correctness](docs/cpp-design-principles.md#compile-time-correctness): tagged primitives the compiler rejects when swapped. |
-| `lab::inplace_function<Sig, Cap>` | [SG14 `inplace_function`](https://github.com/WG21-SG14/SG14) | BSL-1.0 | Pipeline-stage `on_*` callbacks: no capture allocation, inline-visible call sites, capture-size regressions caught at compile time. |
-| `lab::concurrent_queue<T>` | [moodycamel::ReaderWriterQueue](https://github.com/cameron314/readerwriterqueue) | BSD-2-Clause | Lock-free SPSC edges between the three pipeline threads. |
-| `lab::expected<T, E>` | Standard library `<expected>` | Toolchain-provided | C++26 value-or-error vocabulary at domain boundaries. |
+| `lab::vendor::NamedType` | [NamedType](https://github.com/joboccara/NamedType) | SHA `76668abe` | `lab::strong_type<T, Tag>`: tagged primitives the compiler rejects when swapped. |
+| `lab::vendor::inplace_function` | [SG14 `inplace_function`](https://github.com/WG21-SG14/SG14) | SHA `c9261438` | `lab::inplace_function<Sig, Cap>`: pipeline-stage `on_*` callbacks with no capture allocation. |
+| `lab::vendor::readerwriterqueue` | [moodycamel::ReaderWriterQueue](https://github.com/cameron314/readerwriterqueue) | `v1.0.6` | `lab::concurrent_queue<T>`: lock-free SPSC edges between pipeline threads. |
+| `fmt::fmt-header-only` | [fmtlib/fmt](https://github.com/fmtlib/fmt) | `11.0.2` | Lab vocabulary formatting; shared ABI with `spdlog`. |
+| `spdlog::spdlog` | [gabime/spdlog](https://github.com/gabime/spdlog) | `v1.14.1` | `market_data::spdlog_sink`. Built with `SPDLOG_FMT_EXTERNAL_HO=ON` so it inlines through the same `fmt` headers as the lab vocabulary. |
+| `Catch2::Catch2WithMain` | [catchorg/Catch2](https://github.com/catchorg/Catch2) | `v3.7.1` | Unit tests. `Catch.cmake` is added to `CMAKE_MODULE_PATH` so `catch_discover_tests` is available. |
+| `benchmark::benchmark_main` | [google/benchmark](https://github.com/google/benchmark) | `v1.9.1` | Microbenchmarks. |
 
-## Local toolchain
+The libraries-of-types tier wraps each upstream behind a thin
+`lab::vendor::<name>` INTERFACE target so domain code never depends on the
+upstream type directly. The libraries-of-functions tier exposes the upstream
+target unchanged because the upstream vocabulary (`fmt::`, `spdlog::`,
+`Catch2::`, `benchmark::`) is already part of the project vocabulary.
 
-Local development uses the setup flow documented in
-[`DEVELOPING.md`](DEVELOPING.md): GCC 16.1.0, CMake 4.3.2, LLVM/Clang 23 tools,
-and Boost 1.91.0 installed under `$WORKSPACE_ROOT` (default:
-`~/cpp_workspace`). The CMake presets consume `BOOST_ROOT`, `GCC_ROOT`, and
-the related paths from `scripts/setenv.sh`.
+All declarations live in [`vendor/CMakeLists.txt`](vendor/CMakeLists.txt).
+The first configure populates the `FetchContent` cache from GitHub;
+subsequent configures reuse it.
 
-## System packages
+## Toolchain-provided
 
-`setup.sh` delegates to `scripts/install_dependencies.sh` for the OS packages
-used by local builds:
+| Component | Source | Used for |
+|---|---|---|
+| C++26 standard library | Compiler (GCC 16.1 / Clang 23) | `<expected>`, `<format>`, `<ranges>`, the parallel algorithms, and the rest of the C++26 surface. |
+| Boost (header-only components) | Workspace install under `$WORKSPACE_ROOT/boost/...` consumed via `BOOST_ROOT` / `Boost_ROOT` | `leaf` (result/error transport), `container_hash` (`fixed_string` hashing), `pfr` (`lab::auto_hash` reflective field walk), `algorithm` (string replace in `result.hpp`), `stacktrace` (`LAB_ASSERT`), `asio` (`lab_network_asio` UDP receiver), `intrusive`, `pool`, `unordered` (matching engine). |
+| `Threads` | Platform pthreads | `server_app` and other targets that need explicit `Threads::Threads`. |
 
-| Package | Linked for |
-|---|---|
-| `libboost-all-dev` | header-only: `leaf`, `container_hash`, `pfr`, `algorithm`, `stacktrace` (lab vocabulary); `asio` (network adapter); `intrusive`, `pool`, `unordered` (matching engine) |
-| `libfmt-dev` (fmt 9.1) | `fmt::fmt-header-only` across the lab vocabulary; same ABI backs `libspdlog-dev` |
-| `libspdlog-dev` | `spdlog::spdlog` behind `market_data::spdlog_sink` |
-| `catch2` | unit tests |
-| `libbenchmark-dev` | `benchmarks/` |
+Boost is installed by
+[`scripts/dependencies/install_boost.sh`](scripts/dependencies/install_boost.sh)
+under `$WORKSPACE_ROOT` and the CMake presets pin `BOOST_ROOT` / `Boost_ROOT`
+to the same prefix. The workspace install pattern mirrors the abacus
+workspace setup. This carve-out is recorded in
+[ADR 0002](docs/adr/0002-copy-vendor-third-party-utilities.md).
 
-## Vendor tree
+## Adding a third-party dependency
 
-```
-vendor/<name>/
-  ORIGIN.txt       upstream git URL (one line)
-  VERSION.txt      line 1: pinned ref (tag, branch, or SHA)
-                   line 2: resolved SHA (written by 'sync')
-  PATHS.txt        optional: git sparse-checkout patterns, one per line
-  CMakeLists.txt   INTERFACE target wrapping upstream/
-  upstream/        upstream repo at the pinned ref, .git stripped
-```
+1. Add a `FetchContent_Declare` block in
+   [`vendor/CMakeLists.txt`](vendor/CMakeLists.txt) with
+   `GIT_REPOSITORY` pointing at the public GitHub upstream and `GIT_TAG`
+   set to either a recent release tag or a commit SHA. Use `GIT_SHALLOW
+   TRUE` to keep the fetch small.
+2. If the upstream is a *library of types* (headers consumed under a
+   `lab::` alias), pass `SOURCE_SUBDIR _lab_skip_add_subdirectory_` so
+   the upstream's CMake (usually a test build) is not invoked, then
+   declare a `lab_vendor_<name>` INTERFACE library aliased under
+   `lab::vendor::<name>` and point
+   `target_include_directories(... SYSTEM INTERFACE ${<name>_SOURCE_DIR}/...)`
+   at the public headers. Add a `lab::` re-export in
+   [`src/lab/lab/`](src/lab/lab/) that includes the upstream header and
+   aliases the upstream type into the project vocabulary.
+3. If the upstream is a *library of functions* with its own CMake that
+   exposes a canonical target (`<name>::<name>`), disable the
+   upstream's tests, examples, docs, and install rules through that
+   project's own option variables (set them with
+   `CACHE BOOL "" FORCE`), then call `FetchContent_MakeAvailable(<name>)`.
+   Consumers link the upstream target directly; no `lab::` wrapper is
+   added.
+4. Add a row to this file with upstream URL, pin, and consumed target
+   name. Update [`src/lab/README.md`](src/lab/README.md) if the new
+   dependency adds a `lab::` vocabulary entry.
 
-Blank lines and `#`-prefixed lines in the three text files are ignored.
+## Updating a pin
 
-## `scripts/vendor.sh`
-
-```
-scripts/vendor.sh list                  show pinned versions
-scripts/vendor.sh sync   [<name>...]    clone upstream into <name>/upstream/
-scripts/vendor.sh check  [<name>...]    re-clone at the recorded SHA and byte-compare
-scripts/vendor.sh status [<name>...]    diff the recorded SHA against upstream HEAD
-```
-
-`sync` and `check` are the only commands that touch the network. `sync`
-shallow-clones at the ref on line 1 of `VERSION.txt` (honouring
-`PATHS.txt` when present), strips `.git`, and writes the resolved SHA
-back as line 2. `check` confirms the committed `upstream/` bytes still
-match what the recorded SHA serves; tampering inside the parent repo
-shows up in `git diff` regardless.
-
-## Adding a dependency
-
-1. Create `vendor/<name>/` with `ORIGIN.txt`, `VERSION.txt`
-   (the ref to pin), and a `CMakeLists.txt` declaring an `INTERFACE`
-   library `lab_vendor_<name>` aliased to `lab::vendor::<name>`,
-   with `target_include_directories(... SYSTEM INTERFACE ...)` pointing
-   at the upstream's public headers. Copy from an existing vendor.
-2. For monorepo upstreams, add `PATHS.txt` with one sparse-checkout
-   pattern per line (see `vendor/inplace_function/PATHS.txt`).
-3. Run `scripts/vendor.sh sync <name>`. If the pinned ref was a moving
-   target, copy line 2 of `VERSION.txt` over line 1 so the pin is
-   immutable.
-4. Adjust the include path in the per-vendor `CMakeLists.txt` if the
-   upstream layout differs from your guess.
-5. Add `add_subdirectory(<name>)` to `vendor/CMakeLists.txt`.
-6. Add the `lab::` re-export at
-   `src/lab/lab/<role>.hpp` (one `using` alias plus
-   the upstream `#include`) and link the lab target to
-   `lab::vendor::<name>`.
-
-Domain libraries consume the `lab::` alias from step 6, never the
-upstream header.
-
-## Caveats
-
-- **The full upstream tree rides along.** README, examples, tests, and
-  upstream build files sit under `upstream/` even though only the
-  headers are consumed. Use `PATHS.txt` to narrow the checkout for
-  larger upstreams.
-- **Layout shifts on version bumps.** The per-vendor `CMakeLists.txt`
-  hard-codes which subdirectory of `upstream/` holds the public
-  headers. A reorganised upstream forces an include-path edit
-  alongside the `VERSION.txt` bump.
-- **No schema for the pin files.** A typo in `ORIGIN.txt` surfaces as
-  a clone failure on the next `sync`; a typo in `PATHS.txt` surfaces
-  as a missing-file error in the consumer.
+Bump the `GIT_TAG` in `vendor/CMakeLists.txt` and reconfigure. CMake will
+re-fetch into its `FetchContent` cache on the next configure. Review the
+upstream changelog for the chosen range; if the upstream renames or
+removes a header, fix the include path or the `lab::` re-export at the
+same time.

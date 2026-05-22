@@ -9,14 +9,14 @@ Multi-threaded UDP-driven order book matching engine. The `server` binary ingest
 - C++26
 - CMake (presets: debug, release, asan, tsan, clang)
 - Ninja generator
-- Boost (header-only) -- https://www.boost.org -- LEAF, container_hash, pfr, algorithm, stacktrace, asio, intrusive, pool, unordered
-- fmt 9.1 (`libfmt-dev`, header-only) -- https://github.com/fmtlib/fmt
-- spdlog (`libspdlog-dev`) -- https://github.com/gabime/spdlog
-- Catch2 (tests) -- https://github.com/catchorg/Catch2
-- Google Benchmark (microbenchmarks) -- https://github.com/google/benchmark
-- NamedType (vendored, MIT) -- https://github.com/joboccara/NamedType
-- SG14 inplace_function (vendored, BSL-1.0) -- https://github.com/WG21-SG14/SG14
-- moodycamel ReaderWriterQueue (vendored, BSD-2-Clause) -- https://github.com/cameron314/readerwriterqueue
+- Boost (toolchain-provided via `BOOST_ROOT`, header-only) -- https://www.boost.org -- LEAF, container_hash, pfr, algorithm, stacktrace, asio, intrusive, pool, unordered
+- fmt (FetchContent, header-only) -- https://github.com/fmtlib/fmt
+- spdlog (FetchContent) -- https://github.com/gabime/spdlog
+- Catch2 v3 (FetchContent, tests) -- https://github.com/catchorg/Catch2
+- Google Benchmark (FetchContent, microbenchmarks) -- https://github.com/google/benchmark
+- NamedType (FetchContent, MIT) -- https://github.com/joboccara/NamedType
+- SG14 inplace_function (FetchContent, BSL-1.0) -- https://github.com/WG21-SG14/SG14
+- moodycamel ReaderWriterQueue (FetchContent, BSD-2-Clause) -- https://github.com/cameron314/readerwriterqueue
 
 ## Directory structure
 
@@ -26,7 +26,7 @@ matching-engine-lab/
 |-- docs/                                 ADRs, C++ design principles, engine spec, runtime docs, performance data
 |   |-- adr/                              architecture decision records (numbered, dated)
 |   `-- performance/                      benchmark results and raw data
-|-- scripts/                              developer scripts (formatting, pre-commit, vendor sync)
+|-- scripts/                              developer scripts (formatting, pre-commit, toolchain install)
 |-- src/                                  library sources and client/server executables
 |   |-- lab/                              general-purpose vocabulary helpers
 |   |   |-- lab/                          public headers

@@ -257,6 +257,6 @@ target_link_libraries(lab_compiler_flags INTERFACE
   $<$<BOOL:${LAB_TSAN}>:-fsanitize=thread>
 )
 
-# All targets added after this point inherit lab::compiler_flags so the
-# warning/sanitizer configuration is applied uniformly across the project.
-link_libraries(lab::compiler_flags)
+# lab::compiler_flags is wired into project targets by the root CMakeLists
+# after add_subdirectory(vendor), so FetchContent-built third-party libraries
+# do not inherit -Werror or sanitizer flags from this project.

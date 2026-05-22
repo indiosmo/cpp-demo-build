@@ -26,6 +26,13 @@ include(CompilerFlags)
 include(CTest)
 
 add_subdirectory(vendor)
+
+# Project targets inherit lab::compiler_flags (warnings, -Werror, sanitizer
+# wiring). Apply it only to directories added below this point so that
+# third-party libraries pulled in by vendor/ via FetchContent are built with
+# their own flags. Their export sets cannot reference lab::compiler_flags.
+link_libraries(lab::compiler_flags)
+
 add_subdirectory(src)
 
 if(BUILD_TESTING)

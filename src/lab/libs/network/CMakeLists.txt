@@ -1,8 +1,7 @@
 # Boost.Asio UDP receiver. Treated as a vendor-SDK adapter: the Asio
 # headers and the BOOST_ASIO_HEADER_ONLY macro are confined to this
-# target so callers see the receiver through its concrete API without
-# inheriting Boost transitively beyond what lab::core already does.
-find_package(Boost REQUIRED)
+# target so callers see the receiver through its concrete API. Boost
+# arrives transitively through lab::core.
 
 add_library(lab_network_asio STATIC
   src/asio_udp_receiver.cpp
@@ -12,7 +11,6 @@ add_library(lab::network::asio ALIAS lab_network_asio)
 target_link_libraries(lab_network_asio
   PUBLIC
     lab::core
-    Boost::headers
 )
 
 # Boost.Asio is consumed header-only; BOOST_ASIO_HEADER_ONLY inlines the
