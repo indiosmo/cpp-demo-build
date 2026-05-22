@@ -2,7 +2,7 @@
 #define MATCHING_ENGINE_V1_ORDER_BOOK_HPP
 
 #include "matching_engine/order_state.hpp"
-#include "order_routing/types.hpp"
+#include "order_entry/types.hpp"
 
 #include "lab/result.hpp"
 
@@ -22,20 +22,20 @@ namespace matching_engine::v1 {
 class order_book
 {
 public:
-  using bids_map = std::map<order_routing::types::price, std::vector<order_state>, std::greater<>>;
-  using asks_map = std::map<order_routing::types::price, std::vector<order_state>, std::less<>>;
+  using bids_map = std::map<order_entry::types::price, std::vector<order_state>, std::greater<>>;
+  using asks_map = std::map<order_entry::types::price, std::vector<order_state>, std::less<>>;
 
   order_book() = default;
 
   void place(const order_state&);
 
   /* Returns an error when no matching resting order exists. */
-  lab::result<order_state> cancel(order_routing::types::user_id, order_routing::types::user_order_id);
+  lab::result<order_state> cancel(order_entry::types::client_id, order_entry::types::cl_ord_id);
 
-  [[nodiscard]] std::optional<order_routing::types::price> best_bid() const;
-  [[nodiscard]] std::optional<order_routing::types::price> best_ask() const;
-  [[nodiscard]] std::optional<order_routing::types::quantity> total_at_best_bid() const;
-  [[nodiscard]] std::optional<order_routing::types::quantity> total_at_best_ask() const;
+  [[nodiscard]] std::optional<order_entry::types::price> best_bid() const;
+  [[nodiscard]] std::optional<order_entry::types::price> best_ask() const;
+  [[nodiscard]] std::optional<order_entry::types::quantity> total_at_best_bid() const;
+  [[nodiscard]] std::optional<order_entry::types::quantity> total_at_best_ask() const;
 
   bids_map& bids()
   {

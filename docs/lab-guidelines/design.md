@@ -57,13 +57,13 @@ the surface:
 
 ## Domain vocabulary
 
-Keep the domain namespaces: `order_routing`, `matching_engine`, and
+Keep the domain namespaces: `order_entry`, `matching_engine`, and
 `market_data`. They express the pipeline, and they already give the portfolio
 piece its technical shape.
 
 Domain primitive aliases live in each domain's nested `types` namespace. The
 canonical anchors are
-[`order_routing/types.hpp`](../../src/order_routing/order_routing/types.hpp)
+[`order_entry/types.hpp`](../../src/order_entry/order_entry/types.hpp)
 and
 [`market_data/types.hpp`](../../src/market_data/market_data/types.hpp).
 During the C++26 pass, keep bounded wire fields on `lab::fixed_string<N>` or a
@@ -91,7 +91,7 @@ show the shape.
 Runtime modules wrap the synchronous core with event loops, queues, receivers,
 and sinks. Current anchors:
 
-- [`order_routing::runtime::session`](../../src/order_routing/order_routing/runtime/session.hpp)
+- [`order_entry::runtime::session`](../../src/order_entry/order_entry/runtime/session.hpp)
 - [`matching_engine::runtime::engine`](../../src/matching_engine/matching_engine/runtime/engine.hpp)
 - [`market_data::runtime::publisher`](../../src/market_data/market_data/runtime/publisher.hpp)
 - [`server::application`](../../src/server/server/application.hpp), the
@@ -116,12 +116,12 @@ application composition layer, not in the domain object constructor.
 The portfolio value is concentrated in
 [`matching_engine::v3`](../../src/matching_engine/matching_engine/v3/).
 Plans should preserve the price-time semantics, identity index, pool-backed
-intrusive order nodes, and top-of-book emission behavior unless the plan is
+intrusive order nodes, and book-update emission behavior unless the plan is
 explicitly about changing the engine.
 
 Use C++26 and lab helpers to make the core easier to read before
 changing the algorithm. If a helper obscures matching vocabulary such as
-`aggressor`, `maker`, `resting_price`, or `top_of_book`, keep the explicit
+`aggressor`, `maker`, `resting_price`, or `mbo_book_update`, keep the explicit
 domain code.
 
 ## Hot-path helpers

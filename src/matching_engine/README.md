@@ -1,15 +1,14 @@
 # matching_engine
 
 Owns the per-symbol order books and the matching loop -- the business
-logic at the centre of the system. Consumes the inbound request
-vocabulary and emits the outbound message vocabulary directly. Pure
-synchronous code over value types.
+logic at the centre of the system. Consumes order-entry requests and
+emits order-entry lifecycle events separately from market-data events.
+Pure synchronous code over value types.
 
 ## Components
 
 - A matching engine that dispatches inbound commands and runs the
-  matching loop. Three implementations ship in-tree under `v1/`,
-  `v2/`, and `v3/`; production uses `v3` through the top-level
+  matching loop. Production uses `v3` through the top-level
   `matching_engine::engine` alias. The observable spec lives in
   [`docs/engine-specs.md`](../../../docs/engine-specs.md). The internal
   topology and request lifecycle live in
@@ -22,7 +21,8 @@ synchronous code over value types.
   `matching_engine::order_book` alias. `v1` (naive vector-per-level)
   and `v2` (intrusive list with caller-owned pool) stay in-tree as
   benchmark and test references.
-- A cross-symbol identity index used for cancellation lookups.
+- A cross-symbol identity index used for cancellation and replacement
+  lookups.
 - A shared pool that owns resting-order node storage across every
   book.
 
@@ -38,5 +38,6 @@ flowchart LR
       pool[shared node pool]
       books -.-> pool
     end
-    engine --> message[outbound message]
+    engine --> lifecycle[order-entry lifecycle event]
+    engine --> message[market-data event]
 ```

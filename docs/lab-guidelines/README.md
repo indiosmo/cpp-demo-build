@@ -45,7 +45,7 @@ below.
 | event loop | `lab::event_loop` | [`event_loop.hpp`](../../src/lab/lab/event_loop.hpp) |
 | SPSC queue | `lab::concurrent_queue<T>` | [`concurrent_queue.hpp`](../../src/lab/lab/concurrent_queue.hpp) |
 | testing result unwrap | `LAB_REQUIRE_RESULT(target, expr)` | Current equivalent is [`LAB_REQUIRE_LEAF`](../../src/lab/lab/result.hpp). |
-| per-domain `types` namespace | `<domain>::types` in `<domain>/types.hpp` | For example [`order_routing/types.hpp`](../../src/order_routing/order_routing/types.hpp). |
+| per-domain `types` namespace | `<domain>::types` in `<domain>/types.hpp` | For example [`order_entry/types.hpp`](../../src/order_entry/order_entry/types.hpp). |
 | per-domain error pair | `error_code.hpp` + `errors.hpp` | For example [`matching_engine/`](../../src/matching_engine/matching_engine/). |
 | boundary result type | `std::expected<T, E>` when C++26 is available | Current backport anchor is [`expected.hpp`](../../src/lab/lab/expected.hpp). |
 

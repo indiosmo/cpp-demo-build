@@ -21,7 +21,7 @@ target_link_libraries(order_client
   PUBLIC
     lab::core
     lab::network::asio
-    order_routing::order_routing
+    order_entry::order_entry
     Boost::headers
 )
 

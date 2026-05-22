@@ -1,128 +1,86 @@
-# Engine specification
+# Engine Specification
 
-The matching engine accepts `order_routing::request` values and emits
-`market_data::message` events. The runtime guarantees a single
-thread drives it.
+The matching engine accepts `order_entry::request` values. It emits
+order-entry lifecycle events on `on_order_entry` and market-data events
+on `on_market_data`. The runtime guarantees a single thread drives it.
 
-The request variant has three alternatives:
+The request variant has four alternatives:
 
-- `new_order` -- buy or sell with a limit price, or market when
-  `price == 0`.
-- `cancel_order` -- remove a resting order by `(user, user_order_id)`.
+- `new_order_single` -- submit a buy or sell order.
+- `replace_order` -- amend a live order by `orig_cl_ord_id`.
+- `cancel_order` -- cancel a live order by `orig_cl_ord_id`.
 - `flush` -- clear every book silently.
 
-## Data structures
+## Data Structures
 
-### Per-symbol order book
+### Per-Symbol Order Book
 
-One book per configured symbol, with two sides:
+One book is allocated for each configured symbol:
 
 - **Bids** are price-ordered descending; the front is the best bid.
 - **Asks** are price-ordered ascending; the front is the best ask.
-- Within a price level, orders are kept in arrival order
-  (price-time priority).
+- Within one price level, orders keep arrival order.
 
-The current shape uses sorted price-level maps over intrusive lists
-of pool-allocated nodes. See
-[ADR 0004](adr/0004-keep-order-book-as-sorted-price-level-maps.md)
-and
-[`matching_engine/v3/order_book.hpp`](../src/matching_engine/matching_engine/v3/order_book.hpp).
+The current production book is
+[`matching_engine/v3/order_book.hpp`](../src/matching_engine/matching_engine/v3/order_book.hpp):
+sorted price-level maps over intrusive lists of pool-allocated nodes.
 
-### Identity index
+### Identity Index
 
-A single cross-symbol map from `(user, user_order_id)` to the
-resting node. New orders consult it for duplicate rejection;
-cancels consult it to locate a resting order without scanning
-books. Entries are erased when orders leave a book. The per-symbol
-books carry no identity index of their own; the engine is the only
-owner.
+A single cross-symbol map from `(client_id, cl_ord_id)` to the resting
+node locates live orders for duplicate checks, cancels, and replaces.
+The per-symbol books carry no identity index of their own.
 
-## Request handling
+## Request Handling
 
-### new_order
+### new_order_single
 
-The flowchart below traces an aggressing buy. A sell mirrors it
-with the bid side as the resting side.
+The engine rejects duplicate keys and unknown symbols. Accepted orders
+produce an `order_entry::execution_report` with `exec_type::new_order`
+before matching begins.
 
-```mermaid
-flowchart TD
-  receive([receive new_order]) --> reject{"duplicate key or<br/>unconfigured symbol?"}
-  reject -- yes --> drop["log and silently drop"]
-  reject -- no --> ack["emit order_ack"]
-  ack --> sweep{"best_ask exists,<br/>remaining > 0, and<br/>buy_price >= best_ask?"}
-  sweep -- yes --> trade["emit trade at resting price<br/>for min of remaining and resting.remaining"]
-  trade --> reduce["reduce resting order; if it reaches<br/>zero, remove from book and<br/>identity index"]
-  reduce --> sweep
-  sweep -- no --> branch{"remaining > 0?"}
-  branch -- no --> emit
-  branch -- "yes, market" --> ioc["drop remainder, IOC"]
-  branch -- "yes, limit" --> place["append at back of bid level<br/>at incoming.price; record<br/>handle in identity index"]
-  ioc --> emit
-  place --> emit
-  emit[/"emit top_of_book records per Behaviour below"/]
-```
+An aggressing buy crosses the ask side; an aggressing sell crosses the
+bid side. Trades execute at the maker's resting price. The engine emits:
 
-Two `top_of_book` emissions may follow, in this order:
+- one `market_data::trade` per match;
+- one `market_data::execution_summary` when any liquidity is removed;
+- one `order_entry::execution_report` with `exec_type::trade` for the
+  aggressor when any quantity fills;
+- `market_data::mbo_book_update` for the consumed side when liquidity is
+  removed;
+- `market_data::mbo_book_update` for the order's own side when a residual
+  limit order rests at the new best.
 
-1. If any trade occurred, one for the **opposite** side -- the side
-   liquidity was consumed from.
-2. If a residual was placed *and* it rests at the new best on its
-   own side, one for the **own** side.
+`price == 0` is the demo CSV sentinel for a market order. Market
+remainders are dropped as IOC. Limit remainders rest.
+
+### replace_order
+
+`replace_order` locates the live order by `(client_id, orig_cl_ord_id)`.
+If the original cannot be found, or the replacement `cl_ord_id` would
+duplicate another live order, the engine emits `order_entry::cancel_reject`.
+
+A valid replace removes the original resting order, emits any resulting
+book update, then processes the replacement terms as a fresh order under
+the new `cl_ord_id`.
 
 ### cancel_order
 
-If the key is unknown, the cancel is silently dropped. Otherwise
-the engine snapshots the best price on the resting order's side,
-removes the order (tearing down the level if it was the last
-order), erases the identity entry, and emits `cancel_ack`. When
-the snapshot equals the cancelled order's price the cancel mutated
-the top and a `top_of_book` follows.
+`cancel_order` locates the live order by `(client_id, orig_cl_ord_id)`.
+If the key is unknown, the engine emits `order_entry::cancel_reject`.
+Otherwise it removes the order, erases the identity entry, returns the
+node to the pool, emits an `execution_report` with `exec_type::canceled`,
+and emits an `mbo_book_update` when the cancelled order was at the best
+price for its side.
 
 ### flush
 
-Drains every book and emits nothing. The book map keeps its
-configured symbols alive so later commands keep finding their
-books -- only the contents are discarded.
+`flush` drains every book and emits nothing. The configured symbol set
+remains available for later requests.
 
-`F` is a session reset, and no top-of-book record follows a flush.
-Downstream consumers observe the reset through the absence of further records.
+## Domain Boundaries
 
-## Behaviour
-
-### Market vs limit
-
-`price == 0` is the wire-level sentinel for a market order. Market
-orders cross every resting price; limit orders cross only when the
-taker is at or better than the resting price. Market remainders are
-dropped (IOC); limit remainders rest.
-
-### Trade
-
-One `trade` per match, at the resting price (price improvement for
-the taker). The buy/sell user and order identifiers come from the
-two sides of the match, not from the taker's identity:
-
-- Taker buy against a resting ask: buy = taker, sell = maker.
-- Taker sell against a resting bid: buy = maker, sell = taker.
-
-### Top of book
-
-A `top_of_book` reports the **affected side** -- for a cross, the
-side liquidity was consumed from, i.e. the opposite of the taker.
-The record carries the affected side's new best price and aggregate
-quantity at that price; when the side is empty, both fields are
-absent and the wire formatter renders them with `-`.
-
-Emissions by request:
-
-- `new_order` -- opposite side after any trades; own side iff a
-  residual was placed at the new best.
-- `cancel_order` -- cancelled order's side iff the pre-cancel best
-  equalled the cancelled order's price.
-- `flush` -- never.
-
-### Acknowledgement ordering
-
-`order_ack` precedes every trade and top-of-book record produced
-by the same `new_order`. `cancel_ack` follows the book mutation,
-so a `top_of_book` produced by the same cancel comes after it.
+Order-entry messages and market-data messages are distinct domains.
+Fields such as `price`, `quantity`, `side`, `security_id`, and `symbol`
+use separate strong types in each namespace. Conversion happens only at
+the matching-engine boundary.

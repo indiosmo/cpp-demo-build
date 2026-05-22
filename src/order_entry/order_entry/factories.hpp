@@ -1,8 +1,8 @@
-#ifndef ORDER_ROUTING_FACTORIES_HPP
-#define ORDER_ROUTING_FACTORIES_HPP
+#ifndef ORDER_ENTRY_FACTORIES_HPP
+#define ORDER_ENTRY_FACTORIES_HPP
 
-#include "order_routing/errors.hpp"
-#include "order_routing/messages.hpp"
+#include "order_entry/errors.hpp"
+#include "order_entry/messages.hpp"
 
 #include <string>
 #include <string_view>
@@ -12,7 +12,7 @@
  * dispatches on the concrete error type via lab::match_error.
  */
 
-namespace order_routing {
+namespace order_entry {
 
 inline rejection make_rejection(const errors::invalid_field& err, std::string_view raw_payload)
 {
@@ -38,6 +38,6 @@ inline rejection make_rejection(const errors::parser_error& err, std::string_vie
   };
 }
 
-} // namespace order_routing
+} // namespace order_entry
 
-#endif /* ORDER_ROUTING_FACTORIES_HPP */
+#endif /* ORDER_ENTRY_FACTORIES_HPP */

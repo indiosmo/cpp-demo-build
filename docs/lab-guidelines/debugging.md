@@ -103,7 +103,7 @@ Debug client/server failures by separating:
 
 - command encoding in the client library;
 - socket send/receive at the runtime edge;
-- decoder behavior in `order_routing`;
+- decoder behavior in `order_entry`;
 - matching behavior in `matching_engine`;
 - publisher behavior in `market_data`.
 

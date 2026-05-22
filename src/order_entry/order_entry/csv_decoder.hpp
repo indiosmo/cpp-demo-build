@@ -1,9 +1,9 @@
-#ifndef ORDER_ROUTING_CSV_DECODER_HPP
-#define ORDER_ROUTING_CSV_DECODER_HPP
+#ifndef ORDER_ENTRY_CSV_DECODER_HPP
+#define ORDER_ENTRY_CSV_DECODER_HPP
 
-#include "order_routing/decoder.hpp"
-#include "order_routing/messages.hpp"
-#include "order_routing/types.hpp"
+#include "order_entry/decoder.hpp"
+#include "order_entry/messages.hpp"
+#include "order_entry/types.hpp"
 
 #include "lab/result.hpp"
 
@@ -15,7 +15,7 @@
  * validity, numeric parseability, side tokens, and symbol length.
  */
 
-namespace order_routing {
+namespace order_entry {
 
 class csv_decoder final : public decoder
 {
@@ -30,7 +30,9 @@ types::side parse_side(std::string_view field);
 
 types::symbol parse_symbol(std::string_view field);
 
-new_order decode_new_order(std::string_view payload);
+new_order_single decode_new_order(std::string_view payload);
+
+replace_order decode_replace_order(std::string_view payload);
 
 cancel_order decode_cancel_order(std::string_view payload);
 
@@ -39,6 +41,6 @@ flush decode_flush(std::string_view payload);
 
 } // namespace csv_decoder_detail
 
-} // namespace order_routing
+} // namespace order_entry
 
-#endif /* ORDER_ROUTING_CSV_DECODER_HPP */
+#endif /* ORDER_ENTRY_CSV_DECODER_HPP */

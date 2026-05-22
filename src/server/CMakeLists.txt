@@ -20,7 +20,7 @@ target_include_directories(server_app
 target_link_libraries(server_app
   PUBLIC
     lab::core
-    order_routing::order_routing
+    order_entry::order_entry
     matching_engine::matching_engine
     market_data::market_data
     Threads::Threads

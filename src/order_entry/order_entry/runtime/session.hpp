@@ -1,11 +1,11 @@
-#ifndef ORDER_ROUTING_RUNTIME_SESSION_HPP
-#define ORDER_ROUTING_RUNTIME_SESSION_HPP
+#ifndef ORDER_ENTRY_RUNTIME_SESSION_HPP
+#define ORDER_ENTRY_RUNTIME_SESSION_HPP
 
 #include "boost/asio/io_context.hpp"
-#include "order_routing/decoder.hpp"
-#include "order_routing/messages.hpp"
-#include "order_routing/runtime/session_config.hpp"
-#include "order_routing/session.hpp"
+#include "order_entry/decoder.hpp"
+#include "order_entry/messages.hpp"
+#include "order_entry/runtime/session_config.hpp"
+#include "order_entry/session.hpp"
 
 #include "lab/inplace_function.hpp"
 #include "lab/network/asio_udp_receiver.hpp"
@@ -16,20 +16,20 @@
 #include <optional>
 
 /*
- * Runtime composer for the order_routing pipeline stage: owns the UDP
+ * Runtime composer for the order_entry pipeline stage: owns the UDP
  * receiver, decoder, and synchronous session, and re-exports the inner
- * session's callbacks. Keeps the inner order_routing::session thread-free
+ * session's callbacks. Keeps the inner order_entry::session thread-free
  * and unit-testable; the wiring shell sees only start/stop/poll.
  */
 
-namespace order_routing::runtime {
+namespace order_entry::runtime {
 
 class session
 {
 public:
   // Invoked on the receive-loop thread.
-  lab::inplace_function<void(const order_routing::request&)> on_request;
-  lab::inplace_function<void(const order_routing::rejection&)> on_rejected;
+  lab::inplace_function<void(const order_entry::request&)> on_request;
+  lab::inplace_function<void(const order_entry::rejection&)> on_rejected;
 
   session() = default;
   session(const session&) = delete;
@@ -68,9 +68,9 @@ private:
 
   // Declared after decoder_ so it tears down first and *decoder_ stays
   // alive while it does.
-  std::optional<order_routing::session> session_;
+  std::optional<order_entry::session> session_;
 };
 
-} // namespace order_routing::runtime
+} // namespace order_entry::runtime
 
-#endif /* ORDER_ROUTING_RUNTIME_SESSION_HPP */
+#endif /* ORDER_ENTRY_RUNTIME_SESSION_HPP */

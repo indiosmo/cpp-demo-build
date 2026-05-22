@@ -4,7 +4,7 @@
 #include "matching_engine/engine.hpp"
 #include "matching_engine/engine_config.hpp"
 #include "matching_engine/runtime/engine_config.hpp"
-#include "order_routing/messages.hpp"
+#include "order_entry/messages.hpp"
 
 #include "lab/error_code.hpp"
 #include "lab/log.hpp"
@@ -29,13 +29,14 @@ lab::result<void> engine::setup(engine_config config)
       .node_pool_chunk_size = config.node_pool_chunk_size,
     });
 
-  inner.on_event = [this](const market_data::message& ev) { on_event(ev); };
+  inner.on_market_data = [this](const market_data::message& ev) { on_market_data(ev); };
+  inner.on_order_entry = [this](const order_entry::event& ev) { on_order_entry(ev); };
 
   LAB_LOG_INFO("matching_engine runtime engine set up");
   return {};
 }
 
-void engine::send(const order_routing::request& req)
+void engine::send(const order_entry::request& req)
 {
   impl_->send(req);
 }

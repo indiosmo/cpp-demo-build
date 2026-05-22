@@ -24,13 +24,17 @@ namespace csv_encoder_detail {
 
 char encode_side(types::side book_side);
 
-std::string encode_order_ack(const order_ack& msg);
+char encode_update_action(types::update_action action);
 
-std::string encode_cancel_ack(const cancel_ack& msg);
+std::string encode_security_definition(const security_definition& msg);
+
+std::string encode_security_status(const security_status& msg);
+
+std::string encode_execution_summary(const execution_summary& msg);
 
 std::string encode_trade(const trade& msg);
 
-std::string encode_top_of_book(const top_of_book& msg);
+std::string encode_mbo_book_update(const mbo_book_update& msg);
 
 } // namespace csv_encoder_detail
 

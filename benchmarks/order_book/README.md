@@ -139,7 +139,7 @@ implementations.
 What the historical comparison showed:
 
 - `BM_CancelWorstCase` for v1 cost ~24 us because v1's cancel scans
-  every resting order across both sides until `(user, id)` matches.
+  every resting order across both sides until `(client_id, id)` matches.
   v2 and v3 cancel by handle in constant time -- the ~50x cost gap
   was the load-bearing argument for moving to handle-keyed cancels.
 - Placement was within noise across v1/v2 and ~5-7 ns/op slower on

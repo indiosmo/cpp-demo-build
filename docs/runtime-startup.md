@@ -45,10 +45,10 @@ flowchart TB
 
     io_context[asio io_context]
 
-    subgraph routing[order_routing::runtime::session]
+    subgraph routing[order_entry::runtime::session]
       direction LR
       decoder[csv_decoder]
-      inner_session[order_routing::session]
+      inner_session[order_entry::session]
       receiver[asio_udp_receiver]
     end
 
@@ -84,7 +84,7 @@ sequenceDiagram
   autonumber
   participant main
   participant app as application
-  participant routing as order_routing::runtime::session
+  participant routing as order_entry::runtime::session
   participant engine as matching_engine::runtime::engine
   participant publisher as market_data::runtime::publisher
   participant input as input loop
@@ -123,7 +123,7 @@ Each composer's `setup(config)` constructs the backends its variant
 selects, threads them into the inner stage, and forwards the stage's
 typed `on_*` callbacks out as the composer's own `on_*` fields.
 
-`order_routing` additionally takes a `boost::asio::io_context*`. The
+`order_entry` additionally takes a `boost::asio::io_context*`. The
 asio receiver's socket needs one, and the wiring shell decides which
 thread drives it, so the application owns the context and threads it
 through. The ef_vi alternative passes a null pointer through the same
@@ -138,20 +138,20 @@ event-loop type.
 
 ## Phase 2: `wire_pipeline`
 
-Rebinds `order_routing.on_request` and `engine.on_event` to closures
+Rebinds `order_entry.on_request` and `engine.on_event` to closures
 that `post(...)` onto the next loop. These two hops -- input to
 processing, and processing to output -- are the only places domain
 values cross thread boundaries. Each `on_*` is a
 `lab::inplace_function`, so the closure stores inline; see
 [Performance discipline](cpp-design-principles.md#performance-discipline).
 
-The same step registers `order_routing_.poll()` on the input loop via
+The same step registers `order_entry_.poll()` on the input loop via
 `add_poller`: the receive-side counterpart to the post closures, kept
 in the wiring shell for the same reason.
 
 ## Phase 3: `start` (outbound-to-inbound)
 
-`order_routing.start()` binds the UDP socket first. Bind can fail
+`order_entry.start()` binds the UDP socket first. Bind can fail
 (port in use, permissions) and the failure has to surface before the
 application reports success. The bound socket is inert until the
 input loop ticks `poll_one`, so opening it early is safe.

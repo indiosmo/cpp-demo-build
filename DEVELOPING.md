@@ -123,7 +123,7 @@ namespaces together often enough that the abbreviation improves clarity:
 ```cpp
 namespace md = market_data;
 namespace me = matching_engine;
-namespace rt = order_routing;
+namespace rt = order_entry;
 ```
 
 These aliases keep nested domain vocabulary short enough to read, for example

@@ -26,7 +26,7 @@ struct order_node : boost::intrusive::list_base_hook<boost::intrusive::link_mode
   order_state data;
 };
 
-// Check the payload only: the intrusive hook drags in a user-defined
+// Check the payload only: the intrusive hook drags in a client_id-defined
 // (empty) destructor, so order_node itself is never trivially
 // destructible even when its data is.
 static_assert(std::is_trivially_destructible_v<order_state>);

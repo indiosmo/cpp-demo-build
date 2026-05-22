@@ -9,8 +9,8 @@
 #include "matching_engine/v3/matching.hpp"
 #include "matching_engine/v3/order_book.hpp"
 #include "matching_engine/v3/order_node.hpp"
-#include "order_routing/messages.hpp"
-#include "order_routing/types.hpp"
+#include "order_entry/messages.hpp"
+#include "order_entry/types.hpp"
 
 #include "lab/inplace_function.hpp"
 #include "lab/result.hpp"
@@ -24,9 +24,13 @@
 #include "boost/unordered/unordered_node_map.hpp"
 #pragma GCC diagnostic pop
 
+#include <cstdint>
+#include <optional>
+#include <string>
+
 /*
  * Matching engine. Owns the per-symbol order books, the cross-symbol
- * (user, user_order_id) identity index, and the boost::pool backing
+ * (client_id, cl_ord_id) identity index, and the boost::pool backing
  * every resting order_node. Pure synchronous code over value types;
  * the runtime shell drives send() on one thread and marshals on_event
  * onto the output loop.
@@ -46,7 +50,8 @@ namespace matching_engine::v3 {
 class engine
 {
 public:
-  lab::inplace_function<void(const market_data::message&)> on_event;
+  lab::inplace_function<void(const market_data::message&)> on_market_data;
+  lab::inplace_function<void(const order_entry::event&)> on_order_entry;
 
   explicit engine(engine_config configuration);
   engine(const engine&) = delete;
@@ -55,21 +60,22 @@ public:
   engine& operator=(engine&&) = delete;
   ~engine() = default;
 
-  void send(const order_routing::request&);
+  void send(const order_entry::request&);
 
 private:
-  void handle(const order_routing::new_order&);
-  void handle(const order_routing::cancel_order&);
-  void handle(const order_routing::flush&);
+  void handle(const order_entry::new_order_single&);
+  void handle(const order_entry::replace_order&);
+  void handle(const order_entry::cancel_order&);
+  void handle(const order_entry::flush&);
 
   /*
-   * Leaf-shaped body for handle(new_order); the outer handle() owns the
+   * Leaf-shaped body for handle(new_order_single); the outer handle() owns the
    * error-handling frame and maps structured errors to log lines.
    */
-  lab::result<void> handle_new_order_impl(const order_routing::new_order&);
+  lab::result<void> handle_new_order_single_impl(const order_entry::new_order_single&);
 
   lab::result<void> check_duplicate(const types::order_key& key) const;
-  lab::result<flat_order_book*> find_book(order_routing::types::symbol instrument);
+  lab::result<flat_order_book*> find_book(order_entry::types::symbol symbol);
 
   /*
    * Cross `taker` against the opposite side of `book`, emitting trades and
@@ -77,10 +83,19 @@ private:
    */
   execution_summary match_orders(flat_order_book& book, order_state& taker);
 
-  void on_trade(const market_data::trade&);
+  void on_trade(market_data::trade);
   void on_release(order_node* consumed);
 
-  void emit_top_of_book(const flat_order_book&, order_routing::types::side);
+  void emit_execution_report(
+    const order_state& order,
+    order_entry::types::exec_type exec_type,
+    order_entry::types::ord_status ord_status,
+    std::optional<order_entry::types::orig_cl_ord_id> orig_cl_ord_id = std::nullopt,
+    std::optional<order_entry::types::quantity> last_qty = std::nullopt,
+    std::optional<order_entry::types::price> last_px = std::nullopt);
+  void emit_cancel_reject(const order_entry::cancel_order&, order_entry::types::reject_reason, std::string text);
+  void emit_mbo_book_update(
+    const flat_order_book&, order_entry::types::side affected_side, order_entry::types::security_id security_id);
 
   /* Throws std::bad_alloc if the pool cannot grow. */
   order_node* allocate_node(const order_state& data);
@@ -105,7 +120,7 @@ private:
    * Node map (not flat): the matching loop holds a reference to a book
    * across on_event calls, so references must survive rehashes.
    */
-  boost::unordered_node_map<order_routing::types::symbol, flat_order_book> books_;
+  boost::unordered_node_map<order_entry::types::symbol, flat_order_book> books_;
 
   /*
    * Cross-symbol identity index. Flat (open-addressed) over node-based:
@@ -113,6 +128,8 @@ private:
    * so the flat layout's denser buckets win on cache.
    */
   boost::unordered_flat_map<types::order_key, order_node*> resting_index_;
+  std::uint64_t next_exec_id_ = 1;
+  std::uint64_t next_trade_id_ = 1;
 };
 
 } // namespace matching_engine::v3

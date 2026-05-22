@@ -16,7 +16,7 @@ that class.
 ## [Domain-owned vocabulary with explicit composition](cpp-design-principles.md#domain-owned-vocabulary-with-explicit-composition)
 
 Each domain owns its own `types.hpp` --
-[`order_routing/types.hpp`](../src/order_routing/order_routing/types.hpp)
+[`order_entry/types.hpp`](../src/order_entry/order_entry/types.hpp)
 and
 [`market_data/types.hpp`](../src/market_data/market_data/types.hpp)
 declare distinct strong-type tags so values cannot cross-assign.
@@ -27,7 +27,7 @@ vocabularies directly; the peer domains stay independent.
 
 Designated-initializer construction at every emit site -- e.g. the
 `market_data::trade` built inside
-[`matching_engine::v3::engine::handle(new_order)`](../src/matching_engine/src/v3/engine.cpp)
+[`matching_engine::v3::engine::handle(new_order_single)`](../src/matching_engine/src/v3/engine.cpp)
 -- compiles only if every named field receives the correct strong
 type.
 
@@ -56,10 +56,10 @@ The result-aware startup chain in
 uses `LAB_LEAF_CHECK` for the socket bind and each loop's
 `start()`. The matching engine's public `send` / `handle` overloads
 return `void`: their `lab::result`-bearing helpers
-(`handle_new_order_impl`, `find_book`, `check_duplicate`) collapse
+(`handle_new_order_single_impl`, `find_book`, `check_duplicate`) collapse
 failures into `boost::leaf::try_handle_all` at the public boundary,
 matching the narrow-contract stance in
-[ADR 0003](adr/0003-parse-csv-as-fixed-shape-commands.md).
+[`docs/engine-specs.md`](engine-specs.md).
 Cross-thread posting goes through
 [`lab::event_loop::post`](../src/lab/lab/event_loop.hpp),
 which is `noexcept` and asserts the enqueue succeeded -- the only
@@ -83,7 +83,7 @@ concern stays behind a small `lab::` utility.
 
 ## [Declarative style](cpp-design-principles.md#declarative-style)
 
-[`engine::handle(new_order)`](../src/matching_engine/src/v3/engine.cpp)
+[`engine::handle(new_order_single)`](../src/matching_engine/src/v3/engine.cpp)
 reads as a sequence of named stages -- duplicate check, ack, match,
 residual, top-of-book -- with `removed_liquidity`, `is_market`, and
 `should_place_order` staged before the branching. The named `crosses`

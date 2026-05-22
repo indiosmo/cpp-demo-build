@@ -1,9 +1,5 @@
 add_library(matching_engine STATIC
   src/runtime/engine.cpp
-  src/v1/engine.cpp
-  src/v1/order_book.cpp
-  src/v2/engine.cpp
-  src/v2/order_book.cpp
   src/v3/engine.cpp
 )
 add_library(matching_engine::matching_engine ALIAS matching_engine)
@@ -16,6 +12,6 @@ target_include_directories(matching_engine
 target_link_libraries(matching_engine
   PUBLIC
     lab::core
-    order_routing::order_routing
+    order_entry::order_entry
     market_data::market_data
 )

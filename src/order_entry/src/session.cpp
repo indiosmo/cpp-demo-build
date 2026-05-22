@@ -1,10 +1,10 @@
-#include "order_routing/session.hpp"
+#include "order_entry/session.hpp"
 
 #include "boost/leaf/handle_errors.hpp"
-#include "order_routing/decoder.hpp"
-#include "order_routing/errors.hpp"
-#include "order_routing/factories.hpp"
-#include "order_routing/messages.hpp"
+#include "order_entry/decoder.hpp"
+#include "order_entry/errors.hpp"
+#include "order_entry/factories.hpp"
+#include "order_entry/messages.hpp"
 
 #include "lab/algorithm.hpp"
 #include "lab/error.hpp"
@@ -16,7 +16,7 @@
 #include <string_view>
 #include <utility>
 
-namespace order_routing {
+namespace order_entry {
 
 session::session(const decoder& packet_decoder)
   : decoder_{&packet_decoder}
@@ -80,4 +80,4 @@ void session::send(std::string_view packet)
   }
 }
 
-} // namespace order_routing
+} // namespace order_entry

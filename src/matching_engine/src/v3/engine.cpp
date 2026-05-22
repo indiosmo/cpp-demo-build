@@ -16,24 +16,26 @@
 
 #include <new>
 #include <optional>
+#include <string>
+#include <utility>
 
 namespace matching_engine::v3 {
 
 namespace md = market_data;
-namespace rt = order_routing;
+namespace rt = order_entry;
 
 engine::engine(engine_config configuration)
   : node_pool_{sizeof(order_node), configuration.node_pool_chunk_size}
 {
   // pre-warm the pool to the expected resident count so the first burst
-  // of new_orders does not pay a system allocation.
+  // of new_order_singles does not pay a system allocation.
   reserve_node_pool(configuration.expected_resting_orders);
 
   // open one book per configured symbol; reserve both maps so the
   // steady-state path never rehashes.
   books_.reserve(configuration.valid_symbols.size());
-  for (const auto& instrument : configuration.valid_symbols) {
-    books_.try_emplace(instrument);
+  for (const auto& symbol : configuration.valid_symbols) {
+    books_.try_emplace(symbol);
   }
 
   resting_index_.reserve(configuration.expected_resting_orders);
@@ -98,7 +100,7 @@ execution_summary engine::match_orders(flat_order_book& book, order_state& taker
   const auto release_cb = [this](order_node* consumed) { on_release(consumed); };
 
   // a buy taker eats the ask side; a sell taker eats the bid side.
-  switch (taker.order_side) {
+  switch (taker.side) {
     case rt::types::side::buy:
       return match(book.asks(), taker, crosses, trade_cb, release_cb);
 
@@ -109,53 +111,72 @@ execution_summary engine::match_orders(flat_order_book& book, order_state& taker
   std::terminate();
 }
 
-void engine::handle(const rt::new_order& request)
+void engine::handle(const rt::new_order_single& request)
 {
   boost::leaf::try_handle_all(
-    [&] { return handle_new_order_impl(request); },
+    [&] { return handle_new_order_single_impl(request); },
     [&](lab::match_error<errors::duplicate_order>) {
       LAB_LOG_WARN(
-        "rejecting new_order: duplicate (user={}, user_order_id={}) already resting", request.user, request.order_id);
+        "rejecting new_order_single: duplicate (client_id={}, cl_ord_id={}) already resting", request.client_id, request.cl_ord_id);
     },
     [&](lab::match_error<errors::unknown_symbol>) {
-      LAB_LOG_WARN("rejecting new_order: unknown symbol {}", request.instrument);
+      LAB_LOG_WARN("rejecting new_order_single: unknown symbol {}", request.symbol);
     },
     [](const lab::error& err) { LAB_LOG_ERROR("unhandled engine error: {}", err.full_details()); },
     [] { LAB_LOG_ERROR("unhandled engine error: unknown failure"); });
 }
 
-lab::result<void> engine::handle_new_order_impl(const rt::new_order& request)
+lab::result<void> engine::handle_new_order_single_impl(const rt::new_order_single& request)
 {
-  const types::order_key incoming_key{.user = request.user, .order_id = request.order_id};
+  const types::order_key incoming_key{.client_id = request.client_id, .cl_ord_id = request.cl_ord_id};
 
   // reject duplicates and resolve the destination book up-front.
   BOOST_LEAF_CHECK(check_duplicate(incoming_key));
-  BOOST_LEAF_ASSIGN(auto* book_ptr, find_book(request.instrument));
+  BOOST_LEAF_ASSIGN(auto* book_ptr, find_book(request.symbol));
   auto& book = *book_ptr;
 
   // IMPROVEMENT: event callbacks run inside the leaf-handled body, so subscriber
   // exceptions cross the leaf frame mid-emit. This should be redesigned to have
   // callbacks run outside the leaf context.
 
-  // ack precedes any trade so receivers see the order id before fills on it.
-  on_event(
-    md::order_ack{
-      .user = md::types::user_id{request.user},
-      .order_id = md::types::user_order_id{request.order_id},
-    });
-
-  // working copy; match_orders decrements remaining_quantity in
+  // working copy; match_orders decrements leaves_qty in
   // place and any residual is what we rest below.
   order_state order = make_order_state(request);
+
+  emit_execution_report(order, rt::types::exec_type::new_order, rt::types::ord_status::new_order);
 
   // cross the taker against the book; trades and releases fire via callbacks.
   const auto summary = match_orders(book, order);
 
-  // classify the residual: market remainders (limit_price == 0 on the wire,
+  // classify the residual: market remainders (price == 0 on the wire,
   // IOC contract) are dropped, limit remainders rest.
   const bool removed_liquidity = summary.trades > 0;
-  const bool is_market = order.limit_price == 0;
-  const bool should_place_order = order.remaining_quantity > 0 && !is_market;
+  const bool is_market = order.price == 0;
+  const bool should_place_order = order.leaves_qty > 0 && !is_market;
+  const auto filled_qty = rt::types::quantity{request.order_qty.get() - order.leaves_qty.get()};
+
+  if (removed_liquidity && summary.last_traded.has_value()) {
+    on_market_data(
+      md::execution_summary{
+        .security_id = md::types::security_id{request.security_id.get()},
+        .aggressor_side = to_market_side(request.side),
+        .last_px = md::types::price{summary.last_traded->get()},
+        .fill_qty = md::types::quantity{filled_qty.get()},
+        .traded_hidden_qty = std::nullopt,
+        .cancel_qty = std::nullopt,
+        .aggressor_time = md::types::timestamp{0},
+        .transact_time = md::types::timestamp{0},
+      });
+
+    const auto status = order.leaves_qty == 0 ? rt::types::ord_status::filled : rt::types::ord_status::partially_filled;
+    emit_execution_report(
+      order,
+      rt::types::exec_type::trade,
+      status,
+      std::nullopt,
+      filled_qty,
+      rt::types::price{summary.last_traded->get()});
+  }
 
   if (should_place_order) {
     // rest the residual: pool-allocate a node, link it into the book,
@@ -167,17 +188,17 @@ lab::result<void> engine::handle_new_order_impl(const rt::new_order& request)
     resting_index_.emplace(incoming_key, node);
   }
 
-  // top_of_book emission. Post-trade always reports the consumed side
+  // mbo_book_update emission. Post-trade always reports the consumed side
   // (opposite of the taker); own-side follows only if the residual landed
   // at the new best. See docs/engine-specs.md.
   if (removed_liquidity) {
-    emit_top_of_book(book, rt::types::opposite(request.order_side));
+    emit_mbo_book_update(book, rt::types::opposite(request.side), request.security_id);
   }
 
   if (should_place_order) {
-    const auto own_best = (request.order_side == rt::types::side::buy) ? book.best_bid() : book.best_ask();
-    if (own_best == request.limit_price) {
-      emit_top_of_book(book, request.order_side);
+    const auto own_best = (request.side == rt::types::side::buy) ? book.best_bid() : book.best_ask();
+    if (own_best == request.price) {
+      emit_mbo_book_update(book, request.side, request.security_id);
     }
   }
 
@@ -186,48 +207,49 @@ lab::result<void> engine::handle_new_order_impl(const rt::new_order& request)
 
 lab::result<void> engine::check_duplicate(const types::order_key& key) const
 {
-  // (user, user_order_id) is the cross-symbol identity for a resting order;
+  // (client_id, cl_ord_id) is the cross-symbol identity for a resting order;
   // a hit in the index means a duplicate that we must reject.
   if (resting_index_.contains(key)) {
-    return lab::make_leaf_error(errors::duplicate_order{.user = key.user, .order_id = key.order_id});
+    return lab::make_leaf_error(errors::duplicate_order{.client_id = key.client_id, .cl_ord_id = key.cl_ord_id});
   }
   return {};
 }
 
-lab::result<flat_order_book*> engine::find_book(rt::types::symbol instrument)
+lab::result<flat_order_book*> engine::find_book(rt::types::symbol symbol)
 {
   // engine_config preallocates one book per configured symbol; an unknown
   // symbol is an operator misconfiguration, not a wire event.
-  const auto book_it = books_.find(instrument);
+  const auto book_it = books_.find(symbol);
   if (book_it == books_.end()) {
-    return lab::make_leaf_error(errors::unknown_symbol{.instrument = instrument});
+    return lab::make_leaf_error(errors::unknown_symbol{.symbol = symbol});
   }
 
   return &book_it->second;
 }
 
-void engine::on_trade(const md::trade& trade_event)
+void engine::on_trade(md::trade trade_event)
 {
-  on_event(trade_event);
+  trade_event.trade_id = md::types::trade_id{next_trade_id_++};
+  on_market_data(trade_event);
 }
 
 void engine::on_release(order_node* consumed)
 {
   // fully-filled maker: drop its identity index entry and return the slot to the pool.
-  resting_index_.erase(types::order_key{.user = consumed->data.user, .order_id = consumed->data.order_id});
+  resting_index_.erase(types::order_key{.client_id = consumed->data.client_id, .cl_ord_id = consumed->data.cl_ord_id});
   release_node(consumed);
 }
 
 void engine::handle(const rt::cancel_order& incoming)
 {
-  const types::order_key key{.user = incoming.user, .order_id = incoming.order_id};
+  const types::order_key key{.client_id = incoming.client_id, .cl_ord_id = rt::types::cl_ord_id{incoming.orig_cl_ord_id.get()}};
 
   // find the resting order by identity. a miss means it was already filled,
   // canceled, or never placed -- drop silently.
   const auto index_it = resting_index_.find(key);
   if (index_it == resting_index_.end()) {
-    LAB_LOG_WARN("cancel miss: user={} order_id={}", incoming.user, incoming.order_id);
-    // IMPROVEMENT: no reject event in the spec; a production protocol would emit one here.
+    LAB_LOG_WARN("cancel miss: client_id={} orig_cl_ord_id={}", incoming.client_id, incoming.orig_cl_ord_id);
+    emit_cancel_reject(incoming, rt::types::reject_reason::unknown_order, "unknown order");
     return;
   }
 
@@ -236,30 +258,94 @@ void engine::handle(const rt::cancel_order& incoming)
   order_node* node = index_it->second;
   const order_state resting = node->data;
 
-  const auto book_it = books_.find(resting.instrument);
+  const auto book_it = books_.find(resting.symbol);
   LAB_ASSERT(book_it != books_.end());
   auto& book = book_it->second;
 
-  // ack the cancel before mutating the book so observers see the ack ahead
-  // of any follow-on top_of_book.
-  on_event(
-    md::cancel_ack{
-      .user = md::types::user_id{incoming.user},
-      .order_id = md::types::user_order_id{incoming.order_id},
-    });
-
-  // capture top-of-book impact before the cancel removes the level.
-  // Only cancels at the current best level produce a top_of_book.
-  const bool affects_top_of_book = (book.best(resting.order_side) == resting.limit_price);
+  // capture book-update impact before the cancel removes the level.
+  // Only cancels at the current best level produce a book update.
+  const bool affects_mbo_book_update = (book.best(resting.side) == resting.price);
 
   // unlink from the book, drop the identity entry, return the slot to the pool.
   book.cancel(node);
   resting_index_.erase(index_it);
   release_node(node);
+  emit_execution_report(
+    resting,
+    rt::types::exec_type::canceled,
+    rt::types::ord_status::canceled,
+    incoming.orig_cl_ord_id);
 
-  if (affects_top_of_book) {
-    emit_top_of_book(book, resting.order_side);
+  if (affects_mbo_book_update) {
+    emit_mbo_book_update(book, resting.side, resting.security_id);
   }
+}
+
+void engine::handle(const rt::replace_order& incoming)
+{
+  const types::order_key old_key{.client_id = incoming.client_id, .cl_ord_id = rt::types::cl_ord_id{incoming.orig_cl_ord_id.get()}};
+  const auto index_it = resting_index_.find(old_key);
+  if (index_it == resting_index_.end()) {
+    emit_cancel_reject(
+      rt::cancel_order{.client_id = incoming.client_id, .cl_ord_id = incoming.cl_ord_id, .orig_cl_ord_id = incoming.orig_cl_ord_id},
+      rt::types::reject_reason::unknown_order,
+      "unknown order");
+    return;
+  }
+
+  const types::order_key new_key{.client_id = incoming.client_id, .cl_ord_id = incoming.cl_ord_id};
+  if (resting_index_.contains(new_key)) {
+    emit_cancel_reject(
+      rt::cancel_order{.client_id = incoming.client_id, .cl_ord_id = incoming.cl_ord_id, .orig_cl_ord_id = incoming.orig_cl_ord_id},
+      rt::types::reject_reason::duplicate_order,
+      "duplicate cl_ord_id");
+    return;
+  }
+
+  order_node* node = index_it->second;
+  const order_state resting = node->data;
+  const auto book_it = books_.find(resting.symbol);
+  LAB_ASSERT(book_it != books_.end());
+  auto& book = book_it->second;
+  const bool affects_mbo_book_update = (book.best(resting.side) == resting.price);
+
+  book.cancel(node);
+  resting_index_.erase(index_it);
+  release_node(node);
+
+  if (affects_mbo_book_update) {
+    emit_mbo_book_update(book, resting.side, resting.security_id);
+  }
+
+  rt::new_order_single replacement{
+    .client_id = incoming.client_id,
+    .cl_ord_id = incoming.cl_ord_id,
+    .security_id = incoming.security_id,
+    .symbol = incoming.symbol,
+    .security_exchange = incoming.security_exchange,
+    .side = incoming.side,
+    .ord_type = incoming.ord_type,
+    .time_in_force = incoming.time_in_force,
+    .order_qty = incoming.order_qty,
+    .price = incoming.price,
+  };
+
+  boost::leaf::try_handle_all(
+    [&] { return handle_new_order_single_impl(replacement); },
+    [&](lab::match_error<errors::duplicate_order>) {
+      emit_cancel_reject(
+        rt::cancel_order{.client_id = incoming.client_id, .cl_ord_id = incoming.cl_ord_id, .orig_cl_ord_id = incoming.orig_cl_ord_id},
+        rt::types::reject_reason::duplicate_order,
+        "duplicate cl_ord_id");
+    },
+    [&](lab::match_error<errors::unknown_symbol>) {
+      emit_cancel_reject(
+        rt::cancel_order{.client_id = incoming.client_id, .cl_ord_id = incoming.cl_ord_id, .orig_cl_ord_id = incoming.orig_cl_ord_id},
+        rt::types::reject_reason::unknown_symbol,
+        "unknown symbol");
+    },
+    [](const lab::error& err) { LAB_LOG_ERROR("unhandled engine error: {}", err.full_details()); },
+    [] { LAB_LOG_ERROR("unhandled engine error: unknown failure"); });
 }
 
 void engine::handle(const rt::flush&)
@@ -277,7 +363,7 @@ void engine::handle(const rt::flush&)
         auto& node = level.orders.front();
 
         // drop the identity entry, unlink the FIFO head, return the slot to the pool.
-        resting_index_.erase(types::order_key{.user = node.data.user, .order_id = node.data.order_id});
+        resting_index_.erase(types::order_key{.client_id = node.data.client_id, .cl_ord_id = node.data.cl_ord_id});
         level.orders.pop_front();
         const bool level_now_empty = level.orders.empty();
         release_node(&node);
@@ -294,26 +380,77 @@ void engine::handle(const rt::flush&)
   }
 }
 
-/*
- * Emits the affected side's top level. price and total_quantity are optional
- * so an empty side renders as a "no top" message rather than a synthetic zero.
- */
-void engine::emit_top_of_book(const flat_order_book& book, rt::types::side affected_side)
+void engine::emit_execution_report(
+  const order_state& order,
+  rt::types::exec_type exec_type,
+  rt::types::ord_status ord_status,
+  std::optional<rt::types::orig_cl_ord_id> orig_cl_ord_id,
+  std::optional<rt::types::quantity> last_qty,
+  std::optional<rt::types::price> last_px)
+{
+  const auto cum_qty = rt::types::quantity{order.order_qty.get() - order.leaves_qty.get()};
+
+  on_order_entry(
+    rt::execution_report{
+      .client_id = order.client_id,
+      .cl_ord_id = order.cl_ord_id,
+      .orig_cl_ord_id = orig_cl_ord_id,
+      .order_id = rt::types::order_id{order.cl_ord_id.get()},
+      .exec_id = rt::types::exec_id{next_exec_id_++},
+      .security_id = order.security_id,
+      .symbol = order.symbol,
+      .security_exchange = order.security_exchange,
+      .side = order.side,
+      .ord_type = order.ord_type,
+      .time_in_force = order.time_in_force,
+      .exec_type = exec_type,
+      .ord_status = ord_status,
+      .order_qty = order.order_qty,
+      .cum_qty = cum_qty,
+      .leaves_qty = order.leaves_qty,
+      .last_qty = last_qty,
+      .last_px = last_px,
+      .avg_px = last_px,
+      .transact_time = rt::types::timestamp{0},
+      .reject_reason = std::nullopt,
+      .text = {},
+    });
+}
+
+void engine::emit_cancel_reject(const rt::cancel_order& cancel, rt::types::reject_reason reject_reason, std::string text)
+{
+  on_order_entry(
+    rt::cancel_reject{
+      .client_id = cancel.client_id,
+      .cl_ord_id = cancel.cl_ord_id,
+      .orig_cl_ord_id = cancel.orig_cl_ord_id,
+      .reject_reason = reject_reason,
+      .text = std::move(text),
+      .transact_time = rt::types::timestamp{0},
+    });
+}
+
+void engine::emit_mbo_book_update(const flat_order_book& book, rt::types::side affected_side, rt::types::security_id security_id)
 {
   const auto snapshot = book.best_level(affected_side);
 
   std::optional<md::types::price> outbound_top_price;
-  std::optional<md::types::total_quantity> outbound_top_quantity;
+  std::optional<md::types::quantity> outbound_top_quantity;
   if (snapshot.has_value()) {
     outbound_top_price = md::types::price{snapshot->price};
-    outbound_top_quantity = md::types::total_quantity{snapshot->total_quantity};
+    outbound_top_quantity = md::types::quantity{snapshot->total_quantity};
   }
 
-  on_event(
-    md::top_of_book{
-      .book_side = to_market_side(affected_side),
-      .top_price = outbound_top_price,
-      .top_quantity = outbound_top_quantity,
+  on_market_data(
+    md::mbo_book_update{
+      .security_id = md::types::security_id{security_id.get()},
+      .update_action = snapshot.has_value() ? md::types::update_action::change : md::types::update_action::delete_order,
+      .side = to_market_side(affected_side),
+      .resting_order_id = md::types::order_id{0},
+      .price = outbound_top_price,
+      .quantity = outbound_top_quantity,
+      .previous_quantity = std::nullopt,
+      .transact_time = md::types::timestamp{0},
     });
 }
 

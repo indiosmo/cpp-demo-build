@@ -6,8 +6,9 @@ over value types.
 
 ## Components
 
-- An outbound message vocabulary for the events the system publishes
-  (order and cancel acknowledgements, trades, top-of-book changes).
+- An outbound message vocabulary for market-data events:
+  `security_definition`, `security_status`, `execution_summary`,
+  `trade`, and `mbo_book_update`.
 - A wire-format encoder: a synchronous, allocation-light formatter
   that produces records without trailing framing -- the sink decides
   how records are separated.

@@ -12,23 +12,23 @@
 namespace matching_engine::v1 {
 
 namespace md = market_data;
-namespace rt = order_routing;
+namespace rt = order_entry;
 
 namespace {
 
 constexpr bool is_market_order(const order_state& taker)
 {
-  return taker.limit_price == 0;
+  return taker.price == 0;
 }
 
 constexpr bool taker_crosses_bid(const order_state& taker, rt::types::price resting_bid)
 {
-  return is_market_order(taker) || taker.limit_price <= resting_bid;
+  return is_market_order(taker) || taker.price <= resting_bid;
 }
 
 constexpr bool taker_crosses_ask(const order_state& taker, rt::types::price resting_ask)
 {
-  return is_market_order(taker) || taker.limit_price >= resting_ask;
+  return is_market_order(taker) || taker.price >= resting_ask;
 }
 
 } // namespace
@@ -36,8 +36,8 @@ constexpr bool taker_crosses_ask(const order_state& taker, rt::types::price rest
 engine::engine(engine_config configuration)
 {
   books_.reserve(configuration.valid_symbols.size());
-  for (const auto& instrument : configuration.valid_symbols) {
-    books_.try_emplace(instrument);
+  for (const auto& symbol : configuration.valid_symbols) {
+    books_.try_emplace(symbol);
   }
   resting_index_.reserve(configuration.expected_resting_orders);
 }
@@ -47,31 +47,31 @@ void engine::send(const rt::request& cmd)
   lab::match(cmd, [this](const auto& specific) { handle(specific); });
 }
 
-void engine::handle(const rt::new_order& incoming)
+void engine::handle(const rt::new_order_single& incoming)
 {
-  const types::order_key incoming_key{.user = incoming.user, .order_id = incoming.order_id};
+  const types::order_key incoming_key{.client_id = incoming.client_id, .cl_ord_id = incoming.cl_ord_id};
   if (resting_index_.contains(incoming_key)) {
     LAB_LOG_WARN(
-      "rejecting new_order: duplicate (user={}, user_order_id={}) already resting", incoming.user, incoming.order_id);
+      "rejecting new_order_single: duplicate (client_id={}, cl_ord_id={}) already resting", incoming.client_id, incoming.cl_ord_id);
     return;
   }
 
-  const auto book_it = books_.find(incoming.instrument);
+  const auto book_it = books_.find(incoming.symbol);
   if (book_it == books_.end()) {
-    LAB_LOG_WARN("rejecting new_order: unknown symbol {}", incoming.instrument);
+    LAB_LOG_WARN("rejecting new_order_single: unknown symbol {}", incoming.symbol);
     return;
   }
   auto& book = book_it->second;
 
   on_event(
     md::order_ack{
-      .user = md::types::user_id{incoming.user},
-      .order_id = md::types::user_order_id{incoming.order_id},
+      .client_id = md::types::client_id{incoming.client_id},
+      .cl_ord_id = md::types::cl_ord_id{incoming.cl_ord_id},
     });
 
   order_state taker = make_order_state(incoming);
 
-  switch (incoming.order_side) {
+  switch (incoming.side) {
     case rt::types::side::buy:
       match_buy(book, taker);
       break;
@@ -81,32 +81,32 @@ void engine::handle(const rt::new_order& incoming)
       break;
   }
 
-  const bool had_trades = taker.remaining_quantity < incoming.order_quantity;
-  const bool placed_residual = taker.remaining_quantity > 0 && !is_market_order(taker);
+  const bool had_trades = taker.leaves_qty < incoming.order_qty;
+  const bool placed_residual = taker.leaves_qty > 0 && !is_market_order(taker);
 
   if (placed_residual) {
     book.place(taker);
-    resting_index_.emplace(incoming_key, incoming.instrument);
+    resting_index_.emplace(incoming_key, incoming.symbol);
   }
 
   const rt::types::side opposite_side =
-    (incoming.order_side == rt::types::side::buy) ? rt::types::side::sell : rt::types::side::buy;
+    (incoming.side == rt::types::side::buy) ? rt::types::side::sell : rt::types::side::buy;
 
   if (had_trades) {
     emit_top_of_book(book, opposite_side);
   }
 
   if (placed_residual) {
-    const auto own_best = (incoming.order_side == rt::types::side::buy) ? book.best_bid() : book.best_ask();
-    if (own_best == incoming.limit_price) {
-      emit_top_of_book(book, incoming.order_side);
+    const auto own_best = (incoming.side == rt::types::side::buy) ? book.best_bid() : book.best_ask();
+    if (own_best == incoming.price) {
+      emit_top_of_book(book, incoming.side);
     }
   }
 }
 
 void engine::handle(const rt::cancel_order& incoming)
 {
-  const types::order_key key{.user = incoming.user, .order_id = incoming.order_id};
+  const types::order_key key{.client_id = incoming.client_id, .cl_ord_id = incoming.cl_ord_id};
   const auto index_it = resting_index_.find(key);
   if (index_it == resting_index_.end()) {
     return;
@@ -122,7 +122,7 @@ void engine::handle(const rt::cancel_order& incoming)
   const std::optional<rt::types::price> bid_top_before = book.best_bid();
   const std::optional<rt::types::price> ask_top_before = book.best_ask();
 
-  auto removed = book.cancel(incoming.user, incoming.order_id);
+  auto removed = book.cancel(incoming.client_id, incoming.cl_ord_id);
   if (!removed) {
     resting_index_.erase(index_it);
     return;
@@ -132,16 +132,16 @@ void engine::handle(const rt::cancel_order& incoming)
 
   on_event(
     md::cancel_ack{
-      .user = md::types::user_id{incoming.user},
-      .order_id = md::types::user_order_id{incoming.order_id},
+      .client_id = md::types::client_id{incoming.client_id},
+      .cl_ord_id = md::types::cl_ord_id{incoming.cl_ord_id},
     });
 
   const auto& cancelled = removed.value();
   const std::optional<rt::types::price> top_before =
-    (cancelled.order_side == rt::types::side::buy) ? bid_top_before : ask_top_before;
+    (cancelled.side == rt::types::side::buy) ? bid_top_before : ask_top_before;
 
-  if (top_before == cancelled.limit_price) {
-    emit_top_of_book(book, cancelled.order_side);
+  if (top_before == cancelled.price) {
+    emit_top_of_book(book, cancelled.side);
   }
 }
 
@@ -157,7 +157,7 @@ void engine::match_buy(order_book& book, order_state& taker)
 {
   auto& asks = book.asks();
 
-  while (taker.remaining_quantity > 0 && !asks.empty()) {
+  while (taker.leaves_qty > 0 && !asks.empty()) {
     auto level_it = asks.begin();
     const rt::types::price resting_ask = level_it->first;
     if (!taker_crosses_ask(taker, resting_ask)) {
@@ -165,25 +165,25 @@ void engine::match_buy(order_book& book, order_state& taker)
     }
 
     auto& level = level_it->second;
-    while (taker.remaining_quantity > 0 && !level.empty()) {
+    while (taker.leaves_qty > 0 && !level.empty()) {
       order_state& maker = level.front();
-      const rt::types::quantity fill = std::min(taker.remaining_quantity, maker.remaining_quantity);
+      const rt::types::quantity fill = std::min(taker.leaves_qty, maker.leaves_qty);
 
       on_event(
         md::trade{
-          .buy_user = md::types::user_id{taker.user},
-          .buy_order = md::types::user_order_id{taker.order_id},
-          .sell_user = md::types::user_id{maker.user},
-          .sell_order = md::types::user_order_id{maker.order_id},
+          .buy_user = md::types::client_id{taker.client_id},
+          .buy_order = md::types::cl_ord_id{taker.cl_ord_id},
+          .sell_user = md::types::client_id{maker.client_id},
+          .sell_order = md::types::cl_ord_id{maker.cl_ord_id},
           .trade_price = md::types::price{resting_ask},
           .trade_quantity = md::types::quantity{fill},
         });
 
-      taker.remaining_quantity -= fill;
-      maker.remaining_quantity -= fill;
+      taker.leaves_qty -= fill;
+      maker.leaves_qty -= fill;
 
-      if (maker.remaining_quantity == 0) {
-        const types::order_key maker_key{.user = maker.user, .order_id = maker.order_id};
+      if (maker.leaves_qty == 0) {
+        const types::order_key maker_key{.client_id = maker.client_id, .cl_ord_id = maker.cl_ord_id};
         level.erase(level.begin());
         resting_index_.erase(maker_key);
       }
@@ -199,7 +199,7 @@ void engine::match_sell(order_book& book, order_state& taker)
 {
   auto& bids = book.bids();
 
-  while (taker.remaining_quantity > 0 && !bids.empty()) {
+  while (taker.leaves_qty > 0 && !bids.empty()) {
     auto level_it = bids.begin();
     const rt::types::price resting_bid = level_it->first;
     if (!taker_crosses_bid(taker, resting_bid)) {
@@ -207,25 +207,25 @@ void engine::match_sell(order_book& book, order_state& taker)
     }
 
     auto& level = level_it->second;
-    while (taker.remaining_quantity > 0 && !level.empty()) {
+    while (taker.leaves_qty > 0 && !level.empty()) {
       order_state& maker = level.front();
-      const rt::types::quantity fill = std::min(taker.remaining_quantity, maker.remaining_quantity);
+      const rt::types::quantity fill = std::min(taker.leaves_qty, maker.leaves_qty);
 
       on_event(
         md::trade{
-          .buy_user = md::types::user_id{maker.user},
-          .buy_order = md::types::user_order_id{maker.order_id},
-          .sell_user = md::types::user_id{taker.user},
-          .sell_order = md::types::user_order_id{taker.order_id},
+          .buy_user = md::types::client_id{maker.client_id},
+          .buy_order = md::types::cl_ord_id{maker.cl_ord_id},
+          .sell_user = md::types::client_id{taker.client_id},
+          .sell_order = md::types::cl_ord_id{taker.cl_ord_id},
           .trade_price = md::types::price{resting_bid},
           .trade_quantity = md::types::quantity{fill},
         });
 
-      taker.remaining_quantity -= fill;
-      maker.remaining_quantity -= fill;
+      taker.leaves_qty -= fill;
+      maker.leaves_qty -= fill;
 
-      if (maker.remaining_quantity == 0) {
-        const types::order_key maker_key{.user = maker.user, .order_id = maker.order_id};
+      if (maker.leaves_qty == 0) {
+        const types::order_key maker_key{.client_id = maker.client_id, .cl_ord_id = maker.cl_ord_id};
         level.erase(level.begin());
         resting_index_.erase(maker_key);
       }

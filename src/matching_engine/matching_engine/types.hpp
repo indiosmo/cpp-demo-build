@@ -1,13 +1,13 @@
 #ifndef MATCHING_ENGINE_TYPES_HPP
 #define MATCHING_ENGINE_TYPES_HPP
 
-#include "order_routing/types.hpp"
+#include "order_entry/types.hpp"
 
 #include "lab/hash.hpp"
 
 /*
  * Strong type vocabulary for the matching_engine domain. Engine-local
- * types that compose order_routing primitives live here; the engine's
+ * types that compose order_entry primitives live here; the engine's
  * own working-order payload type (`order_state`) stays in order_state.hpp.
  */
 
@@ -20,8 +20,8 @@ namespace matching_engine::types {
  */
 struct order_key
 {
-  order_routing::types::user_id user;
-  order_routing::types::user_order_id order_id;
+  order_entry::types::client_id client_id;
+  order_entry::types::cl_ord_id cl_ord_id;
 
   friend bool operator==(const order_key&, const order_key&) = default;
 };

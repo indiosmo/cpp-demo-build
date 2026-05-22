@@ -1,8 +1,8 @@
 #include "server/application.hpp"
 #include "market_data/runtime/publisher_config.hpp"
 #include "matching_engine/runtime/engine_config.hpp"
-#include "order_routing/runtime/session_config.hpp"
-#include "order_routing/types.hpp"
+#include "order_entry/runtime/session_config.hpp"
+#include "order_entry/types.hpp"
 
 #include "lab/fmt.hpp"
 #include "lab/network/types.hpp"
@@ -90,9 +90,9 @@ matching_engine::runtime::engine_config make_engine_config()
 {
   return matching_engine::runtime::engine_config{
     .valid_symbols{
-      order_routing::types::symbol{"IBM"},
-      order_routing::types::symbol{"AAPL"},
-      order_routing::types::symbol{"VAL"},
+      order_entry::types::symbol{"IBM"},
+      order_entry::types::symbol{"AAPL"},
+      order_entry::types::symbol{"VAL"},
     },
   };
 }
@@ -126,8 +126,8 @@ int main(int argc, char** argv)
   }
 
   server::application app{server::config{
-    .order_routing{
-      .receiver{order_routing::runtime::asio_udp_receiver_config{
+    .order_entry{
+      .receiver{order_entry::runtime::asio_udp_receiver_config{
         .endpoint{
           .address = options_result.host,
           .port = options_result.port,

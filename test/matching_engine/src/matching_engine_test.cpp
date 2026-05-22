@@ -28,7 +28,7 @@ namespace {
 
 namespace md = market_data;
 namespace me = matching_engine;
-namespace rt = order_routing;
+namespace rt = order_entry;
 namespace ft = matching_engine::testing;
 
 using ft::aapl;
@@ -48,21 +48,35 @@ struct recorder
 {
   me::engine engine;
   std::vector<md::message> events;
+  std::vector<rt::event> order_entry_events;
 
   recorder()
     : engine{default_config()}
   {
-    engine.on_event = [this](const md::message& ev) { events.push_back(ev); };
+    engine.on_market_data = [this](const md::message& ev) { events.push_back(ev); };
+    engine.on_order_entry = [this](const rt::event& ev) { order_entry_events.push_back(ev); };
   }
 
   void send_order(const ft::order_params& params)
   {
-    engine.send(ft::make_new_order(params));
+    engine.send(ft::make_new_order_single(params));
   }
 };
 
 template <typename T>
 std::vector<T> collect(const std::vector<md::message>& events)
+{
+  std::vector<T> hits;
+  for (const auto& ev : events) {
+    if (const auto* hit = std::get_if<T>(&ev)) {
+      hits.push_back(*hit);
+    }
+  }
+  return hits;
+}
+
+template <typename T>
+std::vector<T> collect_order_entry(const std::vector<rt::event>& events)
 {
   std::vector<T> hits;
   for (const auto& ev : events) {
@@ -83,55 +97,55 @@ TEST_CASE("matching_engine - cross, eliminate, fresh rest", "[matching_engine][e
   //   alice 1 buys 100 @ 10  -> new best bid
   //   alice 2 sells 100 @ 12 -> new best ask
   //   bob   102 sells 100 @ 11 -> tightens the ask side
-  r.send_order({.order_id{1}, .order_side = rt::types::side::buy, .limit_price{10}});
-  r.send_order({.order_id{2}, .order_side = rt::types::side::sell, .limit_price{12}});
-  r.send_order({.user = bob, .order_id{102}, .order_side = rt::types::side::sell, .limit_price{11}});
+  r.send_order({.cl_ord_id{1}, .side = rt::types::side::buy, .price{10}});
+  r.send_order({.cl_ord_id{2}, .side = rt::types::side::sell, .price{12}});
+  r.send_order({.client_id = bob, .cl_ord_id{102}, .side = rt::types::side::sell, .price{11}});
 
   // Aggressing sell at 10 -- crosses alice 1 fully, empties the bid side.
-  r.send_order({.user = bob, .order_id{103}, .order_side = rt::types::side::sell, .limit_price{10}});
+  r.send_order({.client_id = bob, .cl_ord_id{103}, .side = rt::types::side::sell, .price{10}});
 
   // Fresh resting buy at the new best.
-  r.send_order({.order_id{3}, .order_side = rt::types::side::buy, .limit_price{10}});
+  r.send_order({.cl_ord_id{3}, .side = rt::types::side::buy, .price{10}});
 
   // One trade only: bob 103 lifts alice 1 at 10 for 100.
   const auto trades = collect<md::trade>(r.events);
   REQUIRE(trades.size() == 1);
-  CHECK(trades[0].buy_user == alice);
-  CHECK(trades[0].buy_order == rt::types::user_order_id{1});
-  CHECK(trades[0].sell_user == bob);
-  CHECK(trades[0].sell_order == rt::types::user_order_id{103});
-  CHECK(trades[0].trade_price == rt::types::price{10});
-  CHECK(trades[0].trade_quantity == rt::types::quantity{100});
+  CHECK(trades[0].buyer == md::types::order_id{1});
+  CHECK(trades[0].seller == md::types::order_id{103});
+  CHECK(trades[0].price == md::types::price{10});
+  CHECK(trades[0].quantity == md::types::quantity{100});
 
-  // Five top-of-book emissions in order:
+  // Five book-update emissions in order:
   //   B 10/100  (alice 1 rests at the new best bid)
   //   S 12/100  (alice 2 rests at the new best ask)
   //   S 11/100  (bob 102 tightens the ask)
   //   B -/-     (cross consumes alice 1; bid side eliminated)
   //   B 10/100  (alice 3 rests at the new best bid)
-  const auto tops = collect<md::top_of_book>(r.events);
-  REQUIRE(tops.size() == 5);
+  const auto book_updates = collect<md::mbo_book_update>(r.events);
+  REQUIRE(book_updates.size() == 5);
 
-  CHECK(tops[0].book_side == md::types::side::buy);
-  CHECK(tops[0].top_price == rt::types::price{10});
-  CHECK(tops[0].top_quantity == rt::types::quantity{100});
+  CHECK(book_updates[0].side == md::types::side::buy);
+  CHECK(book_updates[0].price == md::types::price{10});
+  CHECK(book_updates[0].quantity == md::types::quantity{100});
 
-  CHECK(tops[1].book_side == md::types::side::sell);
-  CHECK(tops[1].top_price == rt::types::price{12});
-  CHECK(tops[1].top_quantity == rt::types::quantity{100});
+  CHECK(book_updates[1].side == md::types::side::sell);
+  CHECK(book_updates[1].price == md::types::price{12});
+  CHECK(book_updates[1].quantity == md::types::quantity{100});
 
-  CHECK(tops[2].book_side == md::types::side::sell);
-  CHECK(tops[2].top_price == rt::types::price{11});
-  CHECK(tops[2].top_quantity == rt::types::quantity{100});
+  CHECK(book_updates[2].side == md::types::side::sell);
+  CHECK(book_updates[2].price == md::types::price{11});
+  CHECK(book_updates[2].quantity == md::types::quantity{100});
 
-  CHECK(tops[3].book_side == md::types::side::buy);
-  CHECK_FALSE(tops[3].top_price.has_value());
-  CHECK_FALSE(tops[3].top_quantity.has_value());
+  CHECK(book_updates[3].side == md::types::side::buy);
+  CHECK_FALSE(book_updates[3].price.has_value());
+  CHECK_FALSE(book_updates[3].quantity.has_value());
 
-  CHECK(tops[4].book_side == md::types::side::buy);
-  CHECK(tops[4].top_price == rt::types::price{10});
-  CHECK(tops[4].top_quantity == rt::types::quantity{100});
+  CHECK(book_updates[4].side == md::types::side::buy);
+  CHECK(book_updates[4].price == md::types::price{10});
+  CHECK(book_updates[4].quantity == md::types::quantity{100});
 
-  // Acks: one per new_order request that the engine accepted.
-  CHECK(collect<md::order_ack>(r.events).size() == 5);
+  const auto reports = collect_order_entry<rt::execution_report>(r.order_entry_events);
+  CHECK(reports.size() == 6);
+  CHECK(reports[0].exec_type == rt::types::exec_type::new_order);
+  CHECK(reports[5].exec_type == rt::types::exec_type::new_order);
 }

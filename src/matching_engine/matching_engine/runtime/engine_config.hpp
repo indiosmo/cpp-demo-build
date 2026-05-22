@@ -1,7 +1,7 @@
 #ifndef MATCHING_ENGINE_RUNTIME_ENGINE_CONFIG_HPP
 #define MATCHING_ENGINE_RUNTIME_ENGINE_CONFIG_HPP
 
-#include "order_routing/types.hpp"
+#include "order_entry/types.hpp"
 
 #include <cstddef>
 #include <vector>
@@ -22,7 +22,7 @@ struct engine_config
   static constexpr std::size_t default_node_pool_chunk_size = 32;
   static constexpr std::size_t default_expected_resting_orders = 1024;
 
-  std::vector<order_routing::types::symbol> valid_symbols;
+  std::vector<order_entry::types::symbol> valid_symbols;
   std::size_t expected_resting_orders = default_expected_resting_orders;
   std::size_t node_pool_chunk_size = default_node_pool_chunk_size;
 };

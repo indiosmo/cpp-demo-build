@@ -95,7 +95,7 @@ non-HFT consumers.
 
 | Thread | Stages it owns | Notes |
 |--------|----------------|-------|
-| Input | UDP receiver, CSV decoder, routing session | The asio `io_context` runs as a non-blocking poller against the same loop, so datagrams advance in line with posted tasks. |
+| Input | UDP receiver, CSV decoder, order-entry session | The asio `io_context` runs as a non-blocking poller against the same loop, so datagrams advance in line with posted tasks. |
 | Processing | Matching engine, per-symbol books | Pure synchronous chain over posted requests; no pollers. |
 | Output | CSV encoder, publisher, stdout sink | The publisher is the sole writer of stdout, so no per-record locking. |
 
@@ -110,8 +110,8 @@ statement and the pointers to the ADRs that explain its shape.
 | Library | Role |
 |---------|------|
 | [`lab`](src/lab/) | General-purpose utilities ("our internal Boost"). |
-| [`order_routing`](src/order_routing/) | Inbound domain. UDP bytes to typed routing requests. |
-| [`order_client`](src/order_client/) | Typed client library. Routing requests to UDP CSV datagrams. |
+| [`order_entry`](src/order_entry/) | Inbound domain. UDP bytes to typed order-entry requests. |
+| [`order_client`](src/order_client/) | Typed client library. Order-entry requests to UDP CSV datagrams. |
 | [`matching_engine`](src/matching_engine/) | The main trading domain. Per-symbol order books and the matching loop. |
 | [`market_data`](src/market_data/) | Outbound domain. Typed messages to CSV records on stdout. |
 | [`server`](src/server/) | Wiring shell. Owns the three event loops and the executable. |

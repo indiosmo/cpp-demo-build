@@ -2,7 +2,7 @@
 
 ## System overview
 
-Multi-threaded UDP-driven order book matching engine. The `server` binary ingests CSV commands over UDP, matches them against per-symbol books, and publishes the resulting market data records to stdout. The `client` binary sends typed order commands from files or stdin to the server. The codebase is organised as static libraries for shared vocabulary, order routing, order clients, market data, matching, and runtime wiring, plus Catch2 unit tests and Google Benchmark microbenchmarks.
+Multi-threaded UDP-driven order book matching engine. The `server` binary ingests CSV order-entry commands over UDP, matches them against per-symbol books, and publishes the resulting market-data records to stdout. The `client` binary sends typed order-entry commands from files or stdin to the server. The codebase is organised as static libraries for shared vocabulary, order entry, order clients, market data, matching, and runtime wiring, plus Catch2 unit tests and Google Benchmark microbenchmarks.
 
 ## Tech stack
 
@@ -34,9 +34,9 @@ matching-engine-lab/
 |   |   `-- src/                          reserved for utility translation units
 |   |-- client/                          CLI sender; the client executable target
 |   |-- market_data/                      outbound domain: typed events to CSV records to stdout
-|   |-- matching_engine/                  composition domain: per-symbol books and the matching loop (v1, v2, v3)
-|   |-- order_client/                     typed client API: routing requests to UDP CSV datagrams
-|   |-- order_routing/                    inbound domain: UDP CSV bytes to typed routing requests
+|   |-- matching_engine/                  composition domain: per-symbol books and the production matching loop
+|   |-- order_client/                     typed client API: order-entry requests to UDP CSV datagrams
+|   |-- order_entry/                     inbound domain: UDP CSV bytes to typed order-entry requests
 |   `-- server/                           wiring shell + main; the server executable target
 |-- test/                                 module Catch2 tests
 |-- benchmarks/                           Google Benchmark microbenchmarks
@@ -80,22 +80,22 @@ Headers:
 - (P) network/ef_vi_udp_receiver.hpp -- Stub Solarflare `ef_vi` kernel-bypass UDP receiver with the poll-driven shape (`open` / `poll` / `close`)
 - (P) network/types.hpp              -- Network value types: `endpoint_config { address; port }` and `datagram_view = string_view`
 
-### order_routing
+### order_entry
 
-Base path: `src/order_routing/order_routing/`
+Base path: `src/order_entry/order_entry/`
 
-Inbound-edge domain. Turns one framed wire packet into one typed routing request through pure synchronous code over value types. Owns the request vocabulary, the strong-typed field primitives, the abstract decoder boundary and its CSV implementation, the pipeline-stage session that drives the decoder, and the structured error vocabulary raised at the decoder boundary. A `runtime/` shell wraps the session with a UDP receiver behind a `setup`/`start`/`poll`/`stop` lifecycle.
+Inbound-edge domain. Turns one framed wire packet into one typed order-entry request through pure synchronous code over value types. Owns the request vocabulary, the strong-typed field primitives, the abstract decoder boundary and its CSV implementation, the pipeline-stage session that drives the decoder, and the structured error vocabulary raised at the decoder boundary. A `runtime/` shell wraps the session with a UDP receiver behind a `setup`/`start`/`poll`/`stop` lifecycle.
 
 Headers:
 
-- (I) csv_decoder.hpp            -- CSV decoder for the fixed-shape CSV protocol; wire-grammar violations are asserted per ADR 0003.
+- (I) csv_decoder.hpp            -- CSV decoder for the fixed-shape CSV protocol.
 - (I) decoder.hpp                -- Abstract decoder boundary: one packet to one `lab::result<request>`; supports test doubles.
-- (I) error_code.hpp             -- `order_routing::error_code` enum (201xxx range) plus `to_string` and category registration.
+- (I) error_code.hpp             -- `order_entry::error_code` enum (201xxx range) plus `to_string` and category registration.
 - (P) errors.hpp                 -- Structured `invalid_field`, `missing_field`, `unknown_order`, `parser_error` carried through `boost::leaf`.
 - (I) factories.hpp              -- `make_rejection` overloads composing a `rejection` from each structured decoder error and the raw payload.
-- (P) messages.hpp               -- Request value types `new_order`/`cancel_order`/`flush`, the `request` variant, and the `rejection` struct.
+- (P) messages.hpp               -- Request values `new_order_single`/`replace_order`/`cancel_order`/`flush`, lifecycle events `execution_report`/`cancel_reject`, and the request/event variants.
 - (I) session.hpp                -- Pipeline-stage `session`: synchronous `send(packet)` plus `on_request`/`on_rejected` callbacks.
-- (P) types.hpp                  -- Strong-typed primitives `user_id`, `user_order_id`, `symbol` (fixed_string<8>), `price`, `quantity`, `side`.
+- (P) types.hpp                  -- Strong-typed order-entry primitives (`client_id`, `cl_ord_id`, `orig_cl_ord_id`, `security_id`, `symbol`, `price`, `quantity`) plus order lifecycle enums.
 - (P) runtime/session.hpp        -- Threaded composer owning UDP receiver, decoder, and inner session; lifecycle `setup`/`start`/`poll`/`stop`.
 - (P) runtime/session_config.hpp -- Variant-typed config selecting the UDP receiver backend (asio or ef_vi) and the decoder.
 
@@ -103,12 +103,12 @@ Headers:
 
 Base path: `src/order_client/order_client/`
 
-Typed client library for driving the server from examples and local tools. It keeps callers on the same `order_routing` request vocabulary as the server boundary, encodes each request to the inbound CSV command protocol, and sends each command as a UDP datagram through a Boost.Asio-backed sender.
+Typed client library for driving the server from examples and local tools. It keeps callers on the same `order_entry` request vocabulary as the server boundary, encodes each request to the inbound CSV command protocol, and sends each command as a UDP datagram through a Boost.Asio-backed sender.
 
 Headers:
 
-- (P) client.hpp      -- Public typed API: `connect()` plus `send(new_order)`, `send(cancel_order)`, `send(flush)`, and `send(request)`.
-- (I) csv_encoder.hpp -- Encodes typed routing requests into outbound CSV command records.
+- (P) client.hpp      -- Public typed API: `connect()` plus `send(new_order_single)`, `send(replace_order)`, `send(cancel_order)`, `send(flush)`, and `send(request)`.
+- (I) csv_encoder.hpp -- Encodes typed order-entry requests into outbound CSV command records.
 - (I) udp_sender.hpp  -- Boost.Asio UDP sender with configurable endpoint.
 
 ### market_data
@@ -121,11 +121,11 @@ Headers:
 
 - (I) csv_encoder.hpp              -- `csv_encoder` and `csv_encoder_detail` free functions: one CSV record per message variant.
 - (I) encoder.hpp                  -- Abstract encoder interface: one typed message to one wire record via `std::string encode(const message&)`.
-- (P) messages.hpp                 -- Outbound vocabulary structs (`order_ack`, `cancel_ack`, `trade`, `top_of_book`) and the `message` variant.
+- (P) messages.hpp                 -- Market-data event structs (`security_definition`, `security_status`, `execution_summary`, `trade`, `mbo_book_update`) and the `message` variant.
 - (I) publisher.hpp                -- Pipeline stage holding `encoder&` and `sink&`; `send()` encodes then writes.
 - (I) sink.hpp                     -- Abstract sink interface: `write(string_view record)` to whatever line-oriented transport the wiring picks.
 - (I) spdlog_sink.hpp              -- Default sink: single-threaded spdlog stdout logger, raw `%v` pattern, `flush_on(info)`.
-- (P) types.hpp                    -- Strong-type vocabulary (`user_id`, `user_order_id`, `price`, `quantity`, `total_quantity`) plus the `side` enum.
+- (P) types.hpp                    -- Strong-type market-data vocabulary (`security_id`, `symbol`, `security_exchange`, `price`, `quantity`, `order_id`, `trade_id`) plus side, book-update, status, and trade-condition enums.
 - (P) runtime/publisher.hpp        -- Runtime composer that owns the chosen encoder and sink and constructs the inner `market_data::publisher`.
 - (P) runtime/publisher_config.hpp -- Variant-of-variants config surface (`encoder_config`, `sink_config`); each new backend is a new alternative.
 
@@ -133,19 +133,19 @@ Headers:
 
 Base path: `src/matching_engine/matching_engine/`
 
-Matches incoming requests against per-symbol bid/ask ladders and emits trade, ack, and top-of-book events directly. Owns one shared pool over every resting `order_node`, a cross-symbol `(user, user_order_id)` identity index for cancellation in one hop, and one preallocated book per configured symbol. Three iterations live in-tree: `v1` (sorted maps of vectors), `v2` (intrusive lists over a caller-owned pool), `v3` (templated intrusive lists over `boost::container::flat_map` with side-agnostic match); production picks `v3` through module-root aliases.
+Matches incoming order-entry requests against per-symbol bid/ask ladders and emits order-entry lifecycle events separately from market-data events. Owns one shared pool over every resting `order_node`, a cross-symbol `(client_id, cl_ord_id)` identity index for cancellation and replacement in one hop, and one preallocated book per configured symbol. Production picks the v3 intrusive-list book through module-root aliases.
 
 Headers:
 
-- (I) conversions.hpp           -- Free `to_market_side` mapping routing-side to market-data side at emit sites.
+- (I) conversions.hpp           -- Free `to_market_side` mapping order-entry side to market-data side at emit sites.
 - (P) engine.hpp                -- Production engine alias: `using engine = v3::engine`.
 - (P) engine_config.hpp         -- Engine startup config: `valid_symbols`, `expected_resting_orders`, `node_pool_chunk_size`.
 - (I) error_code.hpp            -- `error_code` enum (`duplicate_order`, `unknown_symbol`) in the 202xxx range.
 - (I) errors.hpp                -- Structured leaf payloads (`duplicate_order`, `unknown_symbol`) for new-order rejections.
-- (I) factories.hpp             -- `make_order_state(new_order)`: builds the matcher's taker / resting payload.
+- (I) factories.hpp             -- `make_order_state(new_order_single)`: builds the matcher's taker / resting payload.
 - (P) order_book.hpp            -- Production aliases: `order_book = v3::flat_order_book`, `order_node = v3::order_node`.
-- (P) order_state.hpp           -- Resting-order payload struct carrying user, order id, instrument, side, price, remaining.
-- (I) types.hpp                 -- Composite `order_key{user, order_id}` plus boost/std hash bindings for the identity index.
+- (P) order_state.hpp           -- Resting-order payload struct carrying client id, cl_ord_id, instrument identity, order terms, order quantity, and leaves quantity.
+- (I) types.hpp                 -- Composite `order_key{client_id, cl_ord_id}` plus boost/std hash bindings for the identity index.
 - (I) v1/engine.hpp             -- v1 engine: in-place `match_buy` / `match_sell` over vector-backed books; logs rejections.
 - (I) v1/order_book.hpp         -- v1 book: `std::map<price, std::vector<order_state>>` per side; cancel scans linearly.
 - (I) v2/engine.hpp             -- v2 engine: drives the book through `fill_top_*_front`; engine-owned `boost::pool`.
@@ -154,7 +154,7 @@ Headers:
 - (I) v3/matching.hpp           -- Side-agnostic `match` template: walks levels, calls `consume_level`, bulk-erases consumed prefix.
 - (I) v3/order_book.hpp         -- v3 templated book: `flat_order_book` over `flat_map`; per-level FIFO with running `total_remaining`.
 - (I) v3/order_node.hpp         -- Intrusive `list_base_hook<normal_link>` wrapping `order_state`; safe-shutdown invariant.
-- (P) runtime/engine.hpp        -- Composer holding `optional<engine>`; exposes `setup` / `send` / `on_event` for the wiring shell.
+- (P) runtime/engine.hpp        -- Composer holding `optional<engine>`; exposes `setup` / `send` / `on_market_data` / `on_order_entry` for the wiring shell.
 - (P) runtime/engine_config.hpp -- Deployment-default mirror of `engine_config` (defaults: chunk 32, expected 1024).
 
 ### server
@@ -171,4 +171,4 @@ Headers:
 
 Base path: `src/client/`
 
-Thin command-line sender over `order_client::client`. It reads CSV commands from `--input` or stdin, decodes them to typed `order_routing::request` values, and sends each one to the configured UDP endpoint. CLI options are `--host`, `--port`, and `--input`.
+Thin command-line sender over `order_client::client`. It reads CSV commands from `--input` or stdin, decodes them to typed `order_entry::request` values, and sends each one to the configured UDP endpoint. CLI options are `--host`, `--port`, and `--input`.

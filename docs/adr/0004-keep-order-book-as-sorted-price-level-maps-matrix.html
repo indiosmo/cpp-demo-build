@@ -61,16 +61,17 @@
 <p class="lede">
   Companion to ADR-0004. The matching engine needs per-symbol books that preserve
   price-time priority, expose top-of-book aggregates, and support cancellation by
-  <code>(user, user_order_id)</code>.
+  <code>(client_id, cl_ord_id)</code>.
 </p>
 
 <div class="premises">
   <h2>Assumptions</h2>
   <ul>
-    <li><b>Behavior first:</b> the initial structure should make matching semantics easy to verify.</li>
-    <li><b>Optimization next:</b> the optimized structure should target direct cancellation and allocation control.</li>
-    <li><b>Sparse prices:</b> the engine cannot reserve a fixed tick range or depth distribution.</li>
-    <li><b>Local swap:</b> storage changes should stay inside the matching-engine module.</li>
+    <li><b>Direct cancellation:</b> cancels resolve by <code>(client_id, cl_ord_id)</code> regardless of side or price.</li>
+    <li><b>Top-of-book aggregate:</b> market-data updates read aggregate quantity in O(1).</li>
+    <li><b>Sparse prices:</b> the engine creates price levels only when liquidity rests there.</li>
+    <li><b>Shared resident memory:</b> one pool tracks aggregate resting depth across symbols.</li>
+    <li><b>Evidence required:</b> storage changes need focused latency and locality evidence.</li>
   </ul>
 </div>
 
@@ -78,8 +79,8 @@
   <thead>
     <tr>
       <th>Criterion</th>
-      <th>A. Sorted maps of vectors <span class="opt-sub">Price map to FIFO vector at each level.</span></th>
-      <th>B. Intrusive lists + pool <span class="opt-sub">Price map to intrusive FIFO lists of pool-owned order nodes.</span></th>
+      <th>A. Sorted maps of FIFO vectors <span class="opt-sub">Price map to FIFO vector at each level.</span></th>
+      <th>B. Sorted flat side maps with intrusive lists + pool <span class="opt-sub">Flat price map to intrusive FIFO lists of pool-owned order nodes.</span></th>
       <th>C. Preallocated vectors + tombstones <span class="opt-sub">Bounded per-level arrays with inactive entries.</span></th>
       <th>D. Paged order blocks <span class="opt-sub">Pool-owned fixed-size blocks chained per price level.</span></th>
     </tr>
@@ -102,7 +103,7 @@
     <tr>
       <td class="criterion">Placement allocation</td>
       <td class="ok">New levels or vector growth can allocate.</td>
-      <td class="good">Pool-owned nodes can avoid per-order heap allocation.</td>
+      <td class="good">A shared pool removes per-order heap allocation after warm-up and reuses slots across symbols.</td>
       <td class="bad">Safe operation depends on capacity assumptions.</td>
       <td class="good">A block pool can bound allocation.</td>
     </tr>
@@ -112,6 +113,13 @@
       <td class="good">Creates levels only when prices appear.</td>
       <td class="bad">Reservation either overallocates or risks overflow.</td>
       <td class="ok">Works if the block pool is sized for total active depth.</td>
+    </tr>
+    <tr>
+      <td class="criterion">Top-of-book aggregate</td>
+      <td class="ok">Reads the front level, then sums the level.</td>
+      <td class="good">Maintained per-level totals make the aggregate a single read.</td>
+      <td class="ok">Needs active-quantity accounting beside tombstones.</td>
+      <td class="ok">Needs aggregate accounting across blocks.</td>
     </tr>
     <tr>
       <td class="criterion">Sweep locality</td>
@@ -128,21 +136,21 @@
       <td class="bad">Needs iterator, block reclamation, and accounting tests.</td>
     </tr>
     <tr>
-      <td class="criterion">Iteration fit</td>
-      <td class="good">Best behavior-first step.</td>
-      <td class="good">Best optimized step.</td>
-      <td class="bad">Capacity assumptions make it a poor intermediate step.</td>
-      <td class="ok">A later candidate if sweep locality dominates.</td>
+      <td class="criterion">Operational fit</td>
+      <td class="bad">Loses on direct cancellation; rejected.</td>
+      <td class="good">Direct cancel, stable addresses, and bulk range erase on the flat-map front. Chosen.</td>
+      <td class="bad">Capacity assumptions conflict with sparse and unknown prices.</td>
+      <td class="ok">Held as a future candidate if sweep locality dominates.</td>
     </tr>
   </tbody>
 </table>
 
 <h2>Decision</h2>
 <p class="decision-body">
-  <b>Decision: A for the behavior-first iteration, then B for the optimized
-  iteration.</b> Sorted maps of vectors made the matching contract visible. The
-  optimized book uses pool-owned nodes and intrusive per-level lists so
-  cancellation is direct and resting order addresses stay stable.
+  <b>Decision: B.</b> <code>flat_map</code> side maps over intrusive-list price
+  levels of pool-owned nodes. Bulk range erase from <code>begin()</code> drives
+  the matching loop; one shared pool funds every book; an
+  <code>(client_id, cl_ord_id) -&gt; order_node*</code> index drives direct cancel.
 </p>
 </body>
 </html>

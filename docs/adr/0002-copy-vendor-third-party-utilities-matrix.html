@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>ADR-0002 companion: dependency management decision matrix</title>
+<title>ADR-0002 companion: dependency acquisition decision matrix</title>
 <style>
   :root {
     --bg: #fafaf7;
@@ -57,19 +57,24 @@
 </style>
 </head>
 <body>
-<h1>ADR-0002: dependency management <span class="sub">decision matrix</span></h1>
+<h1>ADR-0002: dependency acquisition <span class="sub">decision matrix</span></h1>
 <p class="lede">
-  Companion to ADR-0002. The project uses a small set of header-only utilities.
-  The decision is how those utility headers enter a self-contained C++ lab.
+  Companion to ADR-0002. Every third-party dependency in the build is in scope:
+  header-only utilities for the lab vocabulary and compiled libraries used by
+  domain code, tests, and benchmarks. The decision is which single mechanism
+  brings all of them into the build.
 </p>
 
 <div class="premises">
   <h2>Assumptions</h2>
   <ul>
-    <li><b>Utility size:</b> the dependencies are small header-only libraries.</li>
-    <li><b>Local setup:</b> a fresh checkout should configure and build without fetching project utility sources.</li>
-    <li><b>Audit trail:</b> copied bytes should carry origin, version, selected paths, and license text.</li>
-    <li><b>Project vocabulary:</b> domain code should consume utility concepts through <code>lab::</code> aliases where useful.</li>
+    <li><b>Vendor everything:</b> no third-party dependency comes from system packages.</li>
+    <li><b>Two source forms only:</b> public GitHub upstreams and code written in this repository. Binary drops, tarballs, raw URL fetches, and <code>find_package</code> fallbacks are out of scope.</li>
+    <li><b>Single source of truth:</b> dependency declarations should live where the build does, in CMake.</li>
+    <li><b>One mechanism:</b> a single acquisition path should cover both header-only utilities and compiled libraries.</li>
+    <li><b>Network at configure time:</b> the project does not promise an offline fresh-checkout experience.</li>
+    <li><b>Pins are explicit:</b> each dependency carries a release tag (when stable in practice) or a commit SHA.</li>
+    <li><b>Project vocabulary:</b> libraries of types are consumed through <code>lab::</code> re-exports; libraries of functions are consumed through their canonical upstream target.</li>
   </ul>
 </div>
 
@@ -77,63 +82,82 @@
   <thead>
     <tr>
       <th>Criterion</th>
-      <th>A. Copy-vendor <span class="opt-sub">Commit selected headers under <code>vendor/&lt;name&gt;/upstream/</code>.</span></th>
-      <th>B. Git submodules <span class="opt-sub">Track each upstream as a pinned submodule.</span></th>
-      <th>C. CMake <code>FetchContent</code> <span class="opt-sub">Fetch each upstream during configure.</span></th>
-      <th>D. <code>ExternalProject</code> <span class="opt-sub">Download and expose dependencies through external project steps.</span></th>
+      <th>A. CMake <code>FetchContent</code> <span class="opt-sub">Declare every dep in <code>vendor/CMakeLists.txt</code> and fetch from GitHub at configure time.</span></th>
+      <th>B. Copy-vendor <span class="opt-sub">Commit selected upstream bytes under <code>vendor/&lt;name&gt;/upstream/</code> with metadata files and a refresh script.</span></th>
+      <th>C. Git submodules <span class="opt-sub">Track each upstream as a pinned submodule under <code>vendor/</code>.</span></th>
+      <th>D. <code>ExternalProject</code> <span class="opt-sub">Drive download, configure, build, and install through <code>ExternalProject_Add</code>.</span></th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td class="criterion">Fresh checkout</td>
-      <td class="good">Headers are present immediately.</td>
-      <td class="ok">Needs recursive clone or submodule initialization.</td>
-      <td class="bad">First configure depends on network and cache state.</td>
-      <td class="bad">First build depends on external download steps.</td>
+      <td class="criterion">Single source of truth</td>
+      <td class="good">Pin and acquisition both live in CMake.</td>
+      <td class="bad">Pins live in metadata files driven by a shell script outside CMake.</td>
+      <td class="ok">Pins live in <code>.gitmodules</code>, separate from CMake.</td>
+      <td class="good">Acquisition lives in CMake.</td>
     </tr>
     <tr>
-      <td class="criterion">Reproducibility</td>
-      <td class="good">Exact built bytes are committed.</td>
-      <td class="ok">SHA is pinned, but source retrieval is external.</td>
-      <td class="ok">SHA can be pinned, but retrieval is external.</td>
-      <td class="ok">URL and SHA can be pinned, but retrieval is external.</td>
+      <td class="criterion">Handles both tiers</td>
+      <td class="good">Same declaration shape for header-only and compiled libraries.</td>
+      <td class="bad">Compiled libraries become committed buildable trees.</td>
+      <td class="ok">Works for both, but cold-clone setup degrades for compiled deps with submodules of their own.</td>
+      <td class="ok">Works for both, with extra plumbing for the header-only case.</td>
     </tr>
     <tr>
       <td class="criterion">Setup cost</td>
-      <td class="good">Copy headers, metadata, license, and one interface target.</td>
-      <td class="ok">Small, plus checkout discipline.</td>
-      <td class="ok">Small CMake blocks, plus fetch flags and cache behavior.</td>
-      <td class="bad">Too much machinery for header-only utilities.</td>
-    </tr>
-    <tr>
-      <td class="criterion">License review</td>
-      <td class="good">License text lives beside copied bytes.</td>
-      <td class="ok">License text is in the submodule checkout.</td>
-      <td class="ok">License text appears after fetch.</td>
-      <td class="ok">License text appears after download.</td>
+      <td class="good">One <code>FetchContent_Declare</code> block per dep, plus option flags for compiled libraries.</td>
+      <td class="bad">Per-dep metadata, sparse-checkout patterns, refresh script, and an <code>INTERFACE</code> wrapper to maintain.</td>
+      <td class="ok">One submodule per dep, plus recursive-clone discipline.</td>
+      <td class="bad">Download, configure, build, install, and include-export plumbing per dep.</td>
     </tr>
     <tr>
       <td class="criterion">Update ergonomics</td>
-      <td class="ok">Manual recopy and metadata update.</td>
+      <td class="good">Bump <code>GIT_TAG</code> in CMake; review the diff.</td>
+      <td class="bad">Run the refresh script, recopy bytes, update metadata, review the recopied tree.</td>
       <td class="good">Bump the gitlink SHA.</td>
-      <td class="good">Bump the fetched SHA.</td>
-      <td class="ok">Bump the external project URL or SHA.</td>
+      <td class="ok">Bump URL or SHA in the external project declaration.</td>
     </tr>
     <tr>
-      <td class="criterion">CMake complexity</td>
-      <td class="good">One <code>INTERFACE</code> target per utility.</td>
-      <td class="ok">Comparable, plus guards for uninitialized submodules.</td>
-      <td class="ok">Modern, but each dependency needs careful options.</td>
-      <td class="bad">Download, dependency-edge, and include-export plumbing.</td>
+      <td class="criterion">Repository size</td>
+      <td class="good">No third-party bytes committed.</td>
+      <td class="bad">Header-only trees are small; compiled-library trees inflate the repo.</td>
+      <td class="good">No third-party bytes committed.</td>
+      <td class="good">No third-party bytes committed.</td>
+    </tr>
+    <tr>
+      <td class="criterion">Reproducibility</td>
+      <td class="good">SHA or tag pin in CMake; cache populated at first configure.</td>
+      <td class="good">Exact bytes are committed.</td>
+      <td class="good">SHA pin is explicit.</td>
+      <td class="ok">URL and SHA can be pinned; consumption model is build-time.</td>
+    </tr>
+    <tr>
+      <td class="criterion">Audit trail</td>
+      <td class="ok">Pin and upstream URL are visible in CMake; <code>DEPENDENCIES.md</code> records the choice.</td>
+      <td class="good">Bytes plus license text live in the checkout.</td>
+      <td class="ok">License text lives in the submodule checkout.</td>
+      <td class="ok">License text appears after download.</td>
+    </tr>
+    <tr>
+      <td class="criterion">Consumption model</td>
+      <td class="good">In-tree targets (<code>fmt::fmt</code>, <code>Catch2::Catch2WithMain</code>) usable directly; <code>lab::</code> re-exports added where vocabulary needs hiding.</td>
+      <td class="ok">One <code>INTERFACE</code> target per dep; works only for header-only consumption.</td>
+      <td class="ok">Upstream <code>CMakeLists.txt</code> is added via <code>add_subdirectory</code>; submodule init must succeed first.</td>
+      <td class="bad">Targets are imported from build outputs; in-tree subdirectory model is lost.</td>
     </tr>
   </tbody>
 </table>
 
 <h2>Decision</h2>
 <p class="decision-body">
-  <b>Decision: A. Copy-vendor.</b> For small header-only utilities, committing
-  selected headers under <code>vendor/</code> gives the clearest clone, audit, and
-  build story. Manual updates are accepted because the utility set is small.
+  <b>Decision: A. CMake <code>FetchContent</code>.</b> It is the only mechanism
+  that expresses dependency acquisition entirely in CMake while handling both
+  header-only and compiled libraries with the same declaration shape. The
+  alternative that came closest -- a split with copy-vendor for header-only
+  utilities and <code>FetchContent</code> for compiled libraries -- was
+  rejected because maintaining a second acquisition system outside CMake
+  (refresh script, metadata files, committed <code>upstream/</code> trees) is
+  a larger cost than first-configure network use.
 </p>
 </body>
 </html>

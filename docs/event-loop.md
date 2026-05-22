@@ -19,8 +19,8 @@ work that has nowhere else to run.
 
 | Mechanism | Cardinality | Direction | Used by |
 |-----------|-------------|-----------|---------|
-| `post(closure)` | one producer, one consumer | producer thread to consumer thread | `application::wire_pipeline` to hand off `order_routing -> matching_engine` and `matching_engine -> market_data` events |
-| `add_poller(callback)` | many pollers per loop | in-thread, called every iteration | `application::wire_pipeline` registers a closure that calls `order_routing::runtime::session::poll()` on the input loop, so the asio `io_context` (or a kernel-bypass `poll()` tick) advances in line with posted work |
+| `post(closure)` | one producer, one consumer | producer thread to consumer thread | `application::wire_pipeline` to hand off `order_entry -> matching_engine` and `matching_engine -> market_data` events |
+| `add_poller(callback)` | many pollers per loop | in-thread, called every iteration | `application::wire_pipeline` registers a closure that calls `order_entry::runtime::session::poll()` on the input loop, so the asio `io_context` (or a kernel-bypass `poll()` tick) advances in line with posted work |
 
 `post` is `noexcept` and returns `void`. The blocking SPSC queue's
 `enqueue` only fails on allocation failure; recovery is not

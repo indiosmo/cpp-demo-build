@@ -45,7 +45,7 @@ domain depends on the public vocabularies of the domains it
 composes, rather than redeclaring parallel structs and paying for
 conversions on the hot path.
 
-For example: an inbound domain (`order_routing`) owns the request
+For example: an inbound domain (`order_entry`) owns the request
 vocabulary, an outbound domain (`market_data`) owns the message
 vocabulary, and a composition domain in the middle (`matching_engine`)
 consumes the former and emits the latter. The two peer domains do
@@ -57,7 +57,7 @@ Push validation into the compiler wherever the type system can
 express it.
 
 - Primitives that can be confused with each other become strong
-  types -- `order_routing::user_id` and `user_order_id` are both
+  types -- `order_entry::client_id` and `cl_ord_id` are both
   backed by `std::uint64_t` but are distinct types. A function that
   takes them in the wrong order fails to compile.
 - Closed sets of alternatives become `enum class` switches with no

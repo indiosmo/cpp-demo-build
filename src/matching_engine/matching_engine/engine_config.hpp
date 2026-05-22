@@ -1,7 +1,7 @@
 #ifndef MATCHING_ENGINE_ENGINE_CONFIG_HPP
 #define MATCHING_ENGINE_ENGINE_CONFIG_HPP
 
-#include "order_routing/types.hpp"
+#include "order_entry/types.hpp"
 
 #include <cstddef>
 #include <vector>
@@ -19,7 +19,7 @@ namespace matching_engine {
 
 struct engine_config
 {
-  std::vector<order_routing::types::symbol> valid_symbols;
+  std::vector<order_entry::types::symbol> valid_symbols;
   std::size_t expected_resting_orders;
   std::size_t node_pool_chunk_size;
 };

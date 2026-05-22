@@ -72,8 +72,8 @@ matching-engine-lab/
       lab/*.hpp
       libs/<component>/
       src/*.cpp
-    order_routing/
-      order_routing/*.hpp
+    order_entry/
+      order_entry/*.hpp
       src/*.cpp
     order_client/
       order_client/*.hpp

@@ -1,8 +1,8 @@
-#ifndef ORDER_ROUTING_ERRORS_HPP
-#define ORDER_ROUTING_ERRORS_HPP
+#ifndef ORDER_ENTRY_ERRORS_HPP
+#define ORDER_ENTRY_ERRORS_HPP
 
-#include "order_routing/error_code.hpp"
-#include "order_routing/types.hpp"
+#include "order_entry/error_code.hpp"
+#include "order_entry/types.hpp"
 
 #include "lab/fmt.hpp"
 
@@ -10,12 +10,12 @@
 #include <system_error>
 
 /*
- * Structured error payloads for order_routing request failures. Each
+ * Structured error payloads for order_entry request failures. Each
  * struct satisfies lab::ErrorData so it travels through boost::leaf;
  * session.cpp dispatches on the concrete type via lab::match_error<T>.
  */
 
-namespace order_routing::errors {
+namespace order_entry::errors {
 
 struct invalid_field
 {
@@ -24,7 +24,7 @@ struct invalid_field
 
   std::error_code error_code() const
   {
-    return order_routing::error_code::invalid_field;
+    return order_entry::error_code::invalid_field;
   }
 
   std::string what() const
@@ -39,7 +39,7 @@ struct missing_field
 
   std::error_code error_code() const
   {
-    return order_routing::error_code::missing_field;
+    return order_entry::error_code::missing_field;
   }
 
   std::string what() const
@@ -50,17 +50,17 @@ struct missing_field
 
 struct unknown_order
 {
-  order_routing::types::user_id user;
-  order_routing::types::user_order_id order_id;
+  order_entry::types::client_id client_id;
+  order_entry::types::orig_cl_ord_id orig_cl_ord_id;
 
   std::error_code error_code() const
   {
-    return order_routing::error_code::unknown_order;
+    return order_entry::error_code::unknown_order;
   }
 
   std::string what() const
   {
-    return fmt::format("user={} user_order_id={}", user, order_id);
+    return fmt::format("client_id={} orig_cl_ord_id={}", client_id, orig_cl_ord_id);
   }
 };
 
@@ -70,7 +70,7 @@ struct parser_error
 
   std::error_code error_code() const
   {
-    return order_routing::error_code::parser_error;
+    return order_entry::error_code::parser_error;
   }
 
   std::string what() const
@@ -79,6 +79,6 @@ struct parser_error
   }
 };
 
-} // namespace order_routing::errors
+} // namespace order_entry::errors
 
-#endif /* ORDER_ROUTING_ERRORS_HPP */
+#endif /* ORDER_ENTRY_ERRORS_HPP */

@@ -42,9 +42,10 @@ of the take-home. That frame should be removed or rewritten.
   docs, and examples in conventional locations.
 - Project identity based on `matching-engine-lab`, with `lab` as the internal
   utility namespace.
-- A server application that receives UDP order commands and publishes market
-  data.
-- A client library and command-line app that can send orders to the server.
+- A server application that receives UDP JSON order-entry requests and publishes
+  JSON order-entry responses and market data.
+- A client library and command-line app that can send JSON order-entry requests
+  to the server, decode responses, and consume market-data messages.
 - An optional compose stack that runs the client and server as the complete
   local demo environment.
 - Unit tests and local demo commands that demonstrate behavior without reading
@@ -65,6 +66,9 @@ Every implementation plan for this reframe should pass these checks:
   novelty alone.
 - It follows `docs/lab-guidelines/` when choosing helper names, result
   handling shape, test layout, and debugging tooling.
+- It treats JSON as the portfolio wire format: typed domain values own the
+  model, and concrete codecs own encoding and decoding at client and server
+  boundaries.
 - It makes the project easier for an outside engineer to clone, build, run,
   inspect, and discuss.
 - It favors ordinary project workflows over assessment workflows.

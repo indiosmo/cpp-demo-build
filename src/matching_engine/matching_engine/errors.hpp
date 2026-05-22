@@ -2,7 +2,7 @@
 #define MATCHING_ENGINE_ERRORS_HPP
 
 #include "matching_engine/error_code.hpp"
-#include "order_routing/types.hpp"
+#include "order_entry/types.hpp"
 
 #include "lab/fmt.hpp"
 
@@ -20,8 +20,8 @@ namespace matching_engine::errors {
 
 struct duplicate_order
 {
-  order_routing::types::user_id user;
-  order_routing::types::user_order_id order_id;
+  order_entry::types::client_id client_id;
+  order_entry::types::cl_ord_id cl_ord_id;
 
   std::error_code error_code() const
   {
@@ -30,13 +30,13 @@ struct duplicate_order
 
   std::string what() const
   {
-    return fmt::format("user={} order_id={}", user, order_id);
+    return fmt::format("client_id={} cl_ord_id={}", client_id, cl_ord_id);
   }
 };
 
 struct unknown_symbol
 {
-  order_routing::types::symbol instrument;
+  order_entry::types::symbol symbol;
 
   std::error_code error_code() const
   {
@@ -45,7 +45,7 @@ struct unknown_symbol
 
   std::string what() const
   {
-    return fmt::format("instrument={}", instrument);
+    return fmt::format("symbol={}", symbol);
   }
 };
 

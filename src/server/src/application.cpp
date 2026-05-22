@@ -1,7 +1,7 @@
 #include "server/application.hpp"
 
 #include "market_data/messages.hpp"
-#include "order_routing/messages.hpp"
+#include "order_entry/messages.hpp"
 
 #include "lab/error_code.hpp"
 #include "lab/log.hpp"
@@ -33,18 +33,19 @@ void application::configure_logger()
 void application::wire_pipeline()
 {
   // input loop -> processing loop hop.
-  order_routing_.on_request = [this](const order_routing::request& req) {
+  order_entry_.on_request = [this](const order_entry::request& req) {
     processing_loop_.post([this, req] { engine_.send(req); });
   };
 
-  order_routing_.on_rejected = [](const order_routing::rejection& rej) {
+  order_entry_.on_rejected = [](const order_entry::rejection& rej) {
     LAB_LOG_WARN("rejected input: {} | {}", rej.raw_payload, rej.reason);
   };
 
   // processing loop -> output loop hop.
-  engine_.on_event = [this](const market_data::message& ev) { output_loop_.post([this, ev] { publisher_.send(ev); }); };
+  engine_.on_market_data = [this](const market_data::message& ev) { output_loop_.post([this, ev] { publisher_.send(ev); }); };
+  engine_.on_order_entry = [](const order_entry::event&) {};
 
-  input_loop_.add_poller([this] { return order_routing_.poll(); });
+  input_loop_.add_poller([this] { return order_entry_.poll(); });
 }
 
 lab::result<void> application::start()
@@ -57,11 +58,11 @@ lab::result<void> application::start()
 
   // Only one of the receiver backends needs the shared io_context.
   lab::match(
-    config_.order_routing.receiver,
-    [this](const order_routing::runtime::asio_udp_receiver_config&) { io_context_.emplace(); },
-    [](const order_routing::runtime::ef_vi_udp_receiver_config&) {});
+    config_.order_entry.receiver,
+    [this](const order_entry::runtime::asio_udp_receiver_config&) { io_context_.emplace(); },
+    [](const order_entry::runtime::ef_vi_udp_receiver_config&) {});
 
-  LAB_LEAF_CHECK(order_routing_.setup(config_.order_routing, io_context_ ? &*io_context_ : nullptr));
+  LAB_LEAF_CHECK(order_entry_.setup(config_.order_entry, io_context_ ? &*io_context_ : nullptr));
   LAB_LEAF_CHECK(engine_.setup(config_.matching_engine));
   LAB_LEAF_CHECK(publisher_.setup(config_.market_data));
 
@@ -69,7 +70,7 @@ lab::result<void> application::start()
 
   // Bind the socket before any thread starts so failures surface before
   // stdout sees any record.
-  LAB_LEAF_CHECK(order_routing_.start());
+  LAB_LEAF_CHECK(order_entry_.start());
 
   // Outbound-to-inbound: each consumer is live before its producer can post.
   LAB_LEAF_CHECK(output_loop_.start());
@@ -97,7 +98,7 @@ void application::stop()
 
   LAB_LOG_INFO("application stopping");
 
-  order_routing_.stop();
+  order_entry_.stop();
   input_loop_.stop();
   input_loop_.join();
 

@@ -1,6 +1,6 @@
 #include "order_client/client.hpp"
-#include "order_routing/csv_decoder.hpp"
-#include "order_routing/messages.hpp"
+#include "order_entry/csv_decoder.hpp"
+#include "order_entry/messages.hpp"
 
 #include "lab/error.hpp"
 #include "lab/error_code.hpp"
@@ -82,7 +82,7 @@ lab::result<cli_options> parse_arguments(int argc, char** argv)
 
 lab::result<void> send_commands(std::istream& input, order_client::client& client)
 {
-  order_routing::csv_decoder decoder;
+  order_entry::csv_decoder decoder;
 
   for (std::string line; std::getline(input, line);) {
     if (line.empty()) {

@@ -52,7 +52,7 @@ the index holds the same addresses from a second direction.
   by a shallow book is immediately available to a deep one, so
   resident memory tracks total resting count rather than the sum of
   per-symbol caps.
-- **`resting_index_`** -- the single `(user, user_order_id)` ->
+- **`resting_index_`** -- the single `(client_id, cl_ord_id)` ->
   `order_node*` map. Cancel resolves to a node in one hop; new
   orders consult it for duplicate detection. Cross-symbol uniqueness
   is a protocol invariant, so the index is engine-wide rather than

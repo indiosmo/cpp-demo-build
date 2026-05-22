@@ -4,16 +4,16 @@ Component-level measurements for `matching_engine::engine`. These sit
 one layer above the [order_book microbenchmarks](../order_book/):
 every operation goes through the engine's variant dispatch, the
 per-symbol book lookup, the cross-symbol `resting_index_` map, and
-any `top_of_book` emit the wire contract triggers.
+any `mbo_book_update` emit the wire contract triggers.
 
 **Headline.** A cancel costs ~85 ns and is essentially the same
-whether it emits a `top_of_book` (cancel at the best bid, 82 ns/op)
+whether it emits a `mbo_book_update` (cancel at the best bid, 82 ns/op)
 or skips the emit (cancel at the deepest bid, 87 ns/op) -- the
 level walk under the emit is small relative to the rest of the
 cancel path. A place + cancel round-trip costs 170 ns at the seeded
 depth. The matching loop runs at ~23 ns per consumed order on a
 wide cross. The raw place path (no fill) costs ~176 ns/place
-including the post-place `top_of_book` emit.
+including the post-place `mbo_book_update` emit.
 
 ## What each benchmark measures
 
@@ -24,10 +24,10 @@ start from the same canonical book.
 
 | Benchmark                  | Probes                                                       | Why the shape matters                                                                                                                                                                              |
 | -------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `BM_PlaceLimitNoFill`      | Place at the existing best bid, no cross                     | Full `new_order` path including the post-place `top_of_book` emit and its level walk. The placement-side counterpart to the cancel-at-top measurement.                                             |
+| `BM_PlaceLimitNoFill`      | Place at the existing best bid, no cross                     | Full `new_order_single` path including the post-place `mbo_book_update` emit and its level walk. The placement-side counterpart to the cancel-at-top measurement.                                             |
 | `BM_PlaceCancelRoundTrip`  | Place + cancel pair at the seeded best bid, both timed       | The shape a market maker pays on every quote refresh. Per-iteration cost is the round-trip cost directly.                                                                                          |
-| `BM_CancelAtTopOfBook`     | Cancel at the best bid level                                 | `top_before == best_bid`, so the engine emits a `top_of_book` whose total walks the surviving level. The cancel hot path top-of-book churn pays.                                                  |
-| `BM_CancelDeepInBook`      | Cancel at the deepest seeded bid level                       | The cancelled price never matches `best_bid`, so the engine skips the TOB emit. The engine's minimum-cost cancel; paired with the row above, isolates the cost of the emit and its level walk.    |
+| `BM_CancelAtTopOfBook`     | Cancel at the best bid level                                 | `top_before == best_bid`, so the engine emits a `mbo_book_update` whose total walks the surviving level. The cancel hot path book-update churn pays.                                                  |
+| `BM_CancelDeepInBook`      | Cancel at the deepest seeded bid level                       | The cancelled price never matches `best_bid`, so the engine skips the book-update emit. The engine's minimum-cost cancel; paired with the row above, isolates the cost of the emit and its level walk.    |
 | `BM_CrossManyOrders`       | One marketable buy that consumes ~200 asks across whole levels | The matching loop -- `best_ask` -> `top_ask_front` -> trade -> `fill_top_ask_front` -- is the engine's tightest hot path. Per-trade cost dominates the iteration.                                |
 
 The cancel and cross benchmarks use the Setup-per-repetition pattern
@@ -65,7 +65,7 @@ the spread across the 30 repetitions.
 | `BM_CrossManyOrders`       |     4,900 ns        | ~23 ns per consumed order  |  42.9 M |
 
 The two cancel benchmarks land within ~5 ns of each other, which
-puts the cost of the post-cancel `top_of_book` emit and its level
+puts the cost of the post-cancel `mbo_book_update` emit and its level
 walk in the noise band of the cancel itself.
 
 ## How to reproduce

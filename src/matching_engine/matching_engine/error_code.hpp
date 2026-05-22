@@ -8,7 +8,7 @@
 /*
  * Engine failure taxonomy for the matching_engine domain. Numeric range
  * 202xxx identifies codes from this domain without the category name
- * (lab:: utilities use 101xxx, order_routing uses 201xxx).
+ * (lab:: utilities use 101xxx, order_entry uses 201xxx).
  */
 
 namespace matching_engine {

@@ -4,7 +4,7 @@
 #include "boost/container/flat_map.hpp"
 #include "boost/intrusive/list.hpp"
 #include "matching_engine/v3/order_node.hpp"
-#include "order_routing/types.hpp"
+#include "order_entry/types.hpp"
 
 #include "lab/assert.hpp"
 
@@ -34,12 +34,12 @@ using orders_list = boost::intrusive::list<order_node>;
  * Per-price-level storage: the FIFO of resting orders plus a running
  * total of their remaining quantity. The total is maintained at every
  * mutation point so total_at_best() is a single read instead of a walk
- * of the level (it is called on every top_of_book emission).
+ * of the level (it is called on every mbo_book_update emission).
  */
 struct price_level
 {
   orders_list orders;
-  order_routing::types::quantity total_remaining{0};
+  order_entry::types::quantity total_remaining{0};
 };
 
 /*
@@ -49,8 +49,8 @@ struct price_level
  */
 struct level_snapshot
 {
-  order_routing::types::price price;
-  order_routing::types::quantity total_quantity;
+  order_entry::types::price price;
+  order_entry::types::quantity total_quantity;
 };
 
 namespace detail {
@@ -59,13 +59,13 @@ template <template <class...> class SideMap>
 class basic_order_book
 {
 public:
-  using bids_map = SideMap<order_routing::types::price, price_level, std::greater<>>;
-  using asks_map = SideMap<order_routing::types::price, price_level, std::less<>>;
+  using bids_map = SideMap<order_entry::types::price, price_level, std::greater<>>;
+  using asks_map = SideMap<order_entry::types::price, price_level, std::less<>>;
 
   // The two sides differ only in comparator; lock that in so they cannot
   // drift on either key type or per-level storage.
-  static_assert(std::is_same_v<typename bids_map::key_type, order_routing::types::price>);
-  static_assert(std::is_same_v<typename asks_map::key_type, order_routing::types::price>);
+  static_assert(std::is_same_v<typename bids_map::key_type, order_entry::types::price>);
+  static_assert(std::is_same_v<typename asks_map::key_type, order_entry::types::price>);
   static_assert(std::is_same_v<typename bids_map::mapped_type, price_level>);
   static_assert(std::is_same_v<typename asks_map::mapped_type, price_level>);
 
@@ -89,12 +89,12 @@ public:
   {
     LAB_ASSERT(node != nullptr);
 
-    switch (node->data.order_side) {
-      case order_routing::types::side::buy:
+    switch (node->data.side) {
+      case order_entry::types::side::buy:
         place_into(bids_, node);
         break;
 
-      case order_routing::types::side::sell:
+      case order_entry::types::side::sell:
         place_into(asks_, node);
         break;
     }
@@ -104,33 +104,33 @@ public:
   {
     LAB_ASSERT(node != nullptr);
 
-    switch (node->data.order_side) {
-      case order_routing::types::side::buy:
+    switch (node->data.side) {
+      case order_entry::types::side::buy:
         cancel_from(bids_, node);
         break;
 
-      case order_routing::types::side::sell:
+      case order_entry::types::side::sell:
         cancel_from(asks_, node);
         break;
     }
   }
 
-  [[nodiscard]] std::optional<order_routing::types::price> best_bid() const
+  [[nodiscard]] std::optional<order_entry::types::price> best_bid() const
   {
     return best_price(bids_);
   }
 
-  [[nodiscard]] std::optional<order_routing::types::price> best_ask() const
+  [[nodiscard]] std::optional<order_entry::types::price> best_ask() const
   {
     return best_price(asks_);
   }
 
-  [[nodiscard]] std::optional<order_routing::types::quantity> total_at_best_bid() const
+  [[nodiscard]] std::optional<order_entry::types::quantity> total_at_best_bid() const
   {
     return total_at_best(bids_);
   }
 
-  [[nodiscard]] std::optional<order_routing::types::quantity> total_at_best_ask() const
+  [[nodiscard]] std::optional<order_entry::types::quantity> total_at_best_ask() const
   {
     return total_at_best(asks_);
   }
@@ -140,14 +140,14 @@ public:
    * type, so a single side_map(side) returning a common reference is
    * not expressible; the two-arm ternary keeps the dispatch local.
    */
-  [[nodiscard]] std::optional<order_routing::types::price> best(order_routing::types::side s) const
+  [[nodiscard]] std::optional<order_entry::types::price> best(order_entry::types::side s) const
   {
-    return s == order_routing::types::side::buy ? best_bid() : best_ask();
+    return s == order_entry::types::side::buy ? best_bid() : best_ask();
   }
 
-  [[nodiscard]] std::optional<level_snapshot> best_level(order_routing::types::side s) const
+  [[nodiscard]] std::optional<level_snapshot> best_level(order_entry::types::side s) const
   {
-    return s == order_routing::types::side::buy ? best_level_of(bids_) : best_level_of(asks_);
+    return s == order_entry::types::side::buy ? best_level_of(bids_) : best_level_of(asks_);
   }
 
   // clang-format off
@@ -166,22 +166,22 @@ private:
   {
     // append to the price level's FIFO (creating the level on first sight)
     // and bump its running total.
-    auto& level = side_map[node->data.limit_price];
+    auto& level = side_map[node->data.price];
     level.orders.push_back(*node);
-    level.total_remaining += node->data.remaining_quantity;
+    level.total_remaining += node->data.leaves_qty;
   }
 
   template <typename Side>
   static void cancel_from(Side& side_map, order_node* node)
   {
-    const auto level_it = side_map.find(node->data.limit_price);
+    const auto level_it = side_map.find(node->data.price);
     LAB_ASSERT(level_it != side_map.end());
 
     // Single-order cancel after the engine has located one resting node in
     // its identity index; not invoked while match() iterates the side map,
     // so erasing the just-emptied level here is iterator-safe.
     auto& level = level_it->second;
-    level.total_remaining -= node->data.remaining_quantity;
+    level.total_remaining -= node->data.leaves_qty;
     level.orders.erase(level.orders.iterator_to(*node));
     if (level.orders.empty()) {
       side_map.erase(level_it);
@@ -189,7 +189,7 @@ private:
   }
 
   template <typename Side>
-  static std::optional<order_routing::types::price> best_price(const Side& side_map)
+  static std::optional<order_entry::types::price> best_price(const Side& side_map)
   {
     if (!side_map.empty()) {
       return side_map.begin()->first;
@@ -199,7 +199,7 @@ private:
   }
 
   template <typename Side>
-  static std::optional<order_routing::types::quantity> total_at_best(const Side& side_map)
+  static std::optional<order_entry::types::quantity> total_at_best(const Side& side_map)
   {
     if (!side_map.empty()) {
       return side_map.begin()->second.total_remaining;

@@ -1,5 +1,5 @@
 add_subdirectory(lab)
-add_subdirectory(order_routing)
+add_subdirectory(order_entry)
 add_subdirectory(order_client)
 add_subdirectory(market_data)
 add_subdirectory(matching_engine)

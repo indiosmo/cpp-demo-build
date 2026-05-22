@@ -1,8 +1,8 @@
-#ifndef ORDER_ROUTING_SESSION_HPP
-#define ORDER_ROUTING_SESSION_HPP
+#ifndef ORDER_ENTRY_SESSION_HPP
+#define ORDER_ENTRY_SESSION_HPP
 
-#include "order_routing/decoder.hpp"
-#include "order_routing/messages.hpp"
+#include "order_entry/decoder.hpp"
+#include "order_entry/messages.hpp"
 
 #include "lab/inplace_function.hpp"
 
@@ -15,7 +15,7 @@
  * before the first send().
  */
 
-namespace order_routing {
+namespace order_entry {
 
 class session
 {
@@ -31,6 +31,6 @@ private:
   const decoder* decoder_;
 };
 
-} // namespace order_routing
+} // namespace order_entry
 
-#endif /* ORDER_ROUTING_SESSION_HPP */
+#endif /* ORDER_ENTRY_SESSION_HPP */

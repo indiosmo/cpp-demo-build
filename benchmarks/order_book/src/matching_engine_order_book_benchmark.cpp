@@ -1,7 +1,7 @@
 #include "boost/pool/pool.hpp"
 #include "matching_engine/order_book.hpp"
 #include "matching_engine/order_state.hpp"
-#include "order_routing/types.hpp"
+#include "order_entry/types.hpp"
 
 #include <algorithm>
 #include <benchmark/benchmark.h>
@@ -37,15 +37,15 @@
 namespace {
 
 namespace me = matching_engine;
-namespace rt = order_routing;
+namespace rt = order_entry;
 
 constexpr std::size_t heavy_levels = 512;
 constexpr std::size_t heavy_orders_per_level = 64;
 constexpr std::size_t max_grow_depth = 1024;
 
 constexpr std::uint64_t base_price = 100;
-constexpr std::uint64_t order_quantity = 10;
-constexpr rt::types::user_id benchmark_user{7};
+constexpr std::uint64_t order_qty = 10;
+constexpr rt::types::client_id benchmark_user{7};
 
 // Fresh ids for benchmark-owned orders live well above the heavy seed range
 // (max heavy id = 512 * 64 = 32,768) so they never collide with seeded ids.
@@ -55,6 +55,8 @@ constexpr std::size_t pool_warmup_factor = 4;
 constexpr std::size_t pool_chunk_size = pool_warmup_factor * max_grow_depth;
 
 const rt::types::symbol benchmark_symbol{"BENCH"};
+const rt::types::security_id benchmark_security_id{1};
+const rt::types::security_exchange benchmark_exchange{"BVMF"};
 
 constexpr std::uint64_t bid_price_at(std::size_t index, std::size_t level_count)
 {
@@ -66,15 +68,20 @@ constexpr std::uint64_t ask_price_at(std::size_t index)
   return base_price + (2 * (index + 1));
 }
 
-me::order_state make_order_state(rt::types::user_order_id order_id, rt::types::side order_side, rt::types::price limit_price)
+me::order_state make_order_state(rt::types::cl_ord_id cl_ord_id, rt::types::side side, rt::types::price price)
 {
   return me::order_state{
-    .user = benchmark_user,
-    .order_id = order_id,
-    .instrument = benchmark_symbol,
-    .order_side = order_side,
-    .limit_price = limit_price,
-    .remaining_quantity = rt::types::quantity{order_quantity},
+    .client_id = benchmark_user,
+    .cl_ord_id = cl_ord_id,
+    .security_id = benchmark_security_id,
+    .symbol = benchmark_symbol,
+    .security_exchange = benchmark_exchange,
+    .side = side,
+    .ord_type = rt::types::ord_type::limit,
+    .time_in_force = rt::types::time_in_force::day,
+    .price = price,
+    .order_qty = rt::types::quantity{order_qty},
+    .leaves_qty = rt::types::quantity{order_qty},
   };
 }
 
@@ -147,7 +154,7 @@ void seed_bid_book(book_fixture& fixture, std::size_t level_count, std::size_t o
   for (std::size_t level_index = 0; level_index < level_count; ++level_index) {
     const rt::types::price level_price{bid_price_at(level_index, level_count)};
     for (std::size_t i = 0; i < orders_per_level; ++i) {
-      auto* node = fixture.place(make_order_state(rt::types::user_order_id{next_order_id++}, rt::types::side::buy, level_price));
+      auto* node = fixture.place(make_order_state(rt::types::cl_ord_id{next_order_id++}, rt::types::side::buy, level_price));
       benchmark::DoNotOptimize(node);
     }
   }
@@ -159,7 +166,7 @@ void seed_ask_book(book_fixture& fixture, std::size_t level_count, std::size_t o
   for (std::size_t level_index = 0; level_index < level_count; ++level_index) {
     const rt::types::price level_price{ask_price_at(level_index)};
     for (std::size_t i = 0; i < orders_per_level; ++i) {
-      auto* node = fixture.place(make_order_state(rt::types::user_order_id{next_order_id++}, rt::types::side::sell, level_price));
+      auto* node = fixture.place(make_order_state(rt::types::cl_ord_id{next_order_id++}, rt::types::side::sell, level_price));
       benchmark::DoNotOptimize(node);
     }
   }
@@ -201,7 +208,7 @@ void setup_place_existing(const benchmark::State&)
   fixture.places.clear();
   fixture.places.reserve(place_iterations_per_repetition);
   for (std::size_t i = 0; i < place_iterations_per_repetition; ++i) {
-    fixture.places.push_back(make_order_state(rt::types::user_order_id{fresh_id_base + i}, rt::types::side::buy, target_price));
+    fixture.places.push_back(make_order_state(rt::types::cl_ord_id{fresh_id_base + i}, rt::types::side::buy, target_price));
   }
 }
 
@@ -234,7 +241,7 @@ void setup_place_new(const benchmark::State&)
   fixture.places.reserve(place_iterations_per_repetition);
   for (std::size_t i = 0; i < place_iterations_per_repetition; ++i) {
     const rt::types::price fresh_price{deepest_seeded - 2 * (i + 1)};
-    fixture.places.push_back(make_order_state(rt::types::user_order_id{fresh_id_base + i}, rt::types::side::buy, fresh_price));
+    fixture.places.push_back(make_order_state(rt::types::cl_ord_id{fresh_id_base + i}, rt::types::side::buy, fresh_price));
   }
 }
 
@@ -275,7 +282,7 @@ void prepare_growing_level(std::size_t depth)
   fixture.places.clear();
   fixture.places.reserve(depth);
   for (std::size_t i = 0; i < depth; ++i) {
-    fixture.places.push_back(make_order_state(rt::types::user_order_id{i + 1}, rt::types::side::buy, target_price));
+    fixture.places.push_back(make_order_state(rt::types::cl_ord_id{i + 1}, rt::types::side::buy, target_price));
   }
 
   // Warmup pass: cycle the entire planned workload through the book once, then
@@ -337,7 +344,7 @@ void setup_cancel_deep_level(const benchmark::State&)
   fixture.targets.reserve(cancel_iterations_per_repetition);
   for (std::size_t i = 0; i < cancel_iterations_per_repetition; ++i) {
     auto* node =
-      fixture.book->place(make_order_state(rt::types::user_order_id{fresh_id_base + i}, rt::types::side::buy, target_price));
+      fixture.book->place(make_order_state(rt::types::cl_ord_id{fresh_id_base + i}, rt::types::side::buy, target_price));
     fixture.targets.push_back(node);
   }
 }
@@ -370,7 +377,7 @@ void prepare_draining_level(std::size_t depth)
   fixture.targets.clear();
   fixture.targets.reserve(depth);
   for (std::size_t i = 0; i < depth; ++i) {
-    auto* node = fixture.book->place(make_order_state(rt::types::user_order_id{i + 1}, rt::types::side::buy, target_price));
+    auto* node = fixture.book->place(make_order_state(rt::types::cl_ord_id{i + 1}, rt::types::side::buy, target_price));
     fixture.targets.push_back(node);
   }
 }
@@ -400,7 +407,7 @@ void BM_TraverseThreePrices(benchmark::State& state)
   book_fixture fixture;
   seed_ask_book(fixture, heavy_levels, heavy_orders_per_level);
 
-  const std::uint64_t incoming_quantity = 3 * heavy_orders_per_level * order_quantity;
+  const std::uint64_t incoming_quantity = 3 * heavy_orders_per_level * order_qty;
 
   for (auto _ : state) {
     std::uint64_t remaining = incoming_quantity;
@@ -413,9 +420,9 @@ void BM_TraverseThreePrices(benchmark::State& state)
 
       checksum += level_price;
       for (const auto& node : level.orders) {
-        const std::uint64_t fill = std::min(remaining, node.data.remaining_quantity.get());
+        const std::uint64_t fill = std::min(remaining, node.data.leaves_qty.get());
         remaining -= fill;
-        checksum += node.data.order_id + fill;
+        checksum += node.data.cl_ord_id + fill;
 
         if (remaining == 0) {
           break;
@@ -436,7 +443,7 @@ void BM_LookupByPrice(benchmark::State& state)
 
   for (std::size_t i = 0; i < n; ++i) {
     auto* node = fixture.place(
-      make_order_state(rt::types::user_order_id{i + 1}, rt::types::side::buy, rt::types::price{base_price + 2 * i}));
+      make_order_state(rt::types::cl_ord_id{i + 1}, rt::types::side::buy, rt::types::price{base_price + 2 * i}));
     benchmark::DoNotOptimize(node);
   }
 
@@ -464,7 +471,7 @@ void BM_IterateFullSide(benchmark::State& state)
 
   for (std::size_t i = 0; i < n; ++i) {
     auto* node = fixture.place(
-      make_order_state(rt::types::user_order_id{i + 1}, rt::types::side::buy, rt::types::price{base_price + 2 * i}));
+      make_order_state(rt::types::cl_ord_id{i + 1}, rt::types::side::buy, rt::types::price{base_price + 2 * i}));
     benchmark::DoNotOptimize(node);
   }
 
@@ -472,7 +479,7 @@ void BM_IterateFullSide(benchmark::State& state)
     std::uint64_t checksum = 0;
     for (const auto& [price, level] : fixture.book.bids()) {
       checksum += price;
-      checksum += level.orders.front().data.remaining_quantity;
+      checksum += level.orders.front().data.leaves_qty;
     }
     benchmark::DoNotOptimize(checksum);
   }

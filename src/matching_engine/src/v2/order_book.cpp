@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <new>
 
-namespace rt = order_routing;
+namespace rt = order_entry;
 
 namespace matching_engine::v2 {
 
@@ -56,13 +56,13 @@ order_node* order_book::place(const order_state& resting)
 {
   auto* node = allocate_node(resting);
 
-  switch (resting.order_side) {
+  switch (resting.side) {
     case rt::types::side::buy:
-      bids_[resting.limit_price].push_back(*node);
+      bids_[resting.price].push_back(*node);
       break;
 
     case rt::types::side::sell:
-      asks_[resting.limit_price].push_back(*node);
+      asks_[resting.price].push_back(*node);
       break;
   }
 
@@ -75,9 +75,9 @@ void order_book::cancel(order_node* handle)
 
   const order_state& resting = handle->data;
 
-  switch (resting.order_side) {
+  switch (resting.side) {
     case rt::types::side::buy: {
-      const auto level_it = bids_.find(resting.limit_price);
+      const auto level_it = bids_.find(resting.price);
       LAB_ASSERT(level_it != bids_.end());
       auto& level = level_it->second;
       level.erase(level.iterator_to(*handle));
@@ -88,7 +88,7 @@ void order_book::cancel(order_node* handle)
     }
 
     case rt::types::side::sell: {
-      const auto level_it = asks_.find(resting.limit_price);
+      const auto level_it = asks_.find(resting.price);
       LAB_ASSERT(level_it != asks_.end());
       auto& level = level_it->second;
       level.erase(level.iterator_to(*handle));
@@ -126,7 +126,7 @@ std::optional<rt::types::quantity> order_book::total_at_best_bid() const
 
   rt::types::quantity sum{0};
   for (const auto& node : bids_.begin()->second) {
-    sum += node.data.remaining_quantity;
+    sum += node.data.leaves_qty;
   }
   return sum;
 }
@@ -139,7 +139,7 @@ std::optional<rt::types::quantity> order_book::total_at_best_ask() const
 
   rt::types::quantity sum{0};
   for (const auto& node : asks_.begin()->second) {
-    sum += node.data.remaining_quantity;
+    sum += node.data.leaves_qty;
   }
   return sum;
 }
@@ -168,14 +168,14 @@ std::optional<types::order_key> order_book::fill_top_bid_front(rt::types::quanti
   LAB_ASSERT(!level.empty());
 
   auto& node = level.front();
-  LAB_ASSERT(fill <= node.data.remaining_quantity);
-  node.data.remaining_quantity -= fill;
+  LAB_ASSERT(fill <= node.data.leaves_qty);
+  node.data.leaves_qty -= fill;
 
-  if (node.data.remaining_quantity != 0) {
+  if (node.data.leaves_qty != 0) {
     return std::nullopt;
   }
 
-  const types::order_key consumed{.user = node.data.user, .order_id = node.data.order_id};
+  const types::order_key consumed{.client_id = node.data.client_id, .cl_ord_id = node.data.cl_ord_id};
   level.pop_front();
   release_node(&node);
   if (level.empty()) {
@@ -192,14 +192,14 @@ std::optional<types::order_key> order_book::fill_top_ask_front(rt::types::quanti
   LAB_ASSERT(!level.empty());
 
   auto& node = level.front();
-  LAB_ASSERT(fill <= node.data.remaining_quantity);
-  node.data.remaining_quantity -= fill;
+  LAB_ASSERT(fill <= node.data.leaves_qty);
+  node.data.leaves_qty -= fill;
 
-  if (node.data.remaining_quantity != 0) {
+  if (node.data.leaves_qty != 0) {
     return std::nullopt;
   }
 
-  const types::order_key consumed{.user = node.data.user, .order_id = node.data.order_id};
+  const types::order_key consumed{.client_id = node.data.client_id, .cl_ord_id = node.data.cl_ord_id};
   level.pop_front();
   release_node(&node);
   if (level.empty()) {

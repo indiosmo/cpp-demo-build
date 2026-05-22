@@ -6,7 +6,7 @@
 #include "boost/pool/pool.hpp"
 #include "matching_engine/order_state.hpp"
 #include "matching_engine/types.hpp"
-#include "order_routing/types.hpp"
+#include "order_entry/types.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -40,8 +40,8 @@ using level_list = boost::intrusive::list<order_node>;
 class order_book
 {
 public:
-  using bids_map = std::map<order_routing::types::price, level_list, std::greater<>>;
-  using asks_map = std::map<order_routing::types::price, level_list, std::less<>>;
+  using bids_map = std::map<order_entry::types::price, level_list, std::greater<>>;
+  using asks_map = std::map<order_entry::types::price, level_list, std::less<>>;
 
   /* Precondition: node_pool outlives this book. */
   explicit order_book(boost::pool<>& node_pool);
@@ -57,10 +57,10 @@ public:
 
   void cancel(order_node* handle);
 
-  [[nodiscard]] std::optional<order_routing::types::price> best_bid() const;
-  [[nodiscard]] std::optional<order_routing::types::price> best_ask() const;
-  [[nodiscard]] std::optional<order_routing::types::quantity> total_at_best_bid() const;
-  [[nodiscard]] std::optional<order_routing::types::quantity> total_at_best_ask() const;
+  [[nodiscard]] std::optional<order_entry::types::price> best_bid() const;
+  [[nodiscard]] std::optional<order_entry::types::price> best_ask() const;
+  [[nodiscard]] std::optional<order_entry::types::quantity> total_at_best_bid() const;
+  [[nodiscard]] std::optional<order_entry::types::quantity> total_at_best_ask() const;
 
   /* Precondition: corresponding side non-empty (LAB_ASSERTed). */
   [[nodiscard]] const order_state& top_bid_front() const;
@@ -69,10 +69,10 @@ public:
   /*
    * Reduces the top-of-side front by `fill`. Returns the consumed
    * order's key on full fill, nullopt otherwise.
-   * Precondition: fill <= front.remaining_quantity.
+   * Precondition: fill <= front.leaves_qty.
    */
-  std::optional<types::order_key> fill_top_bid_front(order_routing::types::quantity fill);
-  std::optional<types::order_key> fill_top_ask_front(order_routing::types::quantity fill);
+  std::optional<types::order_key> fill_top_bid_front(order_entry::types::quantity fill);
+  std::optional<types::order_key> fill_top_ask_front(order_entry::types::quantity fill);
 
   [[nodiscard]] const bids_map& bids() const
   {

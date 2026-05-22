@@ -1,142 +1,213 @@
-# 2. Copy-vendor third-party utility headers
+# 2. Vendor third-party code via CMake `FetchContent`
 
 **Status:** accepted
 
-**Date:** 2026-05-14
+**Date:** 2026-05-22
 
-**Companion:** comparative scoring across copy-vendor, git submodules, CMake
-`FetchContent`, and `ExternalProject` lives in
+**Companion:** comparative scoring across `FetchContent`, copy-vendor, git
+submodules, and `ExternalProject` lives in
 [`0002-copy-vendor-third-party-utilities-matrix.html`](0002-copy-vendor-third-party-utilities-matrix.html).
 
 ## Context and Problem Statement
 
-`matching-engine-lab` uses small header-only utilities for strong typedefs,
-fixed-capacity callbacks, expected-style value-or-error APIs, and SPSC queues.
-These utilities support the local C++ design rules without turning the project
-into a dependency-management showcase.
+`matching-engine-lab` depends on a small set of third-party libraries spanning
+two shapes: header-only utilities used for the lab vocabulary (strong typedefs,
+fixed-capacity callbacks, SPSC queues, decimal types) and compiled libraries
+used by domain code, tests, and benchmarks (`fmt`, `spdlog`, `Catch2`, Google
+Benchmark, and similar). Every third-party dependency in the build is in
+scope; nothing is taken from system packages.
 
-The repository should be easy to clone, configure, audit, and build in normal
-local environments, including restricted or intermittent network environments.
-The choice is how third-party utility headers reach the build: copy the sources
-into the tree, track them as submodules, fetch them with CMake, or wrap them in
-an external superproject.
+The repository should be easy to clone, configure, audit, and build. The
+choice is how third-party code reaches the build. The viable mechanisms differ
+both in what they handle (header-only vs. compiled) and in where the source of
+truth lives (CMake vs. an out-of-band tool).
+
+An earlier version of this ADR split the decision: copy-vendor for
+header-only utilities and `FetchContent` for compiled libraries. That split
+required two coexisting acquisition systems -- a CMake path for compiled deps
+and a shell-script-plus-metadata path (`scripts/vendor.sh`,
+`ORIGIN.txt`/`VERSION.txt`/`PATHS.txt`, committed `upstream/` trees) for
+header-only ones. Maintaining two systems is the cost; the benefit was
+offline fresh-checkout behavior for tiny headers, which is not a goal the
+project commits to.
 
 ## Decision Drivers
 
-- A fresh checkout should build against committed project utility sources.
-- The repository should carry the exact third-party bytes it builds against.
-- Setup cost should match the size of the dependencies: a few header-only
-  libraries with no upstream build systems.
-- License texts and origin metadata should travel with the copied headers.
-- CMake integration should look like the rest of the project: one `INTERFACE`
-  target per utility and one project-facing alias header where the dependency is
-  used through `lab::` vocabulary.
-- Updating a utility should be explicit and auditable.
+- One source of truth for dependency acquisition. CMake already drives the
+  build, so dependency declarations should live in CMake too.
+- Proportional machinery. A single declarative mechanism should handle both
+  header-only and compiled libraries without per-tier shell scripts or
+  committed upstream trees.
+- Two acceptable sources only: `FetchContent` from public GitHub, and code
+  written inside this repository. No system packages, no binary drops, no
+  tarball downloads, no `ExternalProject_Add`, no git submodules, no raw
+  `file(DOWNLOAD ...)` of source or CMake helpers, no `find_package`
+  fallbacks.
+- Reproducibility. Each dependency is pinned by an explicit, immutable
+  reference visible in CMake.
+- Auditable updates. Changing a dependency is a CMake diff against a public
+  upstream.
+- Local CMake boundary. Project modules see stable targets and -- where
+  warranted -- a thin `lab::` indirection over upstream types.
+- Online builds. Configure and build run with network access available; the
+  project does not promise an offline fresh-checkout experience.
 
 ## Considered Options
 
-1. **Copy-vendor.** Drop each upstream's public headers under
-   `vendor/<name>/upstream/`; commit origin, version, selected path, and license
-   metadata alongside them.
-2. **Git submodules.** Track each upstream as a submodule pinned by SHA.
-3. **CMake `FetchContent`.** Declare each dependency in CMake and fetch it at
-   configure time.
-4. **`ExternalProject` superproject.** Use CMake external projects to download,
-   configure, build, and expose dependencies to consumers.
+1. **CMake `FetchContent` for everything.** Declare every third-party
+   dependency in CMake under `vendor/CMakeLists.txt` with
+   `FetchContent_Declare` (`GIT_REPOSITORY` plus `GIT_TAG`) and
+   `FetchContent_MakeAvailable`.
+2. **Copy-vendor for everything.** Commit selected upstream sources under
+   `vendor/<name>/upstream/` with metadata files (`ORIGIN.txt`,
+   `VERSION.txt`, `PATHS.txt`), one `INTERFACE` library per dep, and a
+   refresh script.
+3. **Split: copy-vendor for header-only, `FetchContent` for compiled.** Use
+   committed bytes for header-only utilities and CMake-driven fetch for
+   compiled libraries.
+4. **Git submodules.** Track each upstream as a submodule pinned by SHA.
+5. **`ExternalProject` superproject.** Drive downloads, configure, build,
+   and install through `ExternalProject_Add`.
 
 ## Decision Outcome
 
-Chosen option: **copy-vendor**.
+Chosen option: **CMake `FetchContent` for everything**.
 
-The dependencies are small enough that committing their headers is cheaper than
-maintaining a fetching layer. Copy-vendor makes the checkout self-contained,
-keeps CMake simple, and leaves a clear audit trail from the copied bytes back to
-the upstream commit.
+`FetchContent` is the only mechanism in the four CMake supports that handles
+both header-only utilities and compiled libraries uniformly, expresses pins
+inside CMake, and avoids committing third-party trees into this repo. Picking
+it for both tiers removes the need for a parallel acquisition path
+(`scripts/vendor.sh` plus metadata files plus committed `upstream/`
+directories), which is the larger maintenance cost than first-configure
+network use.
 
-Submodules are rejected because they add a second checkout step and make cold
-clones easier to misconfigure. `FetchContent` is a good fit for larger projects
-with an update cadence, but each configure-time fetch adds network and cache
-state to a project that benefits from deterministic local setup. `ExternalProject`
-is useful for libraries with real build/install machinery; it is too heavy for
-header-only utility headers.
+Copy-vendor for everything is rejected because it requires committing
+buildable trees for compiled libraries (`fmt`, `Catch2`, Google Benchmark),
+which inflates the repository and turns updates into multi-step recopy
+operations driven by an out-of-band script. The split arrangement is rejected
+because it makes two acquisition systems coexist for marginal gain on
+header-only fresh-checkout behavior; the project does not need that gain. Git
+submodules are rejected because cold clones need explicit `--recurse-submodules`
+or follow-up `submodule update --init`, and review spans multiple repositories.
+`ExternalProject_Add` is rejected because it duplicates what `FetchContent`
+does with extra plumbing, runs at build time rather than configure time, and
+loses the in-tree consumption model.
 
 ### Mechanics
 
 Per dependency:
 
-1. Clone the upstream into a scratch directory and choose a tag or commit SHA.
-2. Copy the required public headers into `vendor/<name>/upstream/`.
-3. Keep the upstream license text with the copied bytes.
-4. Write `ORIGIN.txt`, `VERSION.txt`, and `PATHS.txt` under `vendor/<name>/`.
-5. Declare one `INTERFACE` library for the dependency in the vendor tree.
-6. Re-export the project-facing vocabulary through a `lab::` header under
-   `src/lab/lab/` when domain code should not include the upstream header
-   directly.
+1. Add a `FetchContent_Declare` block under `vendor/CMakeLists.txt` with
+   `GIT_REPOSITORY` pointing at the public GitHub upstream and `GIT_TAG`
+   set to either a release tag (when recent and immutable in practice) or
+   a commit SHA.
+2. Disable upstream tests, examples, docs, and install rules through the
+   library's own options before `FetchContent_MakeAvailable`.
+3. Call `FetchContent_MakeAvailable(<name>)`.
+4. Add a row to `DEPENDENCIES.md` recording the upstream, the chosen
+   target name, and the pin form.
+5. For libraries of types whose vocabulary should not leak into module
+   interfaces (for example `NamedType`-backed strong typedefs, a decimal
+   type), add a `lab::` re-export header under `src/lab/lab/` mapping
+   the upstream type to a project-vocabulary alias. Domain code includes
+   only the `lab::` header.
+6. For libraries of functions whose canonical target name is already
+   domain vocabulary (`fmt::fmt`, `Catch2::Catch2WithMain`,
+   `benchmark::benchmark`, `spdlog::spdlog`), no `lab::` wrapper is
+   added; consumers link the upstream target directly.
 
 ### Consequences
 
-- Fresh local builds do not need network access for project utility sources.
-- Reproducibility is direct: the exact bytes used by the build are committed.
-- License review is local because copied headers and license texts live
-  together.
-- Updates are manual. Bumping a utility means recopying selected headers,
-  updating metadata, and reviewing the diff.
-- Repository size grows by the vendored headers. The accepted cost is small for
-  the utility set used here.
+- A single mechanism governs every third-party dependency. There is no
+  shell script, no committed `upstream/` tree, no per-dep metadata
+  alongside CMake.
+- Pins are expressed in CMake and reviewed as ordinary CMake diffs.
+- The first configure on a fresh checkout populates the `FetchContent`
+  cache from GitHub. Subsequent configures use the cache. The project
+  treats network as available at configure time.
+- Compiled-library options (tests, examples, install rules) must be
+  explicitly disabled per dep to avoid widening the project's build or
+  install surface.
+- Tag pins must be chosen with care. The decision admits tags only when
+  the upstream's tagging practice is stable; SHA pins are the fallback
+  when a tag is moving or when the chosen reference is not a release.
+- Removing copy-vendor removes the `scripts/vendor.sh` workflow and the
+  `vendor/<name>/upstream/` trees from this repository. That cleanup is
+  follow-on work tracked separately.
 
 ### Confirmation
 
 The decision is in effect when:
 
-- Each vendored utility lives under `vendor/<name>/upstream/` with its license
-  text and metadata files.
-- The vendor tree declares one `INTERFACE` target per utility.
-- Project code consumes vendored utilities through `lab::` wrappers or aliases
-  unless the upstream type is intentionally part of that module's local
-  implementation.
-- The project CMake files do not use `FetchContent`, `ExternalProject_Add`, or
-  submodule paths for these utility headers.
+- Every third-party dependency is brought in by `FetchContent_Declare`
+  with `GIT_REPOSITORY` and `GIT_TAG` in `vendor/CMakeLists.txt`.
+- No dependency is committed under `vendor/<name>/upstream/`, tracked as
+  a git submodule, downloaded via raw `file(DOWNLOAD ...)`, brought in
+  through `ExternalProject_Add`, or resolved through `find_package` as
+  the default acquisition path.
+- No dependency is taken from a system package.
+- Libraries of types are consumed through a `lab::` re-export header.
+  Libraries of functions are consumed through their upstream target
+  directly.
+- `DEPENDENCIES.md` lists every dependency with its upstream URL, pin,
+  and consumed target name.
 
 ## Pros and Cons of the Options
 
-### Copy-vendor
+### CMake `FetchContent` for everything
 
-- Good, because the dependency sources are in the checkout.
-- Good, because the exact bytes are reviewable and reproducible.
-- Good, because CMake integration is one `INTERFACE` target per utility.
-- Good, because license files can be kept beside the copied sources.
-- Bad, because updates are manual recopy operations.
-- Bad, because third-party bytes increase repository size.
+- Good, because one mechanism handles both header-only and compiled
+  dependencies.
+- Good, because pins live in CMake alongside the build that uses them.
+- Good, because no third-party bytes are committed to this repository.
+- Good, because updates are CMake diffs that point at a public upstream.
+- Bad, because first-configure needs network and a populated cache.
+- Bad, because compiled-library options must be set per dep to keep
+  tests, examples, and install rules out of the project's build.
+
+### Copy-vendor for everything
+
+- Good, because a fresh checkout carries every byte it builds.
+- Good, because review can be done without leaving the repository.
+- Bad, because compiled libraries become large committed trees.
+- Bad, because updates need an out-of-band refresh tool and metadata
+  files maintained outside CMake.
+- Bad, because the dependency source of truth diverges from CMake.
+
+### Split: copy-vendor for header-only, `FetchContent` for compiled
+
+- Good, because header-only fresh checkouts stay self-contained.
+- Bad, because two acquisition systems coexist for marginal gain.
+- Bad, because the shell-script tier (`vendor.sh` plus metadata files)
+  has no representation in CMake, so the build cannot see or validate
+  what it depends on for that tier.
+- Bad, because the rule for which tier a given dep belongs to needs
+  case-by-case judgement.
 
 ### Git submodules
 
 - Good, because the upstream SHA is explicit.
-- Good, because updates are clean gitlink changes.
-- Bad, because cold-clone setup needs `--recurse-submodules` or a follow-up
-  `submodule update --init`.
+- Bad, because cold-clone setup requires `--recurse-submodules` or a
+  follow-up `submodule update --init`.
 - Bad, because source review spans multiple repositories.
-
-### CMake `FetchContent`
-
-- Good, because the repository carries only CMake declarations.
-- Good, because updates can be one SHA change.
-- Bad, because first configure needs network and cache state.
-- Bad, because each dependency needs careful CMake flags to avoid broadening
-  warning, install, or build surfaces.
+- Bad, because the pin lives in a `.gitmodules` file rather than in
+  CMake.
 
 ### `ExternalProject` superproject
 
 - Good, because it handles dependencies with their own build systems.
-- Bad, because the project utilities are header-only and do not need external
-  configure/build/install steps.
-- Bad, because it adds dependency-edge and exported-include plumbing for little
-  benefit.
+- Bad, because `FetchContent` already does the same with less plumbing
+  for the consumption model this project uses.
+- Bad, because the in-tree target model `FetchContent_MakeAvailable`
+  exposes is lost.
+- Bad, because dependencies become build-time, not configure-time,
+  citizens.
 
 ## More Information
 
-- [`DEPENDENCIES.md`](../../DEPENDENCIES.md) -- utility rationale and update
-  procedure.
+- [`DEPENDENCIES.md`](../../DEPENDENCIES.md) -- per-dependency rationale and
+  update procedure.
 - [`0002-copy-vendor-third-party-utilities-matrix.html`](0002-copy-vendor-third-party-utilities-matrix.html)
-  -- comparative scoring across the dependency-management options.
-- [ADR 0001](0001-cpp-project-layout.md) -- the root-level layout that contains
-  the vendor tree.
+  -- comparative scoring across the dependency-acquisition options.
+- [ADR 0001](0001-cpp-project-layout.md) -- the root-level layout that
+  contains the vendor tree.

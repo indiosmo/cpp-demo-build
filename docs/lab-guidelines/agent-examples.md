@@ -88,18 +88,18 @@ still wire it to a noop before the object is destroyed.
 Good -- local fixture wires every callback once:
 
 ```cpp
-void wire_noop_callbacks(order_routing::session& session)
+void wire_noop_callbacks(order_entry::session& session)
 {
-  session.on_request = [](const order_routing::request&) {};
-  session.on_rejected = [](const order_routing::rejection&) {};
+  session.on_request = [](const order_entry::request&) {};
+  session.on_rejected = [](const order_entry::rejection&) {};
 }
 ```
 
 Bad -- a test leaves an ignored callback unassigned:
 
 ```cpp
-order_routing::session session;
-session.on_request = [&](const order_routing::request& request) {
+order_entry::session session;
+session.on_request = [&](const order_entry::request& request) {
   captured.push_back(request);
 };
 ```
@@ -111,13 +111,13 @@ Stdout is the market-data stream. Diagnostics go through the logger.
 Good -- diagnostic output uses the logger:
 
 ```cpp
-LAB_LOG_WARN("rejecting new_order: unknown symbol {}", request.instrument);
+LAB_LOG_WARN("rejecting new_order_single: unknown symbol {}", request.instrument);
 ```
 
 Bad -- diagnostic output pollutes the record stream:
 
 ```cpp
-std::cout << "rejecting new_order: unknown symbol " << request.instrument << '\n';
+std::cout << "rejecting new_order_single: unknown symbol " << request.instrument << '\n';
 ```
 
 ## Scenario Tests

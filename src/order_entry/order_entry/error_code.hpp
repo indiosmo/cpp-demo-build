@@ -1,17 +1,17 @@
-#ifndef ORDER_ROUTING_ERROR_CODE_HPP
-#define ORDER_ROUTING_ERROR_CODE_HPP
+#ifndef ORDER_ENTRY_ERROR_CODE_HPP
+#define ORDER_ENTRY_ERROR_CODE_HPP
 
 #include "lab/error_macros.hpp"
 
 #include <cstdint>
 
 /*
- * Request failure taxonomy for the order_routing domain. Numeric range
+ * Request failure taxonomy for the order_entry domain. Numeric range
  * 201xxx identifies codes from this domain without the category name
  * (lab:: utilities use 101xxx).
  */
 
-namespace order_routing {
+namespace order_entry {
 
 enum class error_code : std::int32_t
 {
@@ -40,8 +40,8 @@ constexpr const char* to_string(error_code ec)
   return "unknown error";
 }
 
-} // namespace order_routing
+} // namespace order_entry
 
-LAB_DEFINE_ERROR_CATEGORY(order_routing)
+LAB_DEFINE_ERROR_CATEGORY(order_entry)
 
-#endif /* ORDER_ROUTING_ERROR_CODE_HPP */
+#endif /* ORDER_ENTRY_ERROR_CODE_HPP */

@@ -1,9 +1,9 @@
-#include "order_routing/runtime/session.hpp"
+#include "order_entry/runtime/session.hpp"
 
 #include "boost/leaf/handle_errors.hpp"
-#include "order_routing/csv_decoder.hpp"
-#include "order_routing/messages.hpp"
-#include "order_routing/runtime/session_config.hpp"
+#include "order_entry/csv_decoder.hpp"
+#include "order_entry/messages.hpp"
+#include "order_entry/runtime/session_config.hpp"
 
 #include "lab/error_code.hpp"
 #include "lab/log.hpp"
@@ -17,14 +17,14 @@
 #include <string_view>
 #include <utility>
 
-namespace order_routing::runtime {
+namespace order_entry::runtime {
 
 session::~session() = default;
 
 lab::result<void> session::setup(const session_config& config, boost::asio::io_context* io_context)
 {
   if (session_.has_value()) {
-    return lab::make_leaf_error(lab::error_code::already_in_progress, "order_routing runtime session already set up");
+    return lab::make_leaf_error(lab::error_code::already_in_progress, "order_entry runtime session already set up");
   }
 
   // Order matters: decoder, then inner session (captures *decoder_), then
@@ -33,8 +33,8 @@ lab::result<void> session::setup(const session_config& config, boost::asio::io_c
 
   session_.emplace(*decoder_);
 
-  session_->on_request = [this](const order_routing::request& req) { on_request(req); };
-  session_->on_rejected = [this](const order_routing::rejection& rej) { on_rejected(rej); };
+  session_->on_request = [this](const order_entry::request& req) { on_request(req); };
+  session_->on_rejected = [this](const order_entry::rejection& rej) { on_rejected(rej); };
 
   LAB_LEAF_CHECK(
     lab::match(
@@ -66,7 +66,7 @@ bool session::poll()
 lab::result<void> session::start()
 {
   if (!session_.has_value()) {
-    return lab::make_leaf_error(lab::error_code::configuration_error, "order_routing runtime session not set up");
+    return lab::make_leaf_error(lab::error_code::configuration_error, "order_entry runtime session not set up");
   }
 
   if (asio_receiver_) {
@@ -75,7 +75,7 @@ lab::result<void> session::start()
     LAB_LEAF_CHECK(ef_vi_receiver_->open());
   }
 
-  LAB_LOG_INFO("order_routing runtime session started");
+  LAB_LOG_INFO("order_entry runtime session started");
   return {};
 }
 
@@ -115,4 +115,4 @@ void session::setup_decoder(const csv_decoder_config&)
   decoder_ = std::make_unique<csv_decoder>();
 }
 
-} // namespace order_routing::runtime
+} // namespace order_entry::runtime

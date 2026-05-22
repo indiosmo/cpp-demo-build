@@ -1,17 +1,17 @@
-#ifndef ORDER_ROUTING_RUNTIME_SESSION_CONFIG_HPP
-#define ORDER_ROUTING_RUNTIME_SESSION_CONFIG_HPP
+#ifndef ORDER_ENTRY_RUNTIME_SESSION_CONFIG_HPP
+#define ORDER_ENTRY_RUNTIME_SESSION_CONFIG_HPP
 
 #include "lab/network/types.hpp"
 
 #include <variant>
 
 /*
- * Configuration surface for order_routing::runtime::session. Backend
+ * Configuration surface for order_entry::runtime::session. Backend
  * choice is a variant: a new UDP transport or decoder slots in as a new
  * alternative plus a matching setup overload in the runtime.
  */
 
-namespace order_routing::runtime {
+namespace order_entry::runtime {
 
 // Boost.Asio kernel-socket receiver. The wiring shell owns the io_context
 // and drives its poll tick from the receive event loop, so the receiver
@@ -42,6 +42,6 @@ struct session_config
   decoder_config decoder{csv_decoder_config{}};
 };
 
-} // namespace order_routing::runtime
+} // namespace order_entry::runtime
 
-#endif /* ORDER_ROUTING_RUNTIME_SESSION_CONFIG_HPP */
+#endif /* ORDER_ENTRY_RUNTIME_SESSION_CONFIG_HPP */

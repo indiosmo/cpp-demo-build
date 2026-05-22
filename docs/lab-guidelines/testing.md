@@ -24,7 +24,7 @@ are under [`test/`](../../test/).
 
 Tag convention:
 
-- module first: `[matching_engine]`, `[order_routing]`, `[order_client]`,
+- module first: `[matching_engine]`, `[order_entry]`, `[order_client]`,
   `[market_data]`, `[lab]`;
 - then test type or feature: `[unit]`, `[integration]`, `[codec]`,
   `[runtime]`, `[error]`, `[benchmark-support]`.
@@ -51,7 +51,7 @@ will grow its own local LEAF handling.
 
 Production factories live beside the domain they construct. Current anchors:
 
-- [`order_routing/factories.hpp`](../../src/order_routing/order_routing/factories.hpp)
+- [`order_entry/factories.hpp`](../../src/order_entry/order_entry/factories.hpp)
 - [`matching_engine/factories.hpp`](../../src/matching_engine/matching_engine/factories.hpp)
 
 Test-only defaults currently live in
@@ -79,11 +79,11 @@ helpers, not CSV fixture directories.
 
 ## Codec tests
 
-`order_routing::csv_decoder` and `market_data::csv_encoder` are codec
+`order_entry::csv_decoder` and `market_data::csv_encoder` are codec
 boundaries. Their tests should stay table-driven and assert wire-visible
 contracts. Current anchors:
 
-- [`csv_decoder_test.cpp`](../../test/order_routing/src/csv_decoder_test.cpp)
+- [`csv_decoder_test.cpp`](../../test/order_entry/src/csv_decoder_test.cpp)
 - [`csv_encoder_test.cpp`](../../test/market_data/src/csv_encoder_test.cpp)
 
 The `order_client` encoder tests cover outbound order commands. The CLI process

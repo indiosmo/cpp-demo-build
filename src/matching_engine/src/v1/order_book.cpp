@@ -1,31 +1,31 @@
 #include "matching_engine/v1/order_book.hpp"
 
-#include "order_routing/errors.hpp"
+#include "order_entry/errors.hpp"
 
 #include "lab/error.hpp"
 
 #include <algorithm>
 
-namespace rt = order_routing;
+namespace rt = order_entry;
 
 namespace matching_engine::v1 {
 
 void order_book::place(const order_state& resting)
 {
-  switch (resting.order_side) {
+  switch (resting.side) {
     case rt::types::side::buy:
-      bids_[resting.limit_price].push_back(resting);
+      bids_[resting.price].push_back(resting);
       break;
 
     case rt::types::side::sell:
-      asks_[resting.limit_price].push_back(resting);
+      asks_[resting.price].push_back(resting);
       break;
   }
 }
 
-lab::result<order_state> order_book::cancel(rt::types::user_id user, rt::types::user_order_id order_id)
+lab::result<order_state> order_book::cancel(rt::types::client_id client_id, rt::types::cl_ord_id cl_ord_id)
 {
-  const auto matches = [&](const order_state& candidate) { return candidate.user == user && candidate.order_id == order_id; };
+  const auto matches = [&](const order_state& candidate) { return candidate.client_id == client_id && candidate.cl_ord_id == cl_ord_id; };
 
   for (auto map_it = bids_.begin(); map_it != bids_.end(); ++map_it) {
     auto& level = map_it->second;
@@ -57,7 +57,7 @@ lab::result<order_state> order_book::cancel(rt::types::user_id user, rt::types::
     return removed;
   }
 
-  return lab::make_leaf_error(rt::errors::unknown_order{.user = user, .order_id = order_id});
+  return lab::make_leaf_error(rt::errors::unknown_order{.client_id = client_id, .cl_ord_id = cl_ord_id});
 }
 
 std::optional<rt::types::price> order_book::best_bid() const
@@ -86,7 +86,7 @@ std::optional<rt::types::quantity> order_book::total_at_best_bid() const
 
   rt::types::quantity sum{0};
   for (const auto& resting : bids_.begin()->second) {
-    sum += resting.remaining_quantity;
+    sum += resting.leaves_qty;
   }
   return sum;
 }
@@ -99,7 +99,7 @@ std::optional<rt::types::quantity> order_book::total_at_best_ask() const
 
   rt::types::quantity sum{0};
   for (const auto& resting : asks_.begin()->second) {
-    sum += resting.remaining_quantity;
+    sum += resting.leaves_qty;
   }
   return sum;
 }

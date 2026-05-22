@@ -2,7 +2,7 @@
 #include "factories.hpp"
 #include "matching_engine/order_book.hpp"
 #include "matching_engine/order_state.hpp"
-#include "order_routing/types.hpp"
+#include "order_entry/types.hpp"
 
 #include <memory>
 #include <vector>
@@ -21,7 +21,7 @@
 namespace {
 
 namespace me = matching_engine;
-namespace rt = order_routing;
+namespace rt = order_entry;
 namespace ft = matching_engine::testing;
 
 using ft::alice;
@@ -75,7 +75,7 @@ TEST_CASE("order_book - place buy", "[matching_engine][order_book][place]")
 {
   book_fixture h;
 
-  h.place(make_order_state({.order_side = rt::types::side::buy, .limit_price{10}, .quantity{100}}));
+  h.place(make_order_state({.side = rt::types::side::buy, .price{10}, .quantity{100}}));
 
   CHECK(h.book.best_bid() == rt::types::price{10});
   CHECK(h.book.total_at_best_bid() == rt::types::quantity{100});
@@ -87,7 +87,7 @@ TEST_CASE("order_book - place sell", "[matching_engine][order_book][place]")
 {
   book_fixture h;
 
-  h.place(make_order_state({.order_side = rt::types::side::sell, .limit_price{12}, .quantity{50}}));
+  h.place(make_order_state({.side = rt::types::side::sell, .price{12}, .quantity{50}}));
 
   CHECK(h.book.best_ask() == rt::types::price{12});
   CHECK(h.book.total_at_best_ask() == rt::types::quantity{50});
@@ -99,9 +99,9 @@ TEST_CASE("order_book - best_bid", "[matching_engine][order_book][best]")
 {
   book_fixture h;
 
-  h.place(make_order_state({.user = alice, .order_id{1}, .limit_price{9}, .quantity{100}}));
-  h.place(make_order_state({.user = bob, .order_id{2}, .limit_price{11}, .quantity{40}}));
-  h.place(make_order_state({.user = carol, .order_id{3}, .limit_price{10}, .quantity{75}}));
+  h.place(make_order_state({.client_id = alice, .cl_ord_id{1}, .price{9}, .quantity{100}}));
+  h.place(make_order_state({.client_id = bob, .cl_ord_id{2}, .price{11}, .quantity{40}}));
+  h.place(make_order_state({.client_id = carol, .cl_ord_id{3}, .price{10}, .quantity{75}}));
 
   CHECK(h.book.best_bid() == rt::types::price{11});
   CHECK(h.book.total_at_best_bid() == rt::types::quantity{40});
@@ -111,9 +111,9 @@ TEST_CASE("order_book - best_ask", "[matching_engine][order_book][best]")
 {
   book_fixture h;
 
-  h.place(make_order_state({.user = alice, .order_id{1}, .order_side = rt::types::side::sell, .limit_price{12}, .quantity{100}}));
-  h.place(make_order_state({.user = bob, .order_id{2}, .order_side = rt::types::side::sell, .limit_price{11}, .quantity{60}}));
-  h.place(make_order_state({.user = carol, .order_id{3}, .order_side = rt::types::side::sell, .limit_price{13}, .quantity{25}}));
+  h.place(make_order_state({.client_id = alice, .cl_ord_id{1}, .side = rt::types::side::sell, .price{12}, .quantity{100}}));
+  h.place(make_order_state({.client_id = bob, .cl_ord_id{2}, .side = rt::types::side::sell, .price{11}, .quantity{60}}));
+  h.place(make_order_state({.client_id = carol, .cl_ord_id{3}, .side = rt::types::side::sell, .price{13}, .quantity{25}}));
 
   CHECK(h.book.best_ask() == rt::types::price{11});
   CHECK(h.book.total_at_best_ask() == rt::types::quantity{60});
@@ -123,9 +123,9 @@ TEST_CASE("order_book - total_at_best", "[matching_engine][order_book][best]")
 {
   book_fixture h;
 
-  h.place(make_order_state({.user = alice, .order_id{1}, .limit_price{10}, .quantity{100}}));
-  h.place(make_order_state({.user = bob, .order_id{2}, .limit_price{10}, .quantity{40}}));
-  h.place(make_order_state({.user = carol, .order_id{3}, .limit_price{9}, .quantity{999}}));
+  h.place(make_order_state({.client_id = alice, .cl_ord_id{1}, .price{10}, .quantity{100}}));
+  h.place(make_order_state({.client_id = bob, .cl_ord_id{2}, .price{10}, .quantity{40}}));
+  h.place(make_order_state({.client_id = carol, .cl_ord_id{3}, .price{9}, .quantity{999}}));
 
   CHECK(h.book.best_bid() == rt::types::price{10});
   CHECK(h.book.total_at_best_bid() == rt::types::quantity{140});
@@ -135,8 +135,8 @@ TEST_CASE("order_book - cancel shrinks level", "[matching_engine][order_book][ca
 {
   book_fixture h;
 
-  auto* alice_handle = h.place(make_order_state({.user = alice, .order_id{1}, .limit_price{10}, .quantity{100}}));
-  h.place(make_order_state({.user = bob, .order_id{2}, .limit_price{10}, .quantity{40}}));
+  auto* alice_handle = h.place(make_order_state({.client_id = alice, .cl_ord_id{1}, .price{10}, .quantity{100}}));
+  h.place(make_order_state({.client_id = bob, .cl_ord_id{2}, .price{10}, .quantity{40}}));
 
   h.cancel(alice_handle);
 
@@ -149,8 +149,8 @@ TEST_CASE("order_book - cancel erases empty level", "[matching_engine][order_boo
   book_fixture h;
 
   auto* alice_handle = h.place(
-    make_order_state({.user = alice, .order_id{1}, .order_side = rt::types::side::sell, .limit_price{12}, .quantity{30}}));
-  h.place(make_order_state({.user = bob, .order_id{2}, .order_side = rt::types::side::sell, .limit_price{14}, .quantity{50}}));
+    make_order_state({.client_id = alice, .cl_ord_id{1}, .side = rt::types::side::sell, .price{12}, .quantity{30}}));
+  h.place(make_order_state({.client_id = bob, .cl_ord_id{2}, .side = rt::types::side::sell, .price{14}, .quantity{50}}));
 
   h.cancel(alice_handle);
 
@@ -162,9 +162,9 @@ TEST_CASE("order_book - cancel either side", "[matching_engine][order_book][canc
 {
   book_fixture h;
 
-  auto* alice_handle = h.place(make_order_state({.user = alice, .order_id{1}, .limit_price{10}, .quantity{100}}));
+  auto* alice_handle = h.place(make_order_state({.client_id = alice, .cl_ord_id{1}, .price{10}, .quantity{100}}));
   auto* bob_handle =
-    h.place(make_order_state({.user = bob, .order_id{2}, .order_side = rt::types::side::sell, .limit_price{12}, .quantity{50}}));
+    h.place(make_order_state({.client_id = bob, .cl_ord_id{2}, .side = rt::types::side::sell, .price{12}, .quantity{50}}));
 
   h.cancel(bob_handle);
   CHECK_FALSE(h.book.best_ask().has_value());
@@ -177,18 +177,18 @@ TEST_CASE("order_book - cancel preserves FIFO", "[matching_engine][order_book][c
 {
   book_fixture h;
 
-  h.place(make_order_state({.user = alice, .order_id{1}, .limit_price{10}, .quantity{100}}));
-  auto* bob_handle = h.place(make_order_state({.user = bob, .order_id{2}, .limit_price{10}, .quantity{40}}));
-  h.place(make_order_state({.user = carol, .order_id{3}, .limit_price{10}, .quantity{25}}));
+  h.place(make_order_state({.client_id = alice, .cl_ord_id{1}, .price{10}, .quantity{100}}));
+  auto* bob_handle = h.place(make_order_state({.client_id = bob, .cl_ord_id{2}, .price{10}, .quantity{40}}));
+  h.place(make_order_state({.client_id = carol, .cl_ord_id{3}, .price{10}, .quantity{25}}));
 
   h.cancel(bob_handle);
 
   const auto level = h.top_bid_level();
   REQUIRE(level.size() == 2);
-  CHECK(level[0].user == alice);
-  CHECK(level[0].order_id == rt::types::user_order_id{1});
-  CHECK(level[1].user == carol);
-  CHECK(level[1].order_id == rt::types::user_order_id{3});
+  CHECK(level[0].client_id == alice);
+  CHECK(level[0].cl_ord_id == rt::types::cl_ord_id{1});
+  CHECK(level[1].client_id == carol);
+  CHECK(level[1].cl_ord_id == rt::types::cl_ord_id{3});
 }
 
 // Confirms the side-keyed best(side) and best_level(side) accessors dispatch
@@ -203,9 +203,9 @@ TEST_CASE("order_book - side-keyed best and best_level", "[matching_engine][orde
   CHECK_FALSE(h.book.best_level(rt::types::side::buy).has_value());
   CHECK_FALSE(h.book.best_level(rt::types::side::sell).has_value());
 
-  h.place(make_order_state({.user = alice, .order_id{1}, .order_side = rt::types::side::buy, .limit_price{10}, .quantity{100}}));
-  h.place(make_order_state({.user = bob, .order_id{2}, .order_side = rt::types::side::buy, .limit_price{10}, .quantity{40}}));
-  h.place(make_order_state({.user = carol, .order_id{3}, .order_side = rt::types::side::sell, .limit_price{12}, .quantity{30}}));
+  h.place(make_order_state({.client_id = alice, .cl_ord_id{1}, .side = rt::types::side::buy, .price{10}, .quantity{100}}));
+  h.place(make_order_state({.client_id = bob, .cl_ord_id{2}, .side = rt::types::side::buy, .price{10}, .quantity{40}}));
+  h.place(make_order_state({.client_id = carol, .cl_ord_id{3}, .side = rt::types::side::sell, .price{12}, .quantity{30}}));
 
   CHECK(h.book.best(rt::types::side::buy) == rt::types::price{10});
   CHECK(h.book.best(rt::types::side::sell) == rt::types::price{12});
@@ -231,17 +231,17 @@ TEST_CASE("order_book - per-level totals across mutations", "[matching_engine][o
 
   // bids: two prices, multiple orders at the top, one cancel that shrinks
   // the top level without erasing it.
-  h.place(make_order_state({.user = alice, .order_id{1}, .order_side = rt::types::side::buy, .limit_price{10}, .quantity{100}}));
+  h.place(make_order_state({.client_id = alice, .cl_ord_id{1}, .side = rt::types::side::buy, .price{10}, .quantity{100}}));
   auto* bob_bid =
-    h.place(make_order_state({.user = bob, .order_id{2}, .order_side = rt::types::side::buy, .limit_price{10}, .quantity{40}}));
-  h.place(make_order_state({.user = carol, .order_id{3}, .order_side = rt::types::side::buy, .limit_price{9}, .quantity{25}}));
+    h.place(make_order_state({.client_id = bob, .cl_ord_id{2}, .side = rt::types::side::buy, .price{10}, .quantity{40}}));
+  h.place(make_order_state({.client_id = carol, .cl_ord_id{3}, .side = rt::types::side::buy, .price{9}, .quantity{25}}));
   h.cancel(bob_bid);
 
   // asks: two prices, one cancel that empties the second level entirely.
-  h.place(make_order_state({.user = alice, .order_id{4}, .order_side = rt::types::side::sell, .limit_price{12}, .quantity{60}}));
+  h.place(make_order_state({.client_id = alice, .cl_ord_id{4}, .side = rt::types::side::sell, .price{12}, .quantity{60}}));
   auto* carol_ask = h.place(
-    make_order_state({.user = carol, .order_id{5}, .order_side = rt::types::side::sell, .limit_price{13}, .quantity{30}}));
-  h.place(make_order_state({.user = bob, .order_id{6}, .order_side = rt::types::side::sell, .limit_price{13}, .quantity{20}}));
+    make_order_state({.client_id = carol, .cl_ord_id{5}, .side = rt::types::side::sell, .price{13}, .quantity{30}}));
+  h.place(make_order_state({.client_id = bob, .cl_ord_id{6}, .side = rt::types::side::sell, .price{13}, .quantity{20}}));
   h.cancel(carol_ask);
 
   const auto expected_bids = std::vector<std::pair<rt::types::price, rt::types::quantity>>{

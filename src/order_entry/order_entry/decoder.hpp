@@ -1,7 +1,7 @@
-#ifndef ORDER_ROUTING_DECODER_HPP
-#define ORDER_ROUTING_DECODER_HPP
+#ifndef ORDER_ENTRY_DECODER_HPP
+#define ORDER_ENTRY_DECODER_HPP
 
-#include "order_routing/messages.hpp"
+#include "order_entry/messages.hpp"
 
 #include "lab/result.hpp"
 
@@ -13,7 +13,7 @@
  * a scripted decoder.
  */
 
-namespace order_routing {
+namespace order_entry {
 
 class decoder
 {
@@ -23,6 +23,6 @@ public:
   virtual lab::result<request> decode(std::string_view payload) const = 0;
 };
 
-} // namespace order_routing
+} // namespace order_entry
 
-#endif /* ORDER_ROUTING_DECODER_HPP */
+#endif /* ORDER_ENTRY_DECODER_HPP */

@@ -6,8 +6,8 @@
 #include "market_data/runtime/publisher_config.hpp"
 #include "matching_engine/runtime/engine.hpp"
 #include "matching_engine/runtime/engine_config.hpp"
-#include "order_routing/runtime/session.hpp"
-#include "order_routing/runtime/session_config.hpp"
+#include "order_entry/runtime/session.hpp"
+#include "order_entry/runtime/session_config.hpp"
 
 #include "lab/event_loop.hpp"
 #include "lab/log.hpp"
@@ -26,7 +26,7 @@ namespace server {
 
 struct config
 {
-  order_routing::runtime::session_config order_routing;
+  order_entry::runtime::session_config order_entry;
   matching_engine::runtime::engine_config matching_engine;
   market_data::runtime::publisher_config market_data;
   lab::logger_config logger{lab::console_logger_config{}};
@@ -78,14 +78,14 @@ private:
 
   config config_;
   /*
-   * Only the asio receiver backend uses this. Declared before order_routing_
+   * Only the asio receiver backend uses this. Declared before order_entry_
    * so the receiver tears down before the context it borrows from.
    */
   std::optional<boost::asio::io_context> io_context_;
   lab::event_loop input_loop_;
   lab::event_loop processing_loop_;
   lab::event_loop output_loop_;
-  order_routing::runtime::session order_routing_;
+  order_entry::runtime::session order_entry_;
   matching_engine::runtime::engine engine_;
   market_data::runtime::publisher publisher_;
   bool started_ = false;
