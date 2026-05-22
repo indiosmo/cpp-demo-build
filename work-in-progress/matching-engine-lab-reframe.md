@@ -119,6 +119,11 @@ that start the server, send scenario commands, and compare market-data output.
 Once that path exists, remove `test/run_tests.sh` and move useful scenario
 fixtures into their target location.
 
+Phase 3.1 should reintroduce Docker as a compose stack for the complete local
+environment. This is a project-owned demo and development workflow, not a
+grading harness. At this stage, the stack should run the client and matching
+engine together.
+
 ### Phase 4 Handoff
 
 Status: pending.
@@ -168,6 +173,28 @@ matching-engine boundary rather than shared message structs.
   - add integration tests that start `matching_engine_lab_server`, run
     `matching_engine_lab_client`, and compare stdout for representative
     scenarios.
+
+### Phase 3.1: Compose Stack
+
+Reintroduce Docker as a compose-based local environment after the client and
+server path exists. Model the structure after the `fleet` and `observability`
+repos:
+
+- Use a small root compose file as the entry point.
+- Put service-specific compose fragments under a Docker or infrastructure
+  subtree, then include them from the root compose file.
+- Use shared env-file anchors for image versions and local overrides.
+- Use a named bridge network for the matching-engine lab stack.
+- Define one service for `matching_engine_lab_server` and one service for
+  `matching_engine_lab_client`; the client should target the server by service
+  name inside the compose network.
+- Treat health checks, startup ordering, and one-shot client runs as part of
+  the compose contract so the stack can demonstrate a full scenario.
+- Keep scenario inputs and expected market-data outputs in the same example or
+  integration-fixture locations chosen for phase 3, rather than embedding them
+  in compose files.
+- Document the compose workflow as an optional full-environment path alongside
+  the local build workflow.
 
 ## Phase 4: Industry Message Vocabulary
 

@@ -45,6 +45,8 @@ of the take-home. That frame should be removed or rewritten.
 - A server application that receives UDP order commands and publishes market
   data.
 - A client library and command-line app that can send orders to the server.
+- An optional compose stack that runs the client and server as the complete
+  local demo environment.
 - Scenario fixtures and integration tests that demonstrate behavior without
   reading like an assessment harness.
 - Documentation that explains the design, trade-offs, and extension points as
