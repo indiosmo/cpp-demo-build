@@ -19,8 +19,8 @@ test/<module>/
   src/test_<feature>.cpp
 ```
 
-Targets stay module-scoped and use Catch2 with CTest discovery. Current anchors
-are under [`test/`](../../test/).
+Targets stay module-scoped and use Catch2 with CTest discovery. Anchors are
+under [`test/`](../../test/).
 
 Tag convention:
 
@@ -50,16 +50,15 @@ will grow its own local LEAF handling.
 
 ## Factories and test data
 
-Production factories live beside the domain they construct. Current anchors:
+Production factories live beside the domain they construct. Anchors:
 
 - [`order_entry/factories.hpp`](../../src/order_entry/order_entry/factories.hpp)
 - [`matching_engine/factories.hpp`](../../src/matching_engine/matching_engine/factories.hpp)
 
-Test-only defaults currently live in
+Test-only defaults live in
 [`test/matching_engine/src/factories.hpp`](../../test/matching_engine/src/factories.hpp).
-During the layout reframe, move reusable test factories toward
-`<module>/testing/factories.hpp` when they are useful across several test
-files; keep one-off helpers local.
+Move reusable test factories toward `<module>/testing/factories.hpp` when they
+are useful across several test files; keep one-off helpers local.
 
 ## Callback wiring in tests
 
@@ -82,7 +81,7 @@ helpers, not wire fixture directories.
 
 `order_entry::json_decoder` and `market_data::json_encoder` are codec
 boundaries. Their tests should stay table-driven and assert wire-visible
-contracts. Current anchors:
+contracts. Anchors:
 
 - [`json_decoder_test.cpp`](../../test/order_entry/src/json_decoder_test.cpp)
 - [`json_encoder_test.cpp`](../../test/market_data/src/json_encoder_test.cpp)
@@ -105,6 +104,6 @@ The codec scaffold adds focused compile-and-contract tests:
 
 ## Performance Support
 
-The benchmark suite is intentionally absent during the reframe. When it returns,
-keep workloads readable and repeatable, name scenario builders in domain
-vocabulary, and document host assumptions beside the benchmark entry points.
+When the benchmark suite returns, keep workloads readable and repeatable, name
+scenario builders in domain vocabulary, and document host assumptions beside
+the benchmark entry points.

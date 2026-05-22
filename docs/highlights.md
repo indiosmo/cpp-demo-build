@@ -8,7 +8,7 @@ out of the allocator.
 
 The matching core keeps cancellation, matching, and book-update paths
 direct and allocation-aware. The benchmark suite is intentionally absent
-while the reframe is in flight and will be rebuilt as a separate piece.
+for now and will be rebuilt as a separate piece.
 
 ## Resilient
 

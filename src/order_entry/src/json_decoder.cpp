@@ -32,7 +32,7 @@ types::security_exchange default_security_exchange()
   return types::security_exchange{"BVMF"};
 }
 
-types::security_id demo_security_id(types::symbol)
+types::security_id default_security_id(types::symbol)
 {
   return types::security_id{0};
 }
@@ -90,7 +90,7 @@ new_order_single decode_new_order(const lab::json::value& payload)
   return new_order_single{
     .client_id = get_required<types::client_id>(payload, "client_id"),
     .cl_ord_id = get_required<types::cl_ord_id>(payload, "cl_ord_id"),
-    .security_id = get_optional(payload, "security_id", demo_security_id(symbol)),
+    .security_id = get_optional(payload, "security_id", default_security_id(symbol)),
     .symbol = symbol,
     .security_exchange = get_optional(payload, "security_exchange", default_security_exchange()),
     .side = decode_side(get_required<std::string>(payload, "side")),
@@ -112,7 +112,7 @@ replace_order decode_replace_order(const lab::json::value& payload)
     .client_id = get_required<types::client_id>(payload, "client_id"),
     .cl_ord_id = get_required<types::cl_ord_id>(payload, "cl_ord_id"),
     .orig_cl_ord_id = get_required<types::orig_cl_ord_id>(payload, "orig_cl_ord_id"),
-    .security_id = get_optional(payload, "security_id", demo_security_id(symbol)),
+    .security_id = get_optional(payload, "security_id", default_security_id(symbol)),
     .symbol = symbol,
     .security_exchange = get_optional(payload, "security_exchange", default_security_exchange()),
     .side = decode_side(get_required<std::string>(payload, "side")),

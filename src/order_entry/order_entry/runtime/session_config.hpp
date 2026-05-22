@@ -29,8 +29,8 @@ struct asio_udp_receiver_config
 
 LAB_AUTO_JSON(asio_udp_receiver_config, endpoint)
 
-// Solarflare ef_vi kernel-bypass receiver. The implementation is a stub;
-// the seat exercises the poll-driven branch of the composer.
+// Solarflare ef_vi kernel-bypass receiver. The implementation is a stub that
+// keeps the poll-driven composer branch buildable.
 struct ef_vi_udp_receiver_config
 {
   lab::network::types::endpoint_config endpoint;

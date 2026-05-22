@@ -9,9 +9,9 @@
 3. **`start`** spins up the threads outbound-to-inbound, so each
    consumer loop is running before its producer can post to it.
 
-Each phase depends on the prior: backends must exist before their
+Each startup step depends on the prior: backends must exist before their
 `on_*` fields can be bound, and both must be in place before any
-datagram arrives. The reverse direction in phase 3 is the safety
+datagram arrives. Starting loops in the reverse pipeline direction is the safety
 property -- output runs before processing posts to it, and
 processing runs before input posts to it. `application::stop`
 walks the same chain backwards.

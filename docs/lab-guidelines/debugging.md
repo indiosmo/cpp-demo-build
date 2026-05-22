@@ -6,8 +6,7 @@ The shared guide owns the investigation loop. This file names the local
 logging, assertion, sanitizer, and trace surfaces that produce evidence for
 that loop.
 
-Symbol-to-header lookups live in the
-[README placeholder table](README.md#placeholder-mapping).
+Symbol-to-header lookups live in the [README mapping table](README.md#placeholder-mapping).
 
 ## Logging
 
@@ -18,7 +17,7 @@ LAB_LOG_TRACE  LAB_LOG_DEBUG  LAB_LOG_INFO
 LAB_LOG_WARN   LAB_LOG_ERROR  LAB_LOG_CRITICAL
 ```
 
-Current anchors are the `LAB_LOG_*` macros in
+The anchors are the `LAB_LOG_*` macros in
 [`log.hpp`](../../src/lab/lab/log.hpp). Diagnostics must stay
 off stdout because stdout is the market-data stream. Keep logs on stderr or a
 configured diagnostic sink.
@@ -28,7 +27,7 @@ diagnostics. Preserve that separation when renaming or replacing the sink.
 
 ## Assertions and preconditions
 
-The target assert macro is `LAB_ASSERT`. Current anchor:
+The target assert macro is `LAB_ASSERT`. Anchor:
 [`assert.hpp`](../../src/lab/lab/assert.hpp).
 
 Use assertions for internal invariants the parser or type system has already
@@ -37,7 +36,7 @@ respond, such as configuration, socket setup, and client input.
 
 ## Rich result details
 
-Current `lab::error::full_details()` is the local evidence surface for
+`lab::error::full_details()` is the local evidence surface for
 LEAF-carried failures. The lab target should render location, error code,
 payload `what()`, and an optional stack trace in one block when richer error
 tooling lands.
@@ -47,7 +46,7 @@ errors and structured payload fields for expected domain drops.
 
 ## Sanitizer presets
 
-Current presets live in [`CMakePresets.json`](../../CMakePresets.json):
+Presets live in [`CMakePresets.json`](../../CMakePresets.json):
 
 | Preset | Current option | Lab target |
 |---|---|---|
@@ -76,7 +75,7 @@ burying their invocation in README prose.
 
 The server composition layer is the right place to trace cross-thread flow:
 UDP receive, decode, session dispatch, engine event emission, encode, and
-publish. Current anchor:
+publish. Anchor:
 [`application.cpp`](../../src/server/src/application.cpp).
 
 For matching defects, trace from the emitted market-data record backward to the

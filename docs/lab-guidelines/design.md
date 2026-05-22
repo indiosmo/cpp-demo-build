@@ -11,7 +11,7 @@ Symbol-to-header lookups live in the
 
 ## C++26 target
 
-The portfolio version targets C++26. Prefer standard `std::expected`,
+The project targets C++26. Prefer standard `std::expected`,
 `std::print`, `std::stacktrace`, `std::ranges` algorithms, and contract-style
 precondition notation when the toolchain supports them. Keep a compatibility
 helper in `lab::` only when the feature is not yet available in the active
@@ -19,7 +19,7 @@ compiler.
 
 Do not add a wrapper only to mirror another project. Add it when it gives this
 repo a stable vocabulary, cleaner call sites, or a better migration path from
-the current C++20 implementation.
+the current implementation.
 
 ## Component layout
 
@@ -36,7 +36,7 @@ src/<module>/
 test/<module>/src/         Catch2 cases mirroring src/<module>/<module>/
 ```
 
-The current anchors are under `src/`.
+The anchors are under `src/`.
 
 ## Utility layer
 
@@ -106,7 +106,7 @@ show the shape.
 ## Runtime layer split
 
 Runtime modules wrap the synchronous core with event loops, queues, receivers,
-and sinks. Current anchors:
+and sinks. Anchors:
 
 - [`order_entry::runtime::session`](../../src/order_entry/order_entry/runtime/session.hpp)
 - [`matching_engine::runtime::engine`](../../src/matching_engine/matching_engine/runtime/engine.hpp)
@@ -154,8 +154,8 @@ The existing hot-path choices remain part of the demonstrator:
 | stable order storage | pool-backed intrusive nodes |
 | point lookup index | flat hash map with startup reservation |
 
-New hot-path helpers need measurement or a clear invariant. The reframe is a
-portfolio cleanup first, not a performance rewrite.
+New hot-path helpers need measurement or a clear invariant. This project is a
+matching-engine demonstrator first, not a performance rewrite.
 
 ## Documentation anchors
 

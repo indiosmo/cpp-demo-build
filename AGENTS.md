@@ -4,13 +4,13 @@ Agent operating rules for this repository.
 
 ## Project Direction
 
-This repository is being reframed as `matching-engine-lab`: a C++26 portfolio
-demonstrator for a multi-threaded UDP matching engine. Treat every change as
-part of that direction unless the user says otherwise.
+This repository is `matching-engine-lab`: a C++26 portfolio demonstrator for a
+multi-threaded UDP matching engine. Treat every change as part of that
+direction unless the user says otherwise.
 
-Current implementation anchors still contain legacy names and paths. Prefer the
-target vocabulary from [`docs/lab-guidelines/`](docs/lab-guidelines/) when
-planning new work, and preserve buildability while the rename proceeds.
+Prefer the project vocabulary from
+[`docs/lab-guidelines/`](docs/lab-guidelines/) when planning new work, and
+preserve buildability between changes.
 
 ## Core Context
 
@@ -29,10 +29,9 @@ file. Do not load sibling topic files speculatively.
 Walk down the tree on demand from these entry points:
 
 - root [`INDEX.md`](INDEX.md) -- current codebase map.
-- [`src/<module>/README.md`](src/) -- current per-module
-  orientation during the reframe.
-- future `src/<module>/README.md` and `src/<module>/INDEX.md` -- target
-  per-module orientation and navigation after the root layout lands.
+- [`src/<module>/README.md`](src/) -- current per-module orientation.
+- future `src/<module>/INDEX.md` files -- target per-module navigation for
+  larger modules.
 - [`docs/lab-guidelines/design.md`](docs/lab-guidelines/design.md),
   [`testing.md`](docs/lab-guidelines/testing.md), and
   [`debugging.md`](docs/lab-guidelines/debugging.md) -- local mappings on top
@@ -40,9 +39,6 @@ Walk down the tree on demand from these entry points:
 - [`docs/cpp-guidelines/`](docs/cpp-guidelines/) -- shared submodule. Read each
   tree's README before drilling into a topic; do not edit files there.
 - [`docs/adr/`](docs/adr/) -- architecture decision records.
-- [`work-in-progress/portfolio-reframe-overview.md`](work-in-progress/portfolio-reframe-overview.md)
-  -- temporary north star for the portfolio conversion.
-
 Read the README or index nearest to the code you are touching, then drill down
 to the specific topic.
 
@@ -81,18 +77,16 @@ edit spans many topics.
   nlohmann/json, QuickFIX, and OnixS. Group quoted project headers, quoted
   third-party headers, and angle-bracket standard headers in separate blocks.
 - Vendor or third-party headers should resolve through clangd first. If they
-  do not, check the current vendored tree under `vendor/` and the
-  target tree under `vendor/` after the layout reframe.
+  do not, check the vendored tree under `vendor/`.
 - Do not run wide-net searches such as `find ~/`, `find /`, or `rg /` to locate
   dependencies. If clangd, focused repo search, and known vendor locations do
   not find it, report what you tried and ask for the path.
 - Prefer project vocabulary over generic names. In matching-engine code, use
   terms such as `bid`, `ask`, `resting_price`, `top_of_book`, `aggressor`,
   `maker`, `taker`, and `liquidity` where they fit.
-- Keep user-facing durable docs free of work-in-progress paths. `AGENTS.md`
-  may point at the portfolio reframe overview while the conversion is active;
-  promote stable decisions into `docs/`, ADRs, README files, or lab guidelines.
-- Keep examples and fixtures as demonstration assets, not assessment harnesses.
+- Keep user-facing durable docs focused on stable project decisions. Promote
+  durable planning into `docs/`, ADRs, README files, or lab guidelines.
+- Keep examples and fixtures as demonstration assets, not test harnesses.
 - For external library/API documentation, use the `searching-docs` skill.
 
 ## Build And Test
@@ -120,9 +114,9 @@ Update the README/INDEX/ADR tree when a change invalidates it:
 
 ### Keeping The Index In Sync
 
-The root `INDEX.md` is the navigation map for the current codebase. After the
-root-layout reframe, per-module `src/<module>/INDEX.md` files should carry the
-same role at module scope.
+The root `INDEX.md` is the navigation map for the current codebase.
+Per-module `src/<module>/INDEX.md` files should carry the same role at module
+scope when a module grows large enough to need one.
 
 Update the index whenever a change of yours would invalidate it:
 
@@ -166,9 +160,8 @@ changes belong upstream and should come back as a submodule pointer bump.
 ## Callback Wiring
 
 Many pipeline stages store callbacks in `lab::inplace_function` target types.
-During the transition, the current implementation may still use the legacy
-namespace, but the rule is the same: tests, sandboxes, spikes, and PoCs must
-wire explicit noop callbacks for ignored outputs before teardown.
+Tests, sandboxes, spikes, and PoCs must wire explicit noop callbacks for
+ignored outputs before teardown.
 
 Production wiring must assign every callback in the composition layer.
 

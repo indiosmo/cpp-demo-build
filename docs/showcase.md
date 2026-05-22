@@ -98,7 +98,7 @@ The order book stores price levels in sorted
 `boost::container::flat_map`s and keeps each level's FIFO in intrusive
 pool-backed nodes. [ADR 0004](adr/0004-use-flat-price-level-maps-with-intrusive-pooled-orders.md)
 captures the current data-structure rationale; fresh benchmarks should
-be added after the reframe stabilizes.
+be added as a separate piece.
 
 ## [Behaviour-first tests](cpp-design-principles.md#behaviour-first-tests)
 

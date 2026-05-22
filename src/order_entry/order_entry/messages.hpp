@@ -8,9 +8,9 @@
 #include <variant>
 
 /*
- * Typed order-entry messages. The JSON decoder maps the demo wire protocol
- * into these values; the matching engine consumes this order-entry surface
- * rather than sharing market-data message types.
+ * Typed order-entry messages. The JSON decoder maps the inbound command
+ * protocol into these values; the matching engine consumes this order-entry
+ * surface rather than sharing market-data message types.
  */
 
 namespace order_entry {

@@ -59,7 +59,7 @@ flowchart LR
 
 - **Hot-path conscious.** The matching core uses direct cancellation,
   intrusive resting-order nodes, and pre-sized runtime structures; the
-  benchmark suite will be rebuilt after the current reframe settles.
+  benchmark suite will be rebuilt as a separate piece.
 - **Resilient.** Clean build under GCC and Clang, with all sanitiser
   combinations green and zero warnings against a flag set well beyond
   `-Wall -Wextra`.

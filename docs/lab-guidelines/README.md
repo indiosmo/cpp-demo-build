@@ -4,12 +4,9 @@ Project-specific mapping layer on top of the shared
 [`cpp-guidelines/`](../cpp-guidelines/) submodule. The shared guides describe
 generic C++ principles in a `lib::` placeholder namespace; the table below
 names the `matching-engine-lab` symbol, helper, macro, or example that should
-realise each placeholder as the reframe lands.
+realise each placeholder in this project.
 
-This folder is written for the target project identity. Some links still point
-at the current implementation anchors under `src/lab/`; those
-anchors should move to `src/lab/` during the full rename. New helper work
-should follow the `lab::` names here.
+New helper work should follow the `lab::` names here.
 
 ## Reading order
 
@@ -25,7 +22,7 @@ should follow the `lab::` names here.
 The shared guides use `lib::` for in-house utilities. Substitute the rows
 below.
 
-| Shared placeholder | Lab symbol | Current anchor / target note |
+| Shared placeholder | Lab symbol | Anchor / note |
 |---|---|---|
 | `lib::result<T>` | `lab::result<T>` | [`result.hpp`](../../src/lab/lab/result.hpp) |
 | `BOOST_LEAF_ASSIGN` | `LAB_ASSIGN(target, expr[, context...])` | Planned lab helper; current code uses [`LAB_LEAF_CHECK`](../../src/lab/lab/result.hpp). |
@@ -36,7 +33,7 @@ below.
 | `lib::scope_exit` | `lab::scope_exit` / `lab::scope_guard` | Planned with the incoming lab helper set. |
 | `lib::match` / `lib::match_partial` | `lab::match` / `lab::match_partial` | [`variant.hpp`](../../src/lab/lab/variant.hpp); `match_partial` is planned. |
 | `lib::error` | `lab::error` | [`error.hpp`](../../src/lab/lab/error.hpp) |
-| `lib::new_error` / `lib::make_error` | `lab::make_error(...)` | Current equivalent is [`make_leaf_error`](../../src/lab/lab/error.hpp); align naming during the rename. |
+| `lib::new_error` / `lib::make_error` | `lab::make_error(...)` | Current equivalent is [`make_leaf_error`](../../src/lab/lab/error.hpp); align naming when the helper surface is updated. |
 | `lib::match_error<E>` | `lab::match_error<E>` / `lab::match_errors<E...>` | [`error.hpp`](../../src/lab/lab/error.hpp) |
 | catch-all handler macro | `LAB_CATCH_AND_LOG(code_block)` | Planned lab helper; current catch-all pieces live in [`result.hpp`](../../src/lab/lab/result.hpp). |
 | logger singleton | `lab::logger` | [`log.hpp`](../../src/lab/lab/log.hpp) |
@@ -60,7 +57,7 @@ Absent or planned:
 
 ## Cross-cutting wiring summary
 
-Five conventions should shape the reframe:
+Five conventions should shape project changes:
 
 - Domain types and errors stay in the domain that owns them.
 - Runtime code stays at the edge: UDP, threads, queues, stdout, and the future

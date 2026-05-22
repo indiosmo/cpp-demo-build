@@ -33,10 +33,10 @@ set_source_files_properties(
   PROPERTIES COMPILE_OPTIONS "-Wno-null-dereference"
 )
 
-# Solarflare ef_vi kernel-bypass UDP receiver. The stub stays in the tree
-# so the layout and CMake split can be exercised without the vendor
-# libraries on the host, and so the order_entry runtime composer can
-# offer ef_vi as a selectable backend through its receiver_config variant.
+# Solarflare ef_vi kernel-bypass UDP receiver. The stub keeps the CMake split
+# buildable without the vendor libraries on the host, and lets the order_entry
+# runtime composer offer ef_vi as a selectable backend through its
+# receiver_config variant.
 # A real integration would gate find_package(EfVi REQUIRED) and the
 # Solarflare imported targets behind LAB_NETWORK_ENABLE_REAL_EF_VI,
 # keeping the asio consumers free of any vendor coupling when that flag
